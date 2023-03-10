@@ -211,6 +211,12 @@ class METERTransformerSS(pl.LightningModule):
         device = text_embeds.device
         input_shape = text_masks.size()
         extend_text_masks = self.text_transformer.get_extended_attention_mask(text_masks, input_shape, device)
+        ## Attempt to project embeddings
+        if self.text_transformer.config.embedding_size != self.text_transformer.config.hidden_size:
+            text_embeds = self.text_transformer.embeddings_project(text_embeds)
+        
+        
+        
         for layer in self.text_transformer.encoder.layer:
             text_embeds = layer(text_embeds, extend_text_masks)[0]
         text_embeds = self.cross_modal_text_transform(text_embeds)
