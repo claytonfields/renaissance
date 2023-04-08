@@ -53,7 +53,7 @@ def config():
     input_text_embed_size = 768
     vit = 'ViT-B/32'
     hidden_size = 768
-    num_heads = 12
+    num_heads = 4
     num_layers = 6
     mlp_ratio = 4
     drop_rate = 0.1
@@ -268,8 +268,19 @@ def swin_tiny_patch224():
     image_size = 224
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]
-    input_image_embed_size = 256
+    input_image_embed_size = 768
     resolution_before = 224
+    
+@ex.named_config
+def deit_small_distilled_patch16_224():    
+    vit = "vit_deit_small_distilled_patch16_224"
+    hidden_size = 384
+    num_heads = 6
+    num_layers = 12
+    mlp_ratio = 4
+    drop_rate = 0.1
+    # train_transform_keys = ["imagenet"]
+    # val_transform_keys = ["imagenet"]
 
 # @register_model
 # def swin_tiny_patch4_window7_224(pretrained=False, **kwargs):

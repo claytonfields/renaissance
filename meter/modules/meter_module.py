@@ -7,6 +7,7 @@ from transformers.models.bert.modeling_bert import BertConfig, BertEmbeddings, B
 from .bert_model import BertCrossLayer, BertAttention
 from . import swin_transformer as swin
 from . import heads, objectives, meter_utils
+import meter.modules.vision_transformer as vit
 from .clip_model import build_model, adapt_position_encoding
 from .swin_helpers import swin_adapt_position_encoding
 from transformers import RobertaConfig, RobertaModel
@@ -17,7 +18,8 @@ class METERTransformerSS(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
-        self.is_clip= (not 'swin' in config['vit'])
+        self.is_clip= ('clip' in config['vit'])
+        self.is_deit = ('deit' in config['vit'])
 
         if 'roberta' in config['tokenizer']:
             bert_config = RobertaConfig(
@@ -84,6 +86,10 @@ class METERTransformerSS(pl.LightningModule):
 
         if self.is_clip:
             self.vit_model = build_model(config['vit'], resolution_after=resolution_after)
+        elif self.is_deit:
+            self.vit_model = getattr(vit, self.hparams.config["vit"])(
+                pretrained=True, config=self.hparams.config
+            )
         else:
             self.vit_model = getattr(swin, self.hparams.config["vit"])(
                 pretrained=True, config=self.hparams.config,
