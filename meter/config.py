@@ -72,6 +72,9 @@ def config():
 
     # Downstream Setting
     get_recall_metric = False
+    
+    
+    model_type = "METER"
 
     # PL Trainer Setting
     resume_from = None
@@ -279,8 +282,22 @@ def deit_small_distilled_patch16_224():
     num_layers = 12
     mlp_ratio = 4
     drop_rate = 0.1
-    # train_transform_keys = ["imagenet"]
-    # val_transform_keys = ["imagenet"]
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    
+@ex.named_config
+def vit_deit_tiny_patch16_224():    
+    vit = "vit_deit_tiny_patch16_224"
+    hidden_size = 192
+    input_image_embed_size = 192
+    resolution_before = 224
+    patch_size = 16
+    num_heads = 3
+    num_layers = 12
+    mlp_ratio = 4
+    drop_rate = 0.1
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
 
 # @register_model
 # def swin_tiny_patch4_window7_224(pretrained=False, **kwargs):

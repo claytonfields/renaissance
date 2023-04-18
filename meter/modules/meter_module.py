@@ -7,7 +7,7 @@ from transformers.models.bert.modeling_bert import BertConfig, BertEmbeddings, B
 from .bert_model import BertCrossLayer, BertAttention
 from . import swin_transformer as swin
 from . import heads, objectives, meter_utils
-import meter.modules.vision_transformer as vit
+import meter.modules.vit_model as vit
 from .clip_model import build_model, adapt_position_encoding
 from .swin_helpers import swin_adapt_position_encoding
 from transformers import RobertaConfig, RobertaModel
@@ -248,7 +248,7 @@ class METERTransformerSS(pl.LightningModule):
 
         text_feats, image_feats = x, y
         cls_feats_text = self.cross_modal_text_pooler(x)
-        if self.is_clip:
+        if self.is_clip or self.is_deit:
             cls_feats_image = self.cross_modal_image_pooler(y)
         else:
             avg_image_feats = self.avgpool(image_feats.transpose(1, 2)).view(image_feats.size(0), 1, -1)
