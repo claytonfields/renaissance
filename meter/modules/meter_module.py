@@ -178,6 +178,15 @@ class METERTransformerSS(pl.LightningModule):
             self.margin = 0.2
             for p in self.itm_score.parameters():
                 p.requires_grad = False
+                
+        if self.hparams.config["loss_names"]['ref'] > 0:
+            self.ref_classifier = nn.Sequential(
+                nn.Linear(hs * 2, hs * 2),
+                nn.LayerNorm(hs * 2),
+                nn.GELU(),
+                nn.Linear(hs * 2, 40),
+            )
+            self.ref_classifier.apply(objectives.init_weights)
 
         meter_utils.set_metrics(self)
         self.current_tasks = list()
@@ -296,6 +305,14 @@ class METERTransformerSS(pl.LightningModule):
         # Image Retrieval and Text Retrieval
         if "irtr" in self.current_tasks:
             ret.update(objectives.compute_irtr(self, batch))
+            
+        # Reference Resolution Task
+        if 'ref' in self.current_tasks:
+            # ret.update(objectives.compute_ref(self, batch)
+            pass
+        
+        
+        
 
         return ret
 

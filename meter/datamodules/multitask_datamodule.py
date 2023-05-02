@@ -50,6 +50,8 @@ class MTDataModule(LightningDataModule):
             self.train_sampler = None
             self.val_sampler = None
             self.test_sampler = None
+            
+        return self.train_dataset
 
     def train_dataloader(self):
         loader = DataLoader(

@@ -83,6 +83,12 @@ def compute_itm(pl_module, batch):
 
     return ret
 
+def compute_ref(pl_module, batch):
+    infer = pl_module.infer(
+        batch, mask_text=False, mask_image=False, 
+    )
+    pass
+
 def compute_snli(pl_module, batch):
     infer = pl_module.infer(
         batch, mask_text=False, mask_image=False, 

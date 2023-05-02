@@ -15,6 +15,7 @@ def _loss_names(d):
         "irtr": 0,
         "contras": 0,
         "snli": 0,
+        "ref": 0
     }
     ret.update(d)
     return ret
@@ -30,8 +31,8 @@ def config():
     batch_size = 4096  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
 
     # Image setting
-    train_transform_keys = ["clip"]
-    val_transform_keys = ["clip"]
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
     image_size = 224
     patch_size = 32
     draw_false_image = 1
