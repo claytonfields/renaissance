@@ -184,7 +184,7 @@ class METERTransformerSS(pl.LightningModule):
                 nn.Linear(hs * 2, hs * 2),
                 nn.LayerNorm(hs * 2),
                 nn.GELU(),
-                nn.Linear(hs * 2, 40),
+                nn.Linear(hs * 2, 1),
             )
             self.ref_classifier.apply(objectives.init_weights)
 

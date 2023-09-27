@@ -84,10 +84,38 @@ def compute_itm(pl_module, batch):
     return ret
 
 def compute_ref(pl_module, batch):
-    infer = pl_module.infer(
-        batch, mask_text=False, mask_image=False, 
-    )
-    pass
+    # BATCH_SIZE = 1
+    # epochs = 1
+    loss_fn = F.cross_entropy
+    obj_ids = batch['obj_ids']
+    ann_id = batch['ann_id']
+    for i,sent in enumerate(batch['text']):
+        scores = []
+        # optim.zero_grad()
+        for sub_image in batch['image']:
+            ### TODO: Put all of the sub images in the infer dict with the coressponding sentence.
+            input_dict = {
+                'image' : [sub_image.squeeze(dim=0)],
+                'text' : sent['sent'],
+                'text_ids' : batch['text_ids'][i],
+                'text_labels' : batch['text_labels'][i],
+                'text_masks' : batch['text_masks'][i]
+            }
+            infer_dict = pl_module.infer(input_dict)
+            score = pl_module.ref_classifier(infer_dict['cls_feats'])
+            scores.append(score)
+    
+        target = torch.tensor([obj_ids.index(ann_id)])
+        scores = torch.cat(scores)
+        ref_loss = loss_fn(scores.reshape(1,-1),target)
+    ret = {
+        "snli_loss": ref_loss,
+        "snli_logits": scores,
+        # "snli_labels": 
+    }
+    
+    return ret
+  
 
 def compute_snli(pl_module, batch):
     infer = pl_module.infer(
@@ -288,7 +316,7 @@ def compute_irtr(pl_module, batch):
 
 @torch.no_grad()
 def compute_irtr_recall(pl_module):
-    text_dset = pl_module.trainer.datamodule.dms[0].make_no_false_val_dset()
+    text_dset = pl_module.trainer.batchmodule.dms[0].make_no_false_val_dset()
     text_dset.tokenizer = pl_module.trainer.datamodule.dms[0].tokenizer
     text_loader = torch.utils.data.DataLoader(
         text_dset,

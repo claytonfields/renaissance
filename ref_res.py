@@ -31,7 +31,6 @@ from transformers import ElectraTokenizer
 from refcoco_utils import get_bounded_subimage
 from refcoco_utils import _config
 from refcoco_utils import _loss_names
-from refcoco_utils import RefcocoDataset
 
 from meter.transforms import keys_to_transforms
 from meter.config import ex
@@ -96,51 +95,55 @@ device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cp
 
 # Create loop for ref res
 train_ids = refer.getRefIds(split='train')
-optim = AdamW(model.parameters(), lr=1e-4)
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+text_labels = [[-100 for i in range(40)]]
+# train_ids = train_ids[:5]
 
-# Ref Res with METER
-tokenizer = ElectraTokenizer.from_pretrained('google/electra-small-discriminator')
-BATCH_SIZE = 1
-epochs = 1
-# loader = dm.train_dataloader()
-optim = AdamW(model.parameters(), lr=1e-4)
-loss_fn = torch.nn.functional.cross_entropy
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-
-ds = RefcocoDataset(refer, tokenizer)
-train_ds = torch.utils.data.Subset(ds, train_ids)
-
-train_params = {'batch_size': BATCH_SIZE,
-                'shuffle': False,
-                'num_workers': 0
-                }
-
-training_loader = torch.utils.data.DataLoader(train_ds, **train_params)
-
-
-
-
+gold = []
 model.train()
-for data in tqdm(training_loader):
-    obj_ids = data['obj_ids']
-    ann_id = data['ann_id']
-    for i,sent in enumerate(data['text']):
+for ref_id in tqdm(train_ids):
+    ref = refer.Refs[ref_id]
+    img_id = ref['image_id']
+    ann_id = ref['ann_id']
+    objs = refer.imgToAnns[img_id]
+    obj_ids = [obj['id'] for obj in objs]
+    
+    sub_images = []
+    for obj in objs:
+        x_a = get_bounded_subimage(refer, img_id, obj['id'], xs=224,ys=224, show=False)
+        if x_a is not None:
+            sub_images.append(x_a)
+    num_sub_images = len(sub_images)
+        
+    
+    for sent in ref['sentences']:
         scores = []
-        optim.zero_grad()
-        for sub_image in data['image']:
+        for sub_image in sub_images:
+            text_ids = tokenizer.encode(
+                sent['sent'],
+                padding="max_length",
+                truncation=True,
+                max_length=40,
+                return_special_tokens_mask=True,
+            )
+            text_masks = torch.tensor([1 if text_ids[i]>0 else 0 for i,_ in enumerate(text_ids)]).reshape(1,-1)
+            optim.zero_grad()
+            
             ### TODO: Put all of the sub images in the infer dict with the coressponding sentence.
+          
             input_dict = {
-                'image' : [sub_image.squeeze(dim=0)],
-                'text' : sent['sent'],
-                'text_ids' : data['text_ids'][i],
-                'text_labels' : data['text_labels'][i],
-                'text_masks' : data['text_masks'][i]
+                'image' : [sub_image],
+                'text' : sent,
+                'text_ids' : torch.tensor(text_ids).reshape(1,-1),
+                'text_labels' : text_labels,
+                'text_masks' : text_masks
             }
             infer_dict = model.infer(input_dict)
             score = model.ref_classifier(infer_dict['cls_feats'])
             scores.append(score)
-    
+        # else:
+        #     scores.append(0)
+        # # pred_index = np.argmax(scores)
+        # pred_id = objs[pred_index]['id']
         target = torch.tensor([obj_ids.index(ann_id)])
         scores = torch.cat(scores)
         loss = loss_fn(scores.reshape(1,-1),target)
@@ -183,7 +186,7 @@ with torch.no_grad():
                     'image' : [sub_image],
                     'text' : sent,
                     'text_ids' : torch.tensor(text_ids).reshape(1,-1),
-                    # 'text_labels' : text_labels,
+                    'text_labels' : text_labels,
                     'text_masks' : text_masks
                 }
                 infer_dict = model.infer(input_dict)
