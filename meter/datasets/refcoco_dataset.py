@@ -20,7 +20,7 @@ dataset = 'refcoco'
 splitBy = 'unc'
 refer = REFER(data_root, dataset, splitBy)
 
-class RefCocoDataset(BaseDataset):
+class RefCocoDataset(torch.utils.data.Dataset):
     def __init__(self, data_root, tokenizer, max_bb = 75):
         
         self.data_root = data_root
