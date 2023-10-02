@@ -165,7 +165,7 @@ class RefcocoDataset(torch.utils.data.Dataset):
 
 
 
-
+## TODO: Figure out how to load pretrained model for ref res testing
 
 _config = {  
     "exp_name":"meter",
@@ -174,13 +174,13 @@ _config = {
     # "datasets" : ["coco", "vg"],
     "datasets" : ["coco"],
     "loss_names" : _loss_names({"itm": 1, "mlm": 1}),
-    "batch_size" : 10,  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
+    "batch_size" : 1,  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
 
     # Image setting
     "train_transform_keys" : ["imagenet"],
     "val_transform_keys" : ["imagenet"],
     "image_size" : 224,
-    "patch_size" : 4,
+    "patch_size" : 16,
     "draw_false_image" : 1,
     "image_only" : False,
     "resolution_before" : 224,
@@ -199,9 +199,9 @@ _config = {
     "input_image_embed_size" : 192,
     "input_text_embed_size" : 256,
     "vit" : "vit_deit_tiny_patch16_224",
-    "hidden_size" : 192,
+    "hidden_size" : 256,
     "num_heads" : 4,
-    "num_layers" : 6,
+    "num_layers" : 12,
     "mlp_ratio" : 4,
     "drop_rate" : 0.1,
 
@@ -232,10 +232,10 @@ _config = {
     # below params varies with the environment
     "data_root" : "/home/claytonfields/nlp/code/vilt/data/arrow",
     "log_dir" : "result",
-    "per_gpu_batchsize" : 5,  # you should define this manually with per_gpu_batch_size:#
+    "per_gpu_batchsize" : 1,  # you should define this manually with per_gpu_batch_size:#
     "num_gpus" : 1,
     "num_nodes" : 1,
-    "load_path" : "",
+    "load_path" : "/home/claytonfields/nlp/code/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
     "num_workers" : 12,
     "precision" : 32
 }

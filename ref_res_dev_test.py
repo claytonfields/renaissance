@@ -60,20 +60,17 @@ class RefcocoDataset(torch.utils.data.Dataset):
         self.refer = refer
         self.max_bb = max_bb
         self.split = split
-        self.sent_ids = self.get_sent_ids()
+        self.sent_ids = self.get_sent_ids()[:50]
         
 
     def __len__(self):
         return len(self.sent_ids)
     
     def get_sent_ids(self):
-#         omit = [729,730,731,732,733,1116,1117,1118]
         sent_ids = []
         for ref_id in self.refer.getRefIds(split=self.split):
             ref = self.refer.Refs[ref_id]
             for sent_id in ref['sent_ids']:
-#                 if sent_id in omit:
-#                     continue
                 sent_ids.append(sent_id)
         return sent_ids
 
@@ -123,40 +120,32 @@ class RefcocoDataset(torch.utils.data.Dataset):
         return return_dict
 
 
-
-
-# Ref Res with METER
-optimizer = AdamW(model.parameters(), lr=1e-4)
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-
 # Ref Res with METER
 tokenizer = ElectraTokenizer.from_pretrained('google/electra-small-discriminator')
-BATCH_SIZE = 1
-
-epochs = 1
-# loader = dm.train_dataloader()
-optim = AdamW(model.parameters(), lr=1e-4)
+optimizer = AdamW(model.parameters(), lr=1e-4)
 loss_fn = torch.nn.functional.cross_entropy
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-train_ds = RefcocoDataset(refer, tokenizer, split='train')
-# train_ds = torch.utils.data.Subset(ds, train_ids)
+epochs = 1
+BATCH_SIZE = 1
 
+# Training Data
+train_ds = RefcocoDataset(refer, tokenizer, split='train')
 train_params = {'batch_size': BATCH_SIZE,
                 'shuffle': False,
                 'num_workers': 0
                 }
-
 training_loader = torch.utils.data.DataLoader(train_ds, **train_params)
 
+# Eval Data
 eval_ds = RefcocoDataset(refer, tokenizer, split='val')
-
 eval_params = {'batch_size': BATCH_SIZE,
                 'shuffle': True,
                 'num_workers': 0
                 }
 eval_loader = torch.utils.data.DataLoader(eval_ds, **eval_params)
 
+# Training Loop Function
 def train(model, training_ds, optimizer, loss_fn):
     model.train()
     losses = []
@@ -181,6 +170,7 @@ def train(model, training_ds, optimizer, loss_fn):
             print(f'Runtime Error at sent_id = {sent_id}')
     return losses, loss
 
+# Eval Loop Function
 def evaluate(model, eval_ds):
     gold = []
     with torch.no_grad():
@@ -195,8 +185,6 @@ def evaluate(model, eval_ds):
 
                 pred_index = np.argmax(logits)
                 pred_id = obj_ids[pred_index]#['id']
-                target = torch.tensor([obj_ids.index(ann_id)])
-                # scores = torch.cat(scores)
                 if pred_id == ann_id:
                     gold.append(1)
                 else:
