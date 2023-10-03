@@ -104,7 +104,7 @@ class RefcocoDataset(torch.utils.data.Dataset):
         self.refer = refer
         self.max_bb = max_bb
         self.split = split
-        self.sent_ids = self.get_sent_ids()[:50]
+        self.sent_ids = self.get_sent_ids()[:10]
         
 
     def __len__(self):

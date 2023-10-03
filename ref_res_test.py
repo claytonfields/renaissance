@@ -87,7 +87,7 @@ def main():
     refer = REFER(data_root, dataset, splitBy)
 
     splits = ['train', 'val', 'test']
-    refer.IMAGE_DIR = '/home/claytonfields/nlp/code/data/coco/images/mscoco/train2014'
+    # refer.IMAGE_DIR = '/home/claytonfields/nlp/code/data/coco/images/mscoco/train2014'
 
     config = copy.deepcopy(_config)
     pl.seed_everything(config["seed"])
@@ -121,13 +121,18 @@ def main():
     eval_loader = torch.utils.data.DataLoader(eval_ds, **eval_params)
             
 
-
-    for epoch in range(epochs):
-        losses, loss = train(model, train_ds, optimizer, loss_fn)
-        print(f'Epoch: {epoch}, Loss:  {loss.item()}')  
-        gold = evaluate(model, eval_ds)
-        acc = np.average(gold)
-        print(f'acurracy on test set {acc}')
+    with open('eval.txt','w') as f:
+        for epoch in range(epochs):
+            losses, loss = train(model, train_ds, optimizer, loss_fn)
+            avg_loss = losses = np.average(losses)
+            loss_string = f'Epoch: {epoch}, Final Loss: {loss.item()}, Average Loss: {avg_loss} \n'
+            f.write(loss_string)
+            print(loss_string)  
+            gold = evaluate(model, eval_ds)
+            acc = np.average(gold)
+            acc_string = f'Epoch: {epoch}, Acurracy on test set: {acc} \n'
+            f.write(acc_string)
+            print(acc_string)
 
 
 
