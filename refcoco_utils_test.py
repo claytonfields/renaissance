@@ -14,7 +14,7 @@ from PIL import Image
 
 import numpy as np
 import skimage.io as skio
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 from torchvision import transforms
 import torch
@@ -33,10 +33,11 @@ def get_bounded_subimage(refer, img_id, ann_id, xs=224,ys=224, show=False):
     I = skio.imread(os.path.join(refer.IMAGE_DIR, img['file_name']))
     sub = I[bbox[1]:bbox[1]+bbox[3],bbox[0]:bbox[0]+bbox[2]]
     if show:
-        plt.figure()
-        ax = plt.gca()
-        ax.imshow(sub)
-        plt.show()
+        # plt.figure()
+        # ax = plt.gca()
+        # ax.imshow(sub)
+        # plt.show()
+        pass
     if len(sub) == 0: return None
     pim = Image.fromarray(sub)
     pim2 = pim.resize((xs,ys), Image.ANTIALIAS)
