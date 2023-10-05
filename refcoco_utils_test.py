@@ -14,7 +14,7 @@ from PIL import Image
 
 import numpy as np
 import skimage.io as skio
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 from torchvision import transforms
 import torch
@@ -33,10 +33,10 @@ def get_bounded_subimage(refer, img_id, ann_id, xs=224,ys=224, show=False):
     I = skio.imread(os.path.join(refer.IMAGE_DIR, img['file_name']))
     sub = I[bbox[1]:bbox[1]+bbox[3],bbox[0]:bbox[0]+bbox[2]]
     if show:
-        # plt.figure()
-        # ax = plt.gca()
-        # ax.imshow(sub)
-        # plt.show()
+        plt.figure()
+        ax = plt.gca()
+        ax.imshow(sub)
+        plt.show()
         pass
     if len(sub) == 0: return None
     pim = Image.fromarray(sub)
@@ -104,7 +104,8 @@ class RefcocoDataset(torch.utils.data.Dataset):
         self.refer = refer
         self.max_bb = max_bb
         self.split = split
-        self.sent_ids = self.get_sent_ids()[:10]
+        self.sent_ids = self.get_sent_ids()
+        self.duds = []
         
 
     def __len__(self):
@@ -122,7 +123,6 @@ class RefcocoDataset(torch.utils.data.Dataset):
         sent_id = self.sent_ids[index]
         ref = self.refer.sentToRef[sent_id]
         sent = self.refer.Sents[sent_id]
-        print(sent['sent_id'])
         
         img_id = ref['image_id']
         ann_id = ref['ann_id']
@@ -131,7 +131,13 @@ class RefcocoDataset(torch.utils.data.Dataset):
         
         sub_images = []
         for obj in objs:
-            x_a = get_bounded_subimage(self.refer, img_id, obj['id'], xs=224,ys=224, show=False)
+            try:
+                x_a = get_bounded_subimage(self.refer, img_id, obj['id'], xs=224,ys=224, show=False)
+            except ValueError:
+                print(f'ValueError at setence id: {sent_id}')
+                self.duds.append(sent_id)
+                break
+                
             if x_a is not None:
                 sub_images.append(x_a)
         num_sub_images = len(sub_images)      
