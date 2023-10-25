@@ -1,3 +1,4 @@
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -83,35 +84,26 @@ def compute_itm(pl_module, batch):
 
     return ret
 
+## Complete this method for batching
+#  Must also decide on how to organize batch in dataset and dataloader
+#  May require a custom collate_fn to batch correctly
 def compute_ref(pl_module, batch):
     # BATCH_SIZE = 1
     # epochs = 1
-    loss_fn = F.cross_entropy
+    # raise RuntimeError('hey')
+    sent_id = batch['sent_id']
+    infer_dict = pl_module.infer(batch)
+    ref_logits = pl_module.ref_classifier(infer_dict['cls_feats'])
+
     obj_ids = batch['obj_ids']
     ann_id = batch['ann_id']
-    for i,sent in enumerate(batch['text']):
-        scores = []
-        # optim.zero_grad()
-        for sub_image in batch['image']:
-            ### TODO: Put all of the sub images in the infer dict with the coressponding sentence.
-            input_dict = {
-                'image' : [sub_image.squeeze(dim=0)],
-                'text' : sent['sent'],
-                'text_ids' : batch['text_ids'][i],
-                'text_labels' : batch['text_labels'][i],
-                'text_masks' : batch['text_masks'][i]
-            }
-            infer_dict = pl_module.infer(input_dict)
-            score = pl_module.ref_classifier(infer_dict['cls_feats'])
-            scores.append(score)
-    
-        target = torch.tensor([obj_ids.index(ann_id)])
-        scores = torch.cat(scores)
-        ref_loss = loss_fn(scores.reshape(1,-1),target)
+
+    target = torch.tensor([obj_ids.index(ann_id)])
+    ref_loss = F.cross_entropy(ref_logits.reshape(1,-1),target)
     ret = {
-        "snli_loss": ref_loss,
-        "snli_logits": scores,
-        # "snli_labels": 
+        "ref_loss": ref_loss,
+        "ref_logits": ref_logits,
+        # "ref_labels": 
     }
     
     return ret

@@ -158,7 +158,7 @@ class RefcocoDataset(torch.utils.data.Dataset):
             
         return_dict = {
             'ann_id' : ann_id,
-            'image' : sub_images,
+            'image' : [torch.cat(sub_images)],
             'obj_ids' : obj_ids,
             'sent_id' : sent_id,
             'text' : sent['sent'],

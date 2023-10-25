@@ -308,9 +308,10 @@ class METERTransformerSS(pl.LightningModule):
             
         # Reference Resolution Task
         if 'ref' in self.current_tasks:
-            # ret.update(objectives.compute_ref(self, batch)
-            pass
-        
+            # raise RuntimeError('hey')
+            ret.update(objectives.compute_ref(self, batch))
+             
+            
         
         
 

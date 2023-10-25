@@ -172,8 +172,8 @@ _config = {
     "seed" : 0,
     # "datasets" : ["coco", "vg", "sbu", "gcc"],
     # "datasets" : ["coco", "vg"],
-    "datasets" : ["coco"],
-    "loss_names" : _loss_names({"itm": 1, "mlm": 1}),
+    "datasets" : ["vqa"],
+    "loss_names" : _loss_names({"itm": 0, "mlm": 0}),
     "batch_size" : 1,  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
 
     # Image setting
