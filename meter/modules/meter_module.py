@@ -18,8 +18,9 @@ class METERTransformerSS(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
-        self.is_clip= ('clip' in config['vit'])
+        self.is_clip= ('ViT' in config['vit'])
         self.is_deit = ('deit' in config['vit'])
+        self.is_electra = ('electra' in config['tokenizer'])
 
         if 'roberta' in config['tokenizer']:
             bert_config = RobertaConfig(
@@ -227,8 +228,9 @@ class METERTransformerSS(pl.LightningModule):
         input_shape = text_masks.size()
         extend_text_masks = self.text_transformer.get_extended_attention_mask(text_masks, input_shape, device)
         ## Attempt to project embeddings
-        if self.text_transformer.config.embedding_size != self.text_transformer.config.hidden_size:
-            text_embeds = self.text_transformer.embeddings_project(text_embeds)
+        if self.is_electra:
+            if self.text_transformer.config.embedding_size != self.text_transformer.config.hidden_size:
+                text_embeds = self.text_transformer.embeddings_project(text_embeds)
         
         
         

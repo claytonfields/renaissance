@@ -31,9 +31,9 @@ import pickle
 import time
 import itertools
 import skimage.io as io
-import matplotlib.pyplot as plt
-from matplotlib.collections import PatchCollection
-from matplotlib.patches import Polygon, Rectangle
+# import matplotlib.pyplot as plt
+# from matplotlib.collections import PatchCollection
+# from matplotlib.patches import Polygon, Rectangle
 from pprint import pprint
 import numpy as np
 # from external import mask

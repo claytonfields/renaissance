@@ -14,7 +14,7 @@ from PIL import Image
 
 import numpy as np
 import skimage.io as skio
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 from torchvision import transforms
 import torch
@@ -162,7 +162,7 @@ class RefcocoDataset(torch.utils.data.Dataset):
             'obj_ids' : obj_ids,
             'sent_id' : sent_id,
             'text' : sent['sent'],
-            'text_ids' : torch.tensor(ids),
+            'text_ids' : torch.tensor(ids).to(,
             'text_labels' : torch.tensor(labels),
             'text_masks' : torch.tensor(masks)
         }  
@@ -182,8 +182,8 @@ _config = {
     "batch_size" : 1,  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
 
     # Image setting
-    "train_transform_keys" : ["imagenet"],
-    "val_transform_keys" : ["imagenet"],
+    "train_transform_keys" : ["clip"],
+    "val_transform_keys" : ["clip"],
     "image_size" : 224,
     "patch_size" : 16,
     "draw_false_image" : 1,
@@ -193,20 +193,20 @@ _config = {
     # Text Setting
     "vqav2_label_size" : 3129,
     "max_text_len" : 40,
-    "tokenizer" : "google/electra-small-discriminator",
-    "vocab_size" : 30522,
+    "tokenizer" : "roberta-base",
+    "vocab_size" : 50265,
     "whole_word_masking" : False, # note that whole_word_masking does not work for RoBERTa
     "mlm_prob" : 0.15,
     "draw_false_text" : 0,
 
     # Transformer Setting
     "num_top_layer" : 6,
-    "input_image_embed_size" : 192,
-    "input_text_embed_size" : 256,
-    "vit" : "vit_deit_tiny_patch16_224",
-    "hidden_size" : 256,
-    "num_heads" : 4,
-    "num_layers" : 12,
+    "input_image_embed_size" : 768,
+    "input_text_embed_size" : 768,
+    "vit" : "ViT-B/16",
+    "hidden_size" : 768,
+    "num_heads" : 12,
+    "num_layers" : 6,
     "mlp_ratio" : 4,
     "drop_rate" : 0.1,
 
@@ -240,7 +240,7 @@ _config = {
     "per_gpu_batchsize" : 1,  # you should define this manually with per_gpu_batch_size:#
     "num_gpus" : 1,
     "num_nodes" : 1,
-    "load_path" : "/home/claytonfields/nlp/code/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
+    "load_path" : "/data/clayton/meter/result/meter_clip16_224_roberta_pretrain.ckpt",
     "num_workers" : 12,
     "precision" : 32
 }

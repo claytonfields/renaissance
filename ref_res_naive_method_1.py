@@ -18,8 +18,8 @@ from torch.optim import AdamW
 
 from transformers import ElectraTokenizer
 
-from refcoco_utils_test import _config
-from refcoco_utils_test import RefcocoDataset
+from refcoco_utils_naive_method_1 import _config
+from refcoco_utils_naive_method_1 import RefcocoDataset
 
 from meter.modules import METERTransformerSS
 from meter.datamodules import VQAv2DataModule
@@ -27,7 +27,7 @@ from meter.datamodules import VQAv2DataModule
 
 
 # Training Loop Function
-def train(model, training_ds, optimizer, loss_fn, device):
+def train(model, training_ds, optimizer, loss_fn):
     model.to(device)
     model.train()
     losses = []
@@ -83,7 +83,7 @@ def evaluate(model, eval_ds):
 
         
 # def main():
-data_root = '/home/claytonfields/nlp/code/data/coco'  # contains refclef, refcoco, refcoco+, refcocog and images
+data_root = '/data/clayton/datasets/coco'  # contains refclef, refcoco, refcoco+, refcocog and images
 dataset = 'refcoco' 
 splitBy = 'unc'
 refer = REFER(data_root, dataset, splitBy)
@@ -103,7 +103,7 @@ optimizer = AdamW(model.parameters(), lr=1e-4)
 loss_fn = torch.nn.functional.cross_entropy
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-epochs = 1
+epochs = 2
 BATCH_SIZE = 1
 
 # Training Data
@@ -124,14 +124,14 @@ eval_ds = RefcocoDataset(refer, tokenizer, split='val')
         
 with open('eval.txt','w') as f:
     for epoch in range(epochs):
-        losses, loss = train(model, train_ds, optimizer, loss_fn, device)
+        losses, loss = train(model, train_ds, optimizer, loss_fn)
         avg_loss = np.average(losses)
         loss_string = f'Epoch: {epoch}, Final Loss: {loss.item()}, Average Loss: {avg_loss} \n'
         f.write(loss_string)
         print(loss_string)  
         pd.DataFrame(losses, columns=['Loss']).to_csv(f'Epoch_{epoch}_losses.csv')
         
-        gold = evaluate(model, eval_ds, device)
+        gold = evaluate(model, eval_ds)
         acc = np.average(gold)
         acc_string = f'Epoch: {epoch}, Acurracy on test set: {acc} \n'
         f.write(acc_string)
