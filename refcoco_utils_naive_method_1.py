@@ -99,13 +99,14 @@ def _loss_names(d):
 # RefCOCO data class
 class RefcocoDataset(torch.utils.data.Dataset):
 
-    def __init__(self, refer, tokenizer, split='', max_bb = 75):
+    def __init__(self, refer, tokenizer, device, split='', max_bb = 75):
         self.tokenizer = tokenizer
         self.refer = refer
         self.max_bb = max_bb
         self.split = split
         self.sent_ids = self.get_sent_ids()
         self.duds = []
+        self.device = device
         
 
     def __len__(self):
@@ -158,13 +159,13 @@ class RefcocoDataset(torch.utils.data.Dataset):
             
         return_dict = {
             'ann_id' : ann_id,
-            'image' : [torch.cat(sub_images)],
+            'image' : [torch.cat(sub_images).to(self.device)],
             'obj_ids' : obj_ids,
             'sent_id' : sent_id,
             'text' : sent['sent'],
-            'text_ids' : torch.tensor(ids).to(,
-            'text_labels' : torch.tensor(labels),
-            'text_masks' : torch.tensor(masks)
+            'text_ids' : torch.tensor(ids).to(self.device),
+            'text_labels' : torch.tensor(labels).to(self.device),
+            'text_masks' : torch.tensor(masks).to(self.device)
         }  
 
         return return_dict

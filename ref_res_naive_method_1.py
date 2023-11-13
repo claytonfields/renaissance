@@ -27,7 +27,7 @@ from meter.datamodules import VQAv2DataModule
 
 
 # Training Loop Function
-def train(model, training_ds, optimizer, loss_fn):
+def train(model, training_ds, optimizer, loss_fn, device):
     model.to(device)
     model.train()
     losses = []
@@ -50,7 +50,7 @@ def train(model, training_ds, optimizer, loss_fn):
             loss.backward()
 
             optimizer.step()
-        except RuntimeError:
+        except ValueError:
             print(f'Runtime Error at sent_id = {sent_id}')
             training_ds.duds.append(sent_id)
     return losses, loss
@@ -107,7 +107,7 @@ epochs = 2
 BATCH_SIZE = 1
 
 # Training Data
-train_ds = RefcocoDataset(refer, tokenizer, split='train')
+train_ds = RefcocoDataset(refer, tokenizer, device, split='train')
 # train_params = {'batch_size': BATCH_SIZE,
 #                 'shuffle': False,
 #                 'num_workers': 0
@@ -115,7 +115,7 @@ train_ds = RefcocoDataset(refer, tokenizer, split='train')
 # training_loader = torch.utils.data.DataLoader(train_ds, **train_params)
 
 # Eval Data
-eval_ds = RefcocoDataset(refer, tokenizer, split='val')
+eval_ds = RefcocoDataset(refer, tokenizer, device, split='val')
 # eval_params = {'batch_size': BATCH_SIZE,
 #                 'shuffle': True,
 #                 'num_workers': 0
@@ -124,7 +124,7 @@ eval_ds = RefcocoDataset(refer, tokenizer, split='val')
         
 with open('eval.txt','w') as f:
     for epoch in range(epochs):
-        losses, loss = train(model, train_ds, optimizer, loss_fn)
+        losses, loss = train(model, train_ds, optimizer, loss_fn, device)
         avg_loss = np.average(losses)
         loss_string = f'Epoch: {epoch}, Final Loss: {loss.item()}, Average Loss: {avg_loss} \n'
         f.write(loss_string)
