@@ -44,13 +44,13 @@ def train(model, training_ds, optimizer, loss_fn, device):
             obj_ids = data['obj_ids']
             ann_id = data['ann_id']
 
-            target = torch.tensor([obj_ids.index(ann_id)])
+            target = torch.tensor([obj_ids.index(ann_id)]).to(device)
             loss = loss_fn(logits.reshape(1,-1),target)
             losses.append(loss.item())
             loss.backward()
 
             optimizer.step()
-        except ValueError:
+        except RuntimeError:
             print(f'Runtime Error at sent_id = {sent_id}')
             training_ds.duds.append(sent_id)
     return losses, loss
