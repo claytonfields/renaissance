@@ -18,8 +18,8 @@ from torch.optim import AdamW
 
 from transformers import ElectraTokenizer
 
-from refcoco_utils_naive_method_1 import _config
-from refcoco_utils_naive_method_1 import RefcocoDataset
+from refcoco_utils_naive_method_2 import _config
+from refcoco_utils_naive_method_2 import RefcocoDataset
 
 from meter.modules import METERTransformerSS
 from meter.datamodules import VQAv2DataModule
@@ -38,8 +38,27 @@ def train(model, training_ds, optimizer, loss_fn, device):
             optimizer.zero_grad()
             
             sent_id = data['sent_id']
-            infer_dict = model.infer(data)
-            logits = model.ref_classifier(infer_dict['cls_feats'])
+            text = data['text']
+            text_ids = data['text_ids']
+            text_labels = data['text_labels']
+            text_masks = data['text_masks']
+            features = []
+            for i,sub_image in enumerate(data['image']):
+                
+                ### TODO: Put all of the sub images in the infer dict with the coressponding sentence.
+                input_dict = {
+                    'image' : [sub_image],
+                    'text' : text,
+                    'text_ids' : text_ids,
+                    'text_labels' : text_labels,
+                    'text_masks' : text_masks
+                }
+                infer_dict = model.infer(input_dict)
+        
+                features.append(infer_dict['cls_feats'])
+            
+            cls_tensor = torch.cat(features)
+            logits = model.ref_classifier(cls_tensor)
 
             obj_ids = data['obj_ids']
             ann_id = data['ann_id']
@@ -64,13 +83,32 @@ def evaluate(model, eval_ds):
                 continue
             try:
                 sent_id = data['sent_id']
-                infer_dict = model.infer(data)
-                logits = model.ref_classifier(infer_dict['cls_feats'])
-
+                text = data['text']
+                text_ids = data['text_ids']
+                text_labels = data['text_labels']
+                text_masks = data['text_masks']
+                
+                features = []
+                for i,sub_image in enumerate(data['image']):
+    
+                    ### TODO: Put all of the sub images in the infer dict with the coressponding sentence.
+                    input_dict = {
+                        'image' : [sub_image],
+                        'text' : text,
+                        'text_ids' : text_ids,
+                        'text_labels' : text_labels,
+                        'text_masks' : text_masks
+                    }
+                    infer_dict = model.infer(input_dict)
+                    features.append(infer_dict['cls_feats'])
+                    
+                cls_tensor = torch.cat(features)
+                logits = model.ref_classifier(cls_tensor)
+                
                 obj_ids = data['obj_ids']
                 ann_id = data['ann_id']
-
-                pred_index = np.argmax(logits)
+    
+                pred_index = logits.argmax()
                 pred_id = obj_ids[pred_index]
                 if pred_id == ann_id:
                     gold.append(1)

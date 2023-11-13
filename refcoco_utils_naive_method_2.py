@@ -140,7 +140,7 @@ class RefcocoDataset(torch.utils.data.Dataset):
                 break
                 
             if x_a is not None:
-                sub_images.append(x_a)
+                sub_images.append(torch.tensor(x_a).to(self.device))
         num_sub_images = len(sub_images)      
             
         text_ids = self.tokenizer.encode(
@@ -153,19 +153,19 @@ class RefcocoDataset(torch.utils.data.Dataset):
         text_masks = [1 if text_ids[i]>0 else 0 for i,_ in enumerate(text_ids)]
         text_labels = [[-100 for i in range(40)]]
 
-        ids = [text_ids for i in range(num_sub_images)]
-        masks = [text_masks for _ in range(num_sub_images)]
-        labels = [text_labels for i in range(num_sub_images)]
+        # ids = [text_ids for i in range(num_sub_images)]
+        # masks = [text_masks for _ in range(num_sub_images)]
+        # labels = [text_labels for i in range(num_sub_images)]
             
         return_dict = {
             'ann_id' : ann_id,
-            'image' : [torch.cat(sub_images).to(self.device)],
+            'image' : sub_images,
             'obj_ids' : obj_ids,
             'sent_id' : sent_id,
             'text' : sent['sent'],
-            'text_ids' : torch.tensor(ids).to(self.device),
-            'text_labels' : torch.tensor(labels).to(self.device),
-            'text_masks' : torch.tensor(masks).to(self.device)
+            'text_ids' : torch.tensor(text_ids).reshape(1,-1).to(self.device),
+            'text_labels' : torch.tensor(text_labels).reshape(1,-1).to(self.device),
+            'text_masks' : torch.tensor(text_masks).reshape(1,-1).to(self.device)
         }  
 
         return return_dict
@@ -240,7 +240,7 @@ _config = {
     "per_gpu_batchsize" : 1,  # you should define this manually with per_gpu_batch_size:#
     "num_gpus" : 1,
     "num_nodes" : 1,
-    "load_path" : "/home/claytonfields/nlp/code/meter/result/meter_clip16_224_roberta_pretrain.ckpt",
+    "load_path" : "/home/claytonfields/nlp/code/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
     "num_workers" : 12,
     "precision" : 32
 }
