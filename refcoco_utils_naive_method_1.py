@@ -235,7 +235,8 @@ _config = {
     "test_only" : False,
 
     # below params varies with the environment
-    "data_root" : "/home/claytonfields/nlp/code/vilt/data/arrow",
+    # "data_root" : "/home/claytonfields/nlp/code/vilt/data/arrow",
+    "data_root" : "/data/clayton/vilt/data/arrow",
     "log_dir" : "result",
     "per_gpu_batchsize" : 1,  # you should define this manually with per_gpu_batch_size:#
     "num_gpus" : 2,

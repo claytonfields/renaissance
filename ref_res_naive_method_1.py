@@ -83,7 +83,8 @@ def evaluate(model, eval_ds):
 
         
 # def main():
-data_root = '/home/claytonfields/nlp/code/data/coco'  # contains refclef, refcoco, refcoco+, refcocog and images
+# data_root = '/home/claytonfields/nlp/code/data/coco'  # contains refclef, refcoco, refcoco+, refcocog and images
+data_root = '/data/clayton/datasets/coco'
 dataset = 'refcoco' 
 splitBy = 'unc'
 refer = REFER(data_root, dataset, splitBy)
@@ -101,10 +102,10 @@ model = METERTransformerSS(config)
 tokenizer = ElectraTokenizer.from_pretrained('google/electra-small-discriminator')
 optimizer = AdamW(model.parameters(), lr=1e-4)
 loss_fn = torch.nn.functional.cross_entropy
-# device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-device = torch.device('cpu')
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+# device = torch.device('cpu')
 
-epochs = 2
+epochs = 3
 BATCH_SIZE = 1
 
 # Training Data
