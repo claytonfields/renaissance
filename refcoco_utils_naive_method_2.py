@@ -140,7 +140,7 @@ class RefcocoDataset(torch.utils.data.Dataset):
                 break
                 
             if x_a is not None:
-                sub_images.append(torch.tensor(x_a).to(self.device))
+                sub_images.append(x_a.to(self.device))
         num_sub_images = len(sub_images)      
             
         text_ids = self.tokenizer.encode(
@@ -235,12 +235,14 @@ _config = {
     "test_only" : False,
 
     # below params varies with the environment
-    "data_root" : "/home/claytonfields/nlp/code/vilt/data/arrow",
+    # "data_root" : "/home/claytonfields/nlp/code/vilt/data/arrow",
+    "data_root" : "/data/clayton/vilt/data/arrow",
     "log_dir" : "result",
     "per_gpu_batchsize" : 1,  # you should define this manually with per_gpu_batch_size:#
-    "num_gpus" : 1,
+    "num_gpus" : 2,
     "num_nodes" : 1,
-    "load_path" : "/home/claytonfields/nlp/code/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
+    # "load_path" : "/home/claytonfields/nlp/code/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
+    "load_path" : "/data/clayton/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
     "num_workers" : 12,
     "precision" : 32
 }
