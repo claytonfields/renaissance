@@ -109,7 +109,7 @@ def evaluate(model, eval_ds):
                 ann_id = data['ann_id']
     
                 pred_index = logits.argmax()
-                pred_id = obj_ids[pred_index]
+                pred_id = obj_ids[pred_index.item()]
                 if pred_id == ann_id:
                     gold.append(1)
                 else:
