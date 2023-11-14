@@ -69,7 +69,7 @@ def train(model, training_ds, optimizer, loss_fn, device):
             loss.backward()
 
             optimizer.step()
-        except ValueError:
+        except RuntimeError:
             print(f'Runtime Error at sent_id = {sent_id}')
             training_ds.duds.append(sent_id)
     return losses, loss
