@@ -88,17 +88,17 @@ def compute_itm(pl_module, batch):
 #  Must also decide on how to organize batch in dataset and dataloader
 #  May require a custom collate_fn to batch correctly
 def compute_ref(pl_module, batch):
-    # BATCH_SIZE = 1
-    # epochs = 1
-    # raise RuntimeError('hey')
-    sent_id = batch['sent_id']
-    infer_dict = pl_module.infer(batch)
-    ref_logits = pl_module.ref_classifier(infer_dict['cls_feats'])
-
-    obj_ids = batch['obj_ids']
-    ann_id = batch['ann_id']
-
-    target = torch.tensor([obj_ids.index(ann_id)])
+    targets = []
+    losses = []
+    for b in batch:
+        sent_id = b['sent_id']
+        infer_dict = pl_module.infer(b)
+        ref_logits = pl_module.ref_classifier(infer_dict['cls_feats'])
+    
+        obj_ids = batch['obj_ids']
+        ann_id = batch['ann_id']
+    
+        target = torch.tensor([obj_ids.index(ann_id)])
     ref_loss = F.cross_entropy(ref_logits.reshape(1,-1),target)
     ret = {
         "ref_loss": ref_loss,

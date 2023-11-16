@@ -163,15 +163,15 @@ train_params = {'batch_size': BATCH_SIZE,
 
 training_loader = torch.utils.data.DataLoader(ds, **train_params)
 
-for i, data in enumerate(training_loader):
+for i, batch in enumerate(training_loader):
     if i==0:
         break
-data['image'][0].shape
+# batch['image'][0].shape
 # data = ds[0]
 
-infer_dict = model.infer(data)
-cls_feats= infer_dict['cls_feats']
-logits = model.ref_classifier(infer_dict['cls_feats'])
+# infer_dict = model.infer(data)
+# cls_feats= infer_dict['cls_feats']
+# logits = model.ref_classifier(infer_dict['cls_feats'])
 
 # dm = VQAv2DataModule(_config)
 
