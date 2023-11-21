@@ -54,3 +54,6 @@ Thumbs.db
 # Models
 models/*
 result/*
+
+# Data
+data/*

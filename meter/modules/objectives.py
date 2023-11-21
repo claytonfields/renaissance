@@ -86,7 +86,7 @@ def compute_itm(pl_module, batch):
 
 ## Complete this method for batching
 #  Must also decide on how to organize batch in dataset and dataloader
-#  May require a custom collate_fn to batch correctly
+#  
 def compute_ref(pl_module, batch):
     # losses = []
     logit_list = []
@@ -105,7 +105,7 @@ def compute_ref(pl_module, batch):
         # Adjust learning weights
             
         except RuntimeError:
-            print(f'RuntimeError')
+            print('RuntimeError')
     logit_tensor = torch.cat(logit_list)
     target_tensor = torch.tensor(targets)
     loss = F.cross_entropy(logit_tensor, target_tensor)
