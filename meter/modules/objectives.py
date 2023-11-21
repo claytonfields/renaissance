@@ -88,21 +88,32 @@ def compute_itm(pl_module, batch):
 #  Must also decide on how to organize batch in dataset and dataloader
 #  May require a custom collate_fn to batch correctly
 def compute_ref(pl_module, batch):
+    # losses = []
+    logit_list = []
     targets = []
-    losses = []
     for b in batch:
-        sent_id = b['sent_id']
-        infer_dict = pl_module.infer(b)
-        ref_logits = pl_module.ref_classifier(infer_dict['cls_feats'])
+        try:
+            infer_dict = pl_module.infer(b)
+            logits = pl_module.ref_classifier(infer_dict['cls_feats'])
+            logit_list.append(logits.reshape(1,-1))
     
-        obj_ids = batch['obj_ids']
-        ann_id = batch['ann_id']
+            obj_ids = b['obj_ids']
+            ann_id = b['ann_id']
+            target = torch.where(obj_ids==ann_id)[0]
+            targets.append(target)
+    #         target = torch.tensor([obj_ids.index(ann_id)])
+        # Adjust learning weights
+            
+        except RuntimeError:
+            print(f'RuntimeError')
+    logit_tensor = torch.cat(logit_list)
+    target_tensor = torch.tensor(targets)
+    loss = F.cross_entropy(logit_tensor, target_tensor)
     
-        target = torch.tensor([obj_ids.index(ann_id)])
-    ref_loss = F.cross_entropy(ref_logits.reshape(1,-1),target)
+    # losses.append(loss.item())                                                       
     ret = {
-        "ref_loss": ref_loss,
-        "ref_logits": ref_logits,
+        "ref_loss": loss,
+        "ref_logits": logit_tensor,
         # "ref_labels": 
     }
     
