@@ -57,6 +57,7 @@ def train(model, training_ds, optimizer, loss_fn, device):
 
 # Eval Loop Function
 def evaluate(model, eval_ds):
+    model.to(device)
     gold = []
     with torch.no_grad():
         for data in tqdm(eval_ds):

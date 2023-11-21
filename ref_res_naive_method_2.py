@@ -75,7 +75,8 @@ def train(model, training_ds, optimizer, loss_fn, device):
     return losses, loss
 
 # Eval Loop Function
-def evaluate(model, eval_ds):
+def evaluate(model, eval_ds, device):
+    model.to(device)
     gold = []
     with torch.no_grad():
         for data in tqdm(eval_ds):
@@ -178,6 +179,7 @@ with open('eval.txt','w') as f:
         print(acc_string)
 pd.DataFrame(train_ds.duds, columns=['Sent ID']).to_csv('TrainingErrors.csv')
 pd.DataFrame(eval_ds.duds, columns=['Sent ID']).to_csv('EvalErrors.csv')
+
 
 # if __name__ == "__main__":
     # main()
