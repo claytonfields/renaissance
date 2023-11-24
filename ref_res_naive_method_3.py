@@ -88,8 +88,8 @@ def main():
         return gold
     
     
-    # data_root = '/home/claytonfields/nlp/code/data/coco'  # contains refclef, refcoco, refcoco+, refcocog and images
-    data_root = '/data/clayton/datasets/coco'
+    data_root = '/home/claytonfields/nlp/code/data/coco'  # contains refclef, refcoco, refcoco+, refcocog and images
+    # data_root = '/data/clayton/datasets/coco'
     dataset = 'refcoco' 
     splitBy = 'unc'
     refer = REFER(data_root, dataset, splitBy)
