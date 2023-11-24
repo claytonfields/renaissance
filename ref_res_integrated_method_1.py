@@ -120,13 +120,13 @@ class RefcocoDataset(torch.utils.data.Dataset):
 
         return_dict = {
             'ann_id' : ann_id,
-            'image' : [torch.cat(sub_images).to(self.device)],
-            'obj_ids' : torch.tensor(obj_ids_total).to(self.device),
-            'target' : target.to(self.device),
+            'image' : [torch.cat(sub_images)],#.to(self.device)],
+            'obj_ids' : torch.tensor(obj_ids_total),#.to(self.device),
+            'target' : target,#.to(self.device),
             'text' : sent['sent'],
-            'text_ids' : text_ids.to(self.device),
-            'text_labels' : text_labels.to(self.device),
-            'text_masks' : text_masks.to(self.device)
+            'text_ids' : text_ids,#.to(self.device),
+            'text_labels' : text_labels,#.to(self.device),
+            'text_masks' : text_masks,#.to(self.device)
         }
         
         return return_dict
@@ -211,7 +211,7 @@ _config = {
     # "data_root" : "/home/claytonfields/nlp/code/vilt/data/arrow",
     "data_root" : "/data/clayton/meter/data/arrow",
     "log_dir" : "result",
-    "per_gpu_batchsize" : 10,  # you should define this manually with per_gpu_batch_size:#
+    "per_gpu_batchsize" : 2,  # you should define this manually with per_gpu_batch_size:#
     "num_gpus" : 1,
     "num_nodes" : 1,
     # "load_path" : "/home/claytonfields/nlp/code/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
@@ -222,12 +222,12 @@ _config = {
 }
 
 class RefcocoDataModule(LightningDataModule):
-    def __init__(self,config, refer, collate_fn):
+    def __init__(self, config, refer, device, collate_fn):
         super().__init__()
         
         self.refer = refer
         self.collate_fn = collate_fn
-        
+        self.device = device,
         self.data_dir = _config["data_root"]
 
         self.num_workers = _config["num_workers"]
@@ -261,14 +261,16 @@ class RefcocoDataModule(LightningDataModule):
     def set_train_dataset(self):
         self.train_dataset = RefcocoDataset(
             self.refer, 
-            self.tokenizer, 
+            self.tokenizer,
+            self.device,
             split='train'
         )
 
     def set_val_dataset(self):
         self.val_dataset = RefcocoDataset(
             self.refer, 
-            self.tokenizer, 
+            self.tokenizer,
+            self.device,
             split='train'
         )
         
@@ -302,13 +304,14 @@ class RefcocoDataModule(LightningDataModule):
     
 config = copy.deepcopy(_config)
 pl.seed_everything(_config["seed"])
-dm = RefcocoDataModule(config, refer, collate_fn)
-model = METERTransformerSS(_config)
+model = METERTransformerSS(config)
 model.current_tasks.append('ref')
 
 
 optim = AdamW(model.parameters(), lr=1e-4)
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
+dm = RefcocoDataModule(config, refer, device, collate_fn)
 
 # Ref Res with METER
 tokenizer = ElectraTokenizer.from_pretrained('google/electra-small-discriminator')
@@ -322,7 +325,7 @@ loss_fn = torch.nn.functional.cross_entropy
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 # device  = torch.device('cpu')
 
-ds = RefcocoDataset(refer, tokenizer, split='train', max_bb=42)
+ds = RefcocoDataset(refer, tokenizer, device, split='train', max_bb=42)
 # ds = NewRefcocoDataset(refer, tokenizer)
 train_params = {'batch_size': BATCH_SIZE,
                 'shuffle': False,

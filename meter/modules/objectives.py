@@ -99,15 +99,16 @@ def compute_ref(pl_module, batch):
     
             obj_ids = b['obj_ids']
             ann_id = b['ann_id']
-            target = torch.where(obj_ids==ann_id)[0]
+            # target = torch.where(obj_ids==ann_id)[0]
+            target = b['target']
             targets.append(target)
     #         target = torch.tensor([obj_ids.index(ann_id)])
-        # Adjust learning weights
+            # Adjust learning weights
             
-        except RuntimeError:
+        except ValueError:
             print('RuntimeError')
     logit_tensor = torch.cat(logit_list)
-    target_tensor = torch.tensor(targets)
+    target_tensor = torch.tensor(targets).to('cuda')
     loss = F.cross_entropy(logit_tensor, target_tensor)
     
     # losses.append(loss.item())                                                       
