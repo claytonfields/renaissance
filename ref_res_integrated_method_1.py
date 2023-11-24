@@ -46,10 +46,11 @@ refer = REFER(data_root, dataset, splitBy)
 
 class RefcocoDataset(torch.utils.data.Dataset):
 
-    def __init__(self, refer, tokenizer, split='', max_bb = 42):
+    def __init__(self, refer, tokenizer, device, split='', max_bb = 42):
         self.tokenizer = tokenizer
         self.refer = refer
         self.max_bb = max_bb
+        self.device = device
         self.split = split
         self.sent_ids = self.get_sent_ids()[:30]
         self.duds = []
@@ -114,19 +115,19 @@ class RefcocoDataset(torch.utils.data.Dataset):
         repeat_labels = labels.repeat(num_sub_images, 1)
         pad_labels = torch.zeros(num_pad, 40)
         text_labels = torch.cat((repeat_labels, pad_labels)).to(torch.long)
+        
+        target = torch.tensor([obj_ids.index(ann_id)])
 
         return_dict = {
             'ann_id' : ann_id,
-            'image' : [torch.cat(sub_images)],
-            'obj_ids' : torch.tensor(obj_ids_total),
+            'image' : [torch.cat(sub_images).to(self.device)],
+            'obj_ids' : torch.tensor(obj_ids_total).to(self.device),
+            'target' : target.to(self.device),
             'text' : sent['sent'],
-            'text_ids' : text_ids,
-            'text_labels' : text_labels,
-            'text_masks' : text_masks
+            'text_ids' : text_ids.to(self.device),
+            'text_labels' : text_labels.to(self.device),
+            'text_masks' : text_masks.to(self.device)
         }
-        
-        
-            
         
         return return_dict
 
