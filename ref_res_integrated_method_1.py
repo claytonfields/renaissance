@@ -17,7 +17,7 @@ from PIL import Image
 from tqdm import tqdm
 import numpy as np
 import skimage.io as skio
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from refer import REFER
 
 import torch
@@ -28,8 +28,8 @@ from pytorch_lightning import LightningDataModule
 from transformers import ElectraTokenizer
 
 from refcoco_utils import get_bounded_subimage
-from refcoco_utils import _config
-from refcoco_utils import _loss_names
+# from refcoco_utils import _config
+# from refcoco_utils import _loss_names
 
 from meter.transforms import keys_to_transforms
 from meter.config import ex
@@ -37,11 +37,12 @@ from meter.modules import METERTransformerSS
 from meter.datamodules.multitask_datamodule import MTDataModule
 from meter.datasets.base_dataset import BaseDataset
 
-data_root = '/home/claytonfields/nlp/code/data/coco'  # contains refclef, refcoco, refcoco+, refcocog and images
+# data_root = '/home/claytonfields/nlp/code/data/coco'  # contains refclef, refcoco, refcoco+, refcocog and images
+data_root = '/data/clayton/datasets/coco'
 dataset = 'refcoco' 
 splitBy = 'unc'
 refer = REFER(data_root, dataset, splitBy)
-refer.IMAGE_DIR = '/home/claytonfields/nlp/code/data/coco/images/mscoco/train2014'
+# refer.IMAGE_DIR = '/home/claytonfields/nlp/code/data/coco/images/mscoco/train2014'
 
 class RefcocoDataset(torch.utils.data.Dataset):
 
@@ -212,8 +213,9 @@ _config = {
     "per_gpu_batchsize" : 10,  # you should define this manually with per_gpu_batch_size:#
     "num_gpus" : 1,
     "num_nodes" : 1,
-    "load_path" : "/home/claytonfields/nlp/code/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
-#     "load_path" : "/data/clayton/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
+    # "load_path" : "/home/claytonfields/nlp/code/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
+    # "load_path" : "/data/clayton/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
+    "load_path" : "/data/clayton/meter/result/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
     "num_workers" : 12,
     "precision" : 32
 }
@@ -316,8 +318,8 @@ epochs = 1
 # loader = dm.train_dataloader()
 optim = AdamW(model.parameters(), lr=1e-4)
 loss_fn = torch.nn.functional.cross_entropy
-# device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-dvice  = torch.device('cpu')
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+# device  = torch.device('cpu')
 
 ds = RefcocoDataset(refer, tokenizer, split='train', max_bb=42)
 # ds = NewRefcocoDataset(refer, tokenizer)
@@ -367,10 +369,10 @@ grad_steps = max(_config["batch_size"] // (
 max_steps = _config["max_steps"] if _config["max_steps"] is not None else None
 
 trainer = pl.Trainer(
-    gpus=0,
+    gpus=1,
     num_nodes=_config["num_nodes"],
     precision=_config["precision"],
-#     accelerator="cpu",
+#     accelerator="ddp",
     benchmark=True,
     deterministic=True,
     max_epochs=_config["max_epoch"] if max_steps is None else 1000,
