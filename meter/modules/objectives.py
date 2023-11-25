@@ -90,7 +90,8 @@ def compute_itm(pl_module, batch):
 def compute_ref(pl_module, batch):
     targets = batch[1]
     batch = batch[0]
-    for b in batch:
+    logit_list = []
+    for i,b in enumerate(batch):
         try:
             infer_dict = pl_module.infer(b)
             logits = pl_module.ref_classifier(infer_dict['cls_feats'])
@@ -99,8 +100,7 @@ def compute_ref(pl_module, batch):
             obj_ids = b['obj_ids']
             ann_id = b['ann_id']
             # target = torch.where(obj_ids==ann_id)[0]
-            target = b['target']
-            targets.append(target)
+            # target = b['target']
             # target = torch.tensor([obj_ids.index(ann_id)])
             # Adjust learning weights
             
@@ -118,12 +118,12 @@ def compute_ref(pl_module, batch):
     }
         
     phase = "train" if pl_module.training else "val"
-    loss = getattr(pl_module, f"{phase}_ref_loss")(ret["ref_loss"])
-    score = getattr(pl_module, f"{phase}_ref_score")(
-        ret["ref_logits"], ret["ref_targets"]
-    )
+    # loss = getattr(pl_module, f"{phase}_ref_loss")(ret["ref_loss"])
+    # score = getattr(pl_module, f"{phase}_ref_score")(
+    #    ret["ref_logits"], ret["ref_targets"]
+    #)
     pl_module.log(f"ref/{phase}/loss", loss)
-    pl_module.log(f"ref/{phase}/score", score)
+    # pl_module.log(f"ref/{phase}/score", score)
     
     return ret
   
