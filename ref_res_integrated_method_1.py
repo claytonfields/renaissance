@@ -220,7 +220,10 @@ class RefcocoDataset(torch.utils.data.Dataset):
 
 
 def collate_fn(batch):
-    return batch
+    targets = []
+    for b in batch:
+        targets.append(b['target'])
+    return (batch, targets)
 
 class RefcocoDataModule(LightningDataModule):
     def __init__(self, config, refer, device, collate_fn):

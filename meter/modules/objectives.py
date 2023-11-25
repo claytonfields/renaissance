@@ -88,9 +88,8 @@ def compute_itm(pl_module, batch):
 #  Must also decide on how to organize batch in dataset and dataloader
 #  
 def compute_ref(pl_module, batch):
-    # losses = []
-    logit_list = []
-    targets = []
+    targets = batch[1]
+    batch = batch[0]
     for b in batch:
         try:
             infer_dict = pl_module.infer(b)
