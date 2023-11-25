@@ -37,110 +37,12 @@ from meter.modules import METERTransformerSS
 from meter.datamodules.multitask_datamodule import MTDataModule
 from meter.datasets.base_dataset import BaseDataset
 
-# data_root = '/home/claytonfields/nlp/code/data/coco'  # contains refclef, refcoco, refcoco+, refcocog and images
-data_root = '/data/clayton/datasets/coco'
-dataset = 'refcoco' 
-splitBy = 'unc'
-refer = REFER(data_root, dataset, splitBy)
-# refer.IMAGE_DIR = '/home/claytonfields/nlp/code/data/coco/images/mscoco/train2014'
-
-class RefcocoDataset(torch.utils.data.Dataset):
-
-    def __init__(self, refer, tokenizer, device, split='', max_bb = 42):
-        self.tokenizer = tokenizer
-        self.refer = refer
-        self.max_bb = max_bb
-        self.device = device
-        self.split = split
-        self.sent_ids = self.get_sent_ids()[:30]
-        self.duds = []
-
-    def __len__(self):
-        return len(self.sent_ids)
-    
-    def get_sent_ids(self):
-        sent_ids = []
-        for ref_id in self.refer.getRefIds(split=self.split):
-            ref = self.refer.Refs[ref_id]
-            img_id = ref['image_id']
-            objs = refer.imgToAnns[img_id]
-            if len(objs) <= self.max_bb:
-                for sent_id in ref['sent_ids']:
-                    sent_ids.append(sent_id)
-        return sent_ids
-    
-    def __getitem__(self, index):
-        max_bb = self.max_bb
-        sent = refer.Sents[index]
-        ref = refer.sentToRef[index]
-        img_id = ref['image_id']
-        ann_id = ref['ann_id']
-        objs = refer.imgToAnns[img_id]
-        obj_ids = [obj['id'] for obj in objs]
-        obj_pad = [0 for _ in range(max_bb-len(obj_ids))]
-        obj_ids_total = obj_ids+obj_pad
-
-        sub_images = []
-        for obj in objs:
-            x_a = get_bounded_subimage(refer, img_id, obj['id'], xs=224,ys=224, show=False)
-            if x_a is not None:
-                sub_images.append(x_a)
-        
-        num_sub_images = len(sub_images)
-        num_pad = max_bb - num_sub_images 
-        
-        pad_image = torch.zeros(1,3,224,224)
-        for _ in range(max_bb - num_sub_images):
-            sub_images.append(pad_image)
-        
-        # text ids
-        ids = tokenizer.encode(
-            sent['sent'],
-            padding="max_length",
-            truncation=True,
-            max_length=40,
-            return_special_tokens_mask=True,
-        )
-        repeat_ids = torch.tensor(ids).repeat(num_sub_images,1)
-        pad_ids =  torch.zeros(num_pad,40)
-        text_ids = torch.cat((repeat_ids, pad_ids)).to(torch.long)
-        # text masks
-        num_tokens = torch.where(text_ids[0] > 0)[0].size(dim=0)
-        masks = torch.cat((torch.ones(num_tokens), torch.zeros(40-num_tokens))).to(torch.long)
-        repeat_masks = masks.repeat(num_sub_images,1)
-        pad_masks = torch.zeros(num_pad, 40)
-        text_masks = torch.cat((repeat_masks, pad_masks)).to(torch.long)
-        # text_labels
-        labels = torch.full((40,),-100)
-        repeat_labels = labels.repeat(num_sub_images, 1)
-        pad_labels = torch.zeros(num_pad, 40)
-        text_labels = torch.cat((repeat_labels, pad_labels)).to(torch.long)
-        
-        target = torch.tensor([obj_ids.index(ann_id)])
-
-        return_dict = {
-            'ann_id' : ann_id,
-            'image' : [torch.cat(sub_images)],#.to(self.device)],
-            'obj_ids' : torch.tensor(obj_ids_total),#.to(self.device),
-            'target' : target,#.to(self.device),
-            'text' : sent['sent'],
-            'text_ids' : text_ids,#.to(self.device),
-            'text_labels' : text_labels,#.to(self.device),
-            'text_masks' : text_masks,#.to(self.device)
-        }
-        
-        return return_dict
-
-
-def collate_fn(batch):
-    return batch
-
 _config = {  
     "exp_name":"meter",
     "seed" : 0,
     # "datasets" : ["coco", "vg", "sbu", "gcc"],
     # "datasets" : ["coco", "vg"],
-#     "datasets" : ["coco"],
+    "datasets" : ["coco"],
     "loss_names" :{'itm': 0,
     'mlm': 0,
     'mpp': 0,
@@ -220,6 +122,105 @@ _config = {
     "num_workers" : 12,
     "precision" : 32
 }
+
+
+# data_root = '/home/claytonfields/nlp/code/data/coco'  # contains refclef, refcoco, refcoco+, refcocog and images
+data_root = '/data/clayton/datasets/coco'
+dataset = 'refcoco' 
+splitBy = 'unc'
+refer = REFER(data_root, dataset, splitBy)
+# refer.IMAGE_DIR = '/home/claytonfields/nlp/code/data/coco/images/mscoco/train2014'
+
+class RefcocoDataset(torch.utils.data.Dataset):
+
+    def __init__(self, refer, tokenizer, device, split='', max_bb = 42):
+        self.tokenizer = tokenizer
+        self.refer = refer
+        self.max_bb = max_bb
+        self.device = device
+        self.split = split
+        self.sent_ids = self.get_sent_ids()[:30]
+        self.duds = []
+
+    def __len__(self):
+        return len(self.sent_ids)
+    
+    def get_sent_ids(self):
+        sent_ids = []
+        for ref_id in self.refer.getRefIds(split=self.split):
+            ref = self.refer.Refs[ref_id]
+            img_id = ref['image_id']
+            objs = refer.imgToAnns[img_id]
+            if len(objs) <= self.max_bb:
+                for sent_id in ref['sent_ids']:
+                    sent_ids.append(sent_id)
+        return sent_ids
+    
+    def __getitem__(self, index):
+        max_bb = self.max_bb
+        sent = refer.Sents[index]
+        ref = refer.sentToRef[index]
+        img_id = ref['image_id']
+        ann_id = ref['ann_id']
+        objs = refer.imgToAnns[img_id]
+        obj_ids = [obj['id'] for obj in objs]
+        obj_pad = [0 for _ in range(max_bb-len(obj_ids))]
+        obj_ids_total = obj_ids+obj_pad
+
+        sub_images = []
+        for obj in objs:
+            x_a = get_bounded_subimage(refer, img_id, obj['id'], xs=224,ys=224, show=False)
+            if x_a is not None:
+                sub_images.append(x_a)
+        
+        num_sub_images = len(sub_images)
+        num_pad = max_bb - num_sub_images 
+        
+        pad_image = torch.zeros(1,3,224,224)
+        for _ in range(max_bb - num_sub_images):
+            sub_images.append(pad_image)
+        
+        # text ids
+        ids = self.tokenizer.encode(
+            sent['sent'],
+            padding="max_length",
+            truncation=True,
+            max_length=40,
+            return_special_tokens_mask=True,
+        )
+        repeat_ids = torch.tensor(ids).repeat(num_sub_images,1)
+        pad_ids =  torch.zeros(num_pad,40)
+        text_ids = torch.cat((repeat_ids, pad_ids)).to(torch.long)
+        # text masks
+        num_tokens = torch.where(text_ids[0] > 0)[0].size(dim=0)
+        masks = torch.cat((torch.ones(num_tokens), torch.zeros(40-num_tokens))).to(torch.long)
+        repeat_masks = masks.repeat(num_sub_images,1)
+        pad_masks = torch.zeros(num_pad, 40)
+        text_masks = torch.cat((repeat_masks, pad_masks)).to(torch.long)
+        # text_labels
+        labels = torch.full((40,),-100)
+        repeat_labels = labels.repeat(num_sub_images, 1)
+        pad_labels = torch.zeros(num_pad, 40)
+        text_labels = torch.cat((repeat_labels, pad_labels)).to(torch.long)
+        
+        target = torch.tensor([obj_ids.index(ann_id)])
+
+        return_dict = {
+            'ann_id' : ann_id,
+            'image' : [torch.cat(sub_images)],#.to(self.device)],
+            'obj_ids' : torch.tensor(obj_ids_total),#.to(self.device),
+            'target' : target,#.to(self.device),
+            'text' : sent['sent'],
+            'text_ids' : text_ids,#.to(self.device),
+            'text_labels' : text_labels,#.to(self.device),
+            'text_masks' : text_masks,#.to(self.device)
+        }
+        
+        return return_dict
+
+
+def collate_fn(batch):
+    return batch
 
 class RefcocoDataModule(LightningDataModule):
     def __init__(self, config, refer, device, collate_fn):
@@ -305,43 +306,13 @@ class RefcocoDataModule(LightningDataModule):
 config = copy.deepcopy(_config)
 pl.seed_everything(_config["seed"])
 model = METERTransformerSS(config)
-model.current_tasks.append('ref')
-
-
-optim = AdamW(model.parameters(), lr=1e-4)
+model.current_tasks = ['ref']
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 dm = RefcocoDataModule(config, refer, device, collate_fn)
 
-# Ref Res with METER
-tokenizer = ElectraTokenizer.from_pretrained('google/electra-small-discriminator')
-BATCH_SIZE = 10
-
-
-epochs = 1
-# loader = dm.train_dataloader()
-optim = AdamW(model.parameters(), lr=1e-4)
-loss_fn = torch.nn.functional.cross_entropy
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-# device  = torch.device('cpu')
-
-ds = RefcocoDataset(refer, tokenizer, device, split='train', max_bb=42)
-# ds = NewRefcocoDataset(refer, tokenizer)
-train_params = {'batch_size': BATCH_SIZE,
-                'shuffle': False,
-                'num_workers': 0,
-                'collate_fn' : collate_fn
-                }
-
-training_loader = torch.utils.data.DataLoader(ds, **train_params)
-
-model.current_tasks = ['ref']
-
 pl.seed_everything(_config["seed"])
 
-# dm = MTDataModule(_config, dist=False)
-
-# model = METERTransformerSS(_config)
 exp_name = f'{_config["exp_name"]}'
 
 os.makedirs(_config["log_dir"], exist_ok=True)

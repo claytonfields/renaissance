@@ -102,7 +102,7 @@ def compute_ref(pl_module, batch):
             # target = torch.where(obj_ids==ann_id)[0]
             target = b['target']
             targets.append(target)
-    #         target = torch.tensor([obj_ids.index(ann_id)])
+            # target = torch.tensor([obj_ids.index(ann_id)])
             # Adjust learning weights
             
         except ValueError:
@@ -117,6 +117,14 @@ def compute_ref(pl_module, batch):
         "ref_logits": logit_tensor,
         # "ref_labels": 
     }
+        
+    phase = "train" if pl_module.training else "val"
+    loss = getattr(pl_module, f"{phase}_ref_loss")(ret["ref_loss"])
+    score = getattr(pl_module, f"{phase}_ref_score")(
+        ret["ref_logits"], ret["ref_targets"]
+    )
+    pl_module.log(f"ref/{phase}/loss", loss)
+    pl_module.log(f"ref/{phase}/score", score)
     
     return ret
   
