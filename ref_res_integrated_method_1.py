@@ -38,8 +38,9 @@ from meter.modules import METERTransformerSS
 from meter.datamodules.multitask_datamodule import MTDataModule
 from meter.datasets.base_dataset import BaseDataset
 
-# temporary directory switch, fix before deployment
-tensor_book = True
+# temporary variable switch between servers, fix before deployment
+tensor_book = False
+frege = True
 
 if tensor_book:
     data_root =  "/home/claytonfields/nlp/code/vilt/data/arrow"
@@ -48,10 +49,13 @@ if tensor_book:
     device = torch.device('cpu')
 else:
     data_root =  "/data/clayton/meter/data/arrow"
-    load_path = "/data/clayton/meter/result/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt"
+    load_path = "/data/clayton/meter/result/meter_electra_small_deit_tiny_p16_is224_bs288_ts1M/checkpoints/epoch=43-step=898039.ckpt"
     refer_root = "/data/clayton/datasets/coco"
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-
+    if frege:
+        num_gpus = 2
+    else:
+        num_gpus = 1
 
 
 _config = {  
@@ -132,7 +136,7 @@ _config = {
     "data_root" : data_root,
     "log_dir" : "result",
     "per_gpu_batchsize" : 1,  # you should define this manually with per_gpu_batch_size:#
-    "num_gpus" : 1,
+    "num_gpus" : num_gpus,
     "num_nodes" : 1,
     # "load_path" : "/home/claytonfields/nlp/code/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
     # "load_path" : "/data/clayton/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
