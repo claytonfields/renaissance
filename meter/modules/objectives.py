@@ -92,13 +92,14 @@ def compute_ref(pl_module, batch):
     batch = batch[0]
     logit_list = []
     for i,b in enumerate(batch):
+
         try:
             infer_dict = pl_module.infer(b)
             logits = pl_module.ref_classifier(infer_dict['cls_feats'])
             logit_list.append(logits.reshape(1,-1))
     
-            obj_ids = b['obj_ids']
-            ann_id = b['ann_id']
+            # obj_ids = b['obj_ids']
+            # ann_id = b['ann_id']
             # target = torch.where(obj_ids==ann_id)[0]
             # target = b['target']
             # target = torch.tensor([obj_ids.index(ann_id)])

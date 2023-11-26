@@ -19,6 +19,7 @@ import numpy as np
 import skimage.io as skio
 # import matplotlib.pyplot as plt
 from refer import REFER
+import pandas as pd
 
 import torch
 from torch.optim import AdamW
@@ -36,6 +37,22 @@ from meter.config import ex
 from meter.modules import METERTransformerSS
 from meter.datamodules.multitask_datamodule import MTDataModule
 from meter.datasets.base_dataset import BaseDataset
+
+# temporary directory switch, fix before deployment
+tensor_book = True
+
+if tensor_book:
+    data_root =  "/home/claytonfields/nlp/code/vilt/data/arrow"
+    load_path = "/home/claytonfields/nlp/code/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt"
+    refer_root = "/home/claytonfields/nlp/code/data/coco"
+    device = torch.device('cpu')
+else:
+    data_root =  "/data/clayton/meter/data/arrow"
+    load_path = "/data/clayton/meter/result/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt"
+    refer_root = "/data/clayton/datasets/coco"
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
+
 
 _config = {  
     "exp_name":"meter",
@@ -111,35 +128,38 @@ _config = {
 
     # below params varies with the environment
     # "data_root" : "/home/claytonfields/nlp/code/vilt/data/arrow",
-    "data_root" : "/data/clayton/meter/data/arrow",
+    # "data_root" : "/data/clayton/meter/data/arrow",
+    "data_root" : data_root,
     "log_dir" : "result",
-    "per_gpu_batchsize" : 2,  # you should define this manually with per_gpu_batch_size:#
+    "per_gpu_batchsize" : 1,  # you should define this manually with per_gpu_batch_size:#
     "num_gpus" : 1,
     "num_nodes" : 1,
     # "load_path" : "/home/claytonfields/nlp/code/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
     # "load_path" : "/data/clayton/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
-    "load_path" : "/data/clayton/meter/result/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
+    # "load_path" : "/data/clayton/meter/result/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
+    "load_path" : load_path,
     "num_workers" : 12,
     "precision" : 32
 }
 
 
 # data_root = '/home/claytonfields/nlp/code/data/coco'  # contains refclef, refcoco, refcoco+, refcocog and images
-data_root = '/data/clayton/datasets/coco'
+# data_root = '/data/clayton/datasets/coco'
 dataset = 'refcoco' 
 splitBy = 'unc'
-refer = REFER(data_root, dataset, splitBy)
+refer = REFER(refer_root, dataset, splitBy)
 # refer.IMAGE_DIR = '/home/claytonfields/nlp/code/data/coco/images/mscoco/train2014'
 
 class RefcocoDataset(torch.utils.data.Dataset):
 
-    def __init__(self, refer, tokenizer, device, split='', max_bb = 42):
+    def __init__(self, refer, tokenizer, device, errors, split='', max_bb = 42):
         self.tokenizer = tokenizer
         self.refer = refer
         self.max_bb = max_bb
         self.device = device
+        self.errors = errors
         self.split = split
-        self.sent_ids = self.get_sent_ids()[:30]
+        self.sent_ids = self.get_sent_ids()#[:30]
         self.duds = []
 
     def __len__(self):
@@ -148,11 +168,14 @@ class RefcocoDataset(torch.utils.data.Dataset):
     def get_sent_ids(self):
         sent_ids = []
         for ref_id in self.refer.getRefIds(split=self.split):
+            
             ref = self.refer.Refs[ref_id]
             img_id = ref['image_id']
             objs = refer.imgToAnns[img_id]
             if len(objs) <= self.max_bb:
                 for sent_id in ref['sent_ids']:
+                    if sent_id in self.errors:
+                        continue
                     sent_ids.append(sent_id)
         return sent_ids
     
@@ -226,10 +249,11 @@ def collate_fn(batch):
     return (batch, targets)
 
 class RefcocoDataModule(LightningDataModule):
-    def __init__(self, config, refer, device, collate_fn):
+    def __init__(self, config, refer, device, errors, collate_fn):
         super().__init__()
         
         self.refer = refer
+        self.errors = errors
         self.collate_fn = collate_fn
         self.device = device,
         self.data_dir = _config["data_root"]
@@ -267,6 +291,7 @@ class RefcocoDataModule(LightningDataModule):
             self.refer, 
             self.tokenizer,
             self.device,
+            self.errors,
             split='train'
         )
 
@@ -275,6 +300,7 @@ class RefcocoDataModule(LightningDataModule):
             self.refer, 
             self.tokenizer,
             self.device,
+            self.errors,
             split='train'
         )
         
@@ -310,9 +336,11 @@ config = copy.deepcopy(_config)
 pl.seed_everything(_config["seed"])
 model = METERTransformerSS(config)
 model.current_tasks = ['ref']
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+# device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-dm = RefcocoDataModule(config, refer, device, collate_fn)
+errors_df = pd.read_csv('Errors.csv')
+errors_list = errors_df['Sent ID'].to_list()
+dm = RefcocoDataModule(config, refer, device, errors_list, collate_fn)
 
 pl.seed_everything(_config["seed"])
 
