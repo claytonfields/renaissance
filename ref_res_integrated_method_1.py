@@ -249,10 +249,11 @@ class RefcocoDataset(torch.utils.data.Dataset):
         return return_dict
 
 
-def collate_fn(batch):
+def collate(batch):
     targets = []
     for b in batch:
         targets.append(b['target'])
+    targets = torch.tensor(targets)
     return (batch, targets)
 
 class RefcocoDataModule(LightningDataModule):
@@ -347,7 +348,7 @@ model.current_tasks = ['ref']
 
 errors_df = pd.read_csv('Errors.csv')
 errors_list = errors_df['Sent ID'].to_list()
-dm = RefcocoDataModule(config, refer, device, errors_list, collate_fn)
+dm = RefcocoDataModule(config, refer, device, errors_list, collate)
 
 pl.seed_everything(_config["seed"])
 
