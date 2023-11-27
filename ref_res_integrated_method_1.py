@@ -39,14 +39,15 @@ from meter.datamodules.multitask_datamodule import MTDataModule
 from meter.datasets.base_dataset import BaseDataset
 
 # temporary variable switch between servers, fix before deployment
-tensor_book = False
-frege = True
+tensor_book = True
+frege = False
 
 if tensor_book:
     data_root =  "/home/claytonfields/nlp/code/vilt/data/arrow"
     load_path = "/home/claytonfields/nlp/code/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt"
     refer_root = "/home/claytonfields/nlp/code/data/coco"
     device = torch.device('cpu')
+    num_gpus = 1
 else:
     data_root =  "/data/clayton/meter/data/arrow"
     load_path = "/data/clayton/meter/result/meter_electra_small_deit_tiny_p16_is224_bs288_ts1M/checkpoints/epoch=43-step=898039.ckpt"
@@ -135,7 +136,7 @@ _config = {
     # "data_root" : "/data/clayton/meter/data/arrow",
     "data_root" : data_root,
     "log_dir" : "result",
-    "per_gpu_batchsize" : 1,  # you should define this manually with per_gpu_batch_size:#
+    "per_gpu_batchsize" : 3,  # you should define this manually with per_gpu_batch_size:#
     "num_gpus" : num_gpus,
     "num_nodes" : 1,
     # "load_path" : "/home/claytonfields/nlp/code/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
@@ -178,15 +179,17 @@ class RefcocoDataset(torch.utils.data.Dataset):
             objs = refer.imgToAnns[img_id]
             if len(objs) <= self.max_bb:
                 for sent_id in ref['sent_ids']:
-                    if sent_id in self.errors:
-                        continue
-                    sent_ids.append(sent_id)
+                    if not sent_id in self.errors:
+                        sent_ids.append(sent_id)
         return sent_ids
     
     def __getitem__(self, index):
         max_bb = self.max_bb
-        sent = refer.Sents[index]
-        ref = refer.sentToRef[index]
+        
+        sent_id = self.sent_ids[index]
+        ref = self.refer.sentToRef[sent_id]
+        sent = self.refer.Sents[sent_id]
+        
         img_id = ref['image_id']
         ann_id = ref['ann_id']
         objs = refer.imgToAnns[img_id]
@@ -305,7 +308,7 @@ class RefcocoDataModule(LightningDataModule):
             self.tokenizer,
             self.device,
             self.errors,
-            split='train'
+            split='val'
         )
         
     def setup(self, stage: str):

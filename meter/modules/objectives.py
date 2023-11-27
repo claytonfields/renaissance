@@ -88,8 +88,8 @@ def compute_itm(pl_module, batch):
 #  Must also decide on how to organize batch in dataset and dataloader
 #  
 def compute_ref(pl_module, batch):
-    targets = batch[1]
     batch = batch[0]
+    targets = batch[1]
     logit_list = []
     for i,b in enumerate(batch):
 
@@ -105,7 +105,7 @@ def compute_ref(pl_module, batch):
             # target = torch.tensor([obj_ids.index(ann_id)])
             # Adjust learning weights
             
-        except ValueError:
+        except RuntimeError:
             print('RuntimeError')
     logit_tensor = torch.cat(logit_list)
     target_tensor = torch.tensor(targets).to('cuda')
@@ -113,9 +113,9 @@ def compute_ref(pl_module, batch):
     
     # losses.append(loss.item())                                                       
     ret = {
-        "ref_loss": loss,
-        "ref_logits": logit_tensor,
-        # "ref_labels": 
+        "ref_loss" : loss,
+        "ref_logits" : logit_tensor,
+        "ref_targets" : targets
     }
         
     phase = "train" if pl_module.training else "val"
