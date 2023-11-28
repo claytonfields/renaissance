@@ -1,5 +1,6 @@
 import torch
 import random
+import os
 
 from transformers.optimization import AdamW
 from transformers import (
@@ -19,6 +20,9 @@ def set_metrics(pl_module):
             if k == "vqa":
                 setattr(pl_module, f"{split}_vqa_score", VQAScore())
                 setattr(pl_module, f"{split}_{k}_loss", Scalar())
+            if k == "ref":
+                setattr(pl_module, f"{split}_ref_accuracy", Accuracy())
+                setattr(pl_module, f"{split}_{k}_loss", Scalar())    
             elif k == "nlvr2":
                 if split == "train":
                     setattr(pl_module, f"train_{k}_accuracy", Accuracy())
@@ -91,6 +95,31 @@ def epoch_wrapup(pl_module):
                 getattr(pl_module, f"{phase}_{loss_name}_loss").compute(),
             )
             getattr(pl_module, f"{phase}_{loss_name}_loss").reset()
+        elif loss_name == 'ref':
+            epoch = pl_module.current_epoch
+            value = getattr(pl_module, f"{phase}_{loss_name}_accuracy").compute()
+            pl_module.log(f"{loss_name}/{phase}/accuracy_epoch", value)
+            getattr(pl_module, f"{phase}_{loss_name}_accuracy").reset()
+            loss =  getattr(pl_module, f"{phase}_{loss_name}_loss").compute()
+            pl_module.log(
+                f"{loss_name}/{phase}/loss_epoch",
+                loss)
+            getattr(pl_module, f"{phase}_{loss_name}_loss").reset()
+            
+            log_dir = pl_module.logger.log_dir
+            # eval_dir = 'evals'
+            # eval_path = os.path.join(log_dir, eval_dir)
+            # if not os.path.exists(eval_path):
+            #     os.mkdir(eval_path)
+            # file_name = f'Epoch_{epoch}_eval.txt'
+            # # file_name = 'eval.txt'
+            # file_path = os.path.join(eval_path, file_name)
+            file_path = os.path.join(log_dir, 'eval.txt')
+            with open(file_path,'a') as f:
+                loss_string = f'Epoch: {epoch}, Final Loss on {phase} Set: {loss} \n'
+                f.write(loss_string)
+                acc_string = f'Epoch: {epoch}, Acurracy on {phase} Set: {value} \n\n'
+                f.write(acc_string)
         elif loss_name == "nlvr2" or loss_name == 'snli':
             if phase == "train":
                 value = getattr(pl_module, f"train_{loss_name}_accuracy").compute()

@@ -60,7 +60,7 @@ else:
 
 
 _config = {  
-    "exp_name":"meter",
+    "exp_name":"finetune_ref",
     "seed" : 0,
     # "datasets" : ["coco", "vg", "sbu", "gcc"],
     # "datasets" : ["coco", "vg"],
@@ -131,29 +131,19 @@ _config = {
     "val_check_interval" : 1.0,
     "test_only" : False,
 
-    # below params varies with the environment
-    # "data_root" : "/home/claytonfields/nlp/code/vilt/data/arrow",
-    # "data_root" : "/data/clayton/meter/data/arrow",
     "data_root" : data_root,
     "log_dir" : "result",
     "per_gpu_batchsize" : 3,  # you should define this manually with per_gpu_batch_size:#
     "num_gpus" : num_gpus,
     "num_nodes" : 1,
-    # "load_path" : "/home/claytonfields/nlp/code/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
-    # "load_path" : "/data/clayton/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
-    # "load_path" : "/data/clayton/meter/result/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
     "load_path" : load_path,
     "num_workers" : 12,
     "precision" : 32
 }
 
-
-# data_root = '/home/claytonfields/nlp/code/data/coco'  # contains refclef, refcoco, refcoco+, refcocog and images
-# data_root = '/data/clayton/datasets/coco'
 dataset = 'refcoco' 
 splitBy = 'unc'
 refer = REFER(refer_root, dataset, splitBy)
-# refer.IMAGE_DIR = '/home/claytonfields/nlp/code/data/coco/images/mscoco/train2014'
 
 class RefcocoDataset(torch.utils.data.Dataset):
 
@@ -164,7 +154,7 @@ class RefcocoDataset(torch.utils.data.Dataset):
         self.device = device
         self.errors = errors
         self.split = split
-        self.sent_ids = self.get_sent_ids()#[:30]
+        self.sent_ids = self.get_sent_ids()[:30]
         self.duds = []
 
     def __len__(self):
@@ -344,7 +334,6 @@ config = copy.deepcopy(_config)
 pl.seed_everything(_config["seed"])
 model = METERTransformerSS(config)
 model.current_tasks = ['ref']
-# device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 errors_df = pd.read_csv('Errors.csv')
 errors_list = errors_df['Sent ID'].to_list()
@@ -403,6 +392,13 @@ trainer = pl.Trainer(
     fast_dev_run=_config["fast_dev_run"],
     val_check_interval=_config["val_check_interval"],
 )
+
+# log_dir = logger.log_dir
+# eval_file = 'eval.txt'
+# eval_path = os.path.join(log_dir, eval_file )
+# setattr(model, f"eval_path", eval_path)
+# f = open(eval_path,'w') 
+# f.close()
 
 if not _config["test_only"]:
     trainer.fit(model, datamodule=dm)

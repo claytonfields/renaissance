@@ -107,6 +107,7 @@ def compute_ref(pl_module, batch):
             
         except RuntimeError:
             print('RuntimeError')
+            
     logit_tensor = torch.cat(logit_list)
     # target_tensor = torch.tensor(targets)#.to('cuda')
     loss = F.cross_entropy(logit_tensor, targets)
@@ -119,11 +120,12 @@ def compute_ref(pl_module, batch):
     }
         
     phase = "train" if pl_module.training else "val"
-    # loss = getattr(pl_module, f"{phase}_ref_loss")(ret["ref_loss"])
-    # score = getattr(pl_module, f"{phase}_ref_score")(
-    #    ret["ref_logits"], ret["ref_targets"]
-    #)
+    loss = getattr(pl_module, f"{phase}_ref_loss")(ret["ref_loss"])
+    acc = getattr(pl_module, f"{phase}_ref_accuracy")(
+        ret["ref_logits"], ret["ref_targets"]
+    )
     pl_module.log(f"ref/{phase}/loss", loss)
+    pl_module.log(f"ref/{phase}/accuracy", acc)
     # pl_module.log(f"ref/{phase}/score", score)
     
     return ret
