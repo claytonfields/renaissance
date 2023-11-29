@@ -231,6 +231,29 @@ def task_finetune_snli_clip_bert():
     input_image_embed_size = 768
     image_size = 384
 
+@ex.named_config
+def task_finetune_ref():
+    exp_name = "finetune_ref"
+    datasets = ["coco"]
+    loss_names = _loss_names({"ref": 1})
+    batch_size = 4
+    max_epoch = 5
+    max_steps = None
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 2e-6
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    tokenizer = "google/electra-small-discriminator"
+    max_text_len = 40
+    input_text_embed_size = 128
+    vit = 'vit_deit_tiny_patch16_224'
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    input_image_embed_size = 192
+    image_size = 224
+
+
 
 # Named configs for "etc" which are orthogonal to "env" and "task", need to be added at the end
 

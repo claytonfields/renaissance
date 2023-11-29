@@ -98,13 +98,6 @@ def compute_ref(pl_module, batch):
             logits = pl_module.ref_classifier(infer_dict['cls_feats'])
             logit_list.append(logits.reshape(1,-1))
     
-            # obj_ids = b['obj_ids']
-            # ann_id = b['ann_id']
-            # target = torch.where(obj_ids==ann_id)[0]
-            # targets.append(b['target'])
-            # target = torch.tensor([obj_ids.index(ann_id)])
-            # Adjust learning weights
-            
         except RuntimeError:
             print('RuntimeError')
             
