@@ -93,13 +93,11 @@ def compute_ref(pl_module, batch):
     logit_list = []
     for i,b in enumerate(batch):
 
-        try:
-            infer_dict = pl_module.infer(b)
-            logits = pl_module.ref_classifier(infer_dict['cls_feats'])
-            logit_list.append(logits.reshape(1,-1))
+    infer_dict = pl_module.infer(b)
+        logits = pl_module.ref_classifier(infer_dict['cls_feats'])
+        logit_list.append(logits.reshape(1,-1))
     
-        except RuntimeError:
-            print('RuntimeError')
+        print('RuntimeError')
             
     logit_tensor = torch.cat(logit_list)
     # target_tensor = torch.tensor(targets)#.to('cuda')

@@ -39,8 +39,8 @@ from meter.datamodules.multitask_datamodule import MTDataModule
 from meter.datasets.base_dataset import BaseDataset
 
 # temporary variable switch between servers, fix before deployment
-tensor_book = True
-frege = False
+tensor_book = False
+frege = True
 
 if tensor_book:
     data_root =  "/home/claytonfields/nlp/code/vilt/data/arrow"
@@ -112,7 +112,7 @@ _config = {
     "learning_rate" : 1e-5,
     "weight_decay" : 0.01,
     "decay_power" : 1,
-    "max_epoch" : 100,
+    "max_epoch" : 3,
     "max_steps" : 100000,
     "warmup_steps" : 10000,
     "end_lr" : 0,
@@ -133,7 +133,7 @@ _config = {
 
     "data_root" : data_root,
     "log_dir" : "result",
-    "per_gpu_batchsize" : 5,  # you should define this manually with per_gpu_batch_size:#
+    "per_gpu_batchsize" : 3,  # you should define this manually with per_gpu_batch_size:#
     "num_gpus" : num_gpus,
     "num_nodes" : 1,
     "load_path" : load_path,
@@ -154,7 +154,7 @@ class RefcocoDataset(torch.utils.data.Dataset):
         self.device = device
         self.errors = errors
         self.split = split
-        self.sent_ids = self.get_sent_ids()[:30]
+        self.sent_ids = self.get_sent_ids()
         self.duds = []
 
     def __len__(self):
@@ -372,10 +372,10 @@ grad_steps = max(_config["batch_size"] // (
 max_steps = _config["max_steps"] if _config["max_steps"] is not None else None
 
 trainer = pl.Trainer(
-    gpus=1,
+    gpus=num_gpus,
     num_nodes=_config["num_nodes"],
     precision=_config["precision"],
-#     accelerator="ddp",
+    accelerator="ddp",
     benchmark=True,
     deterministic=True,
     max_epochs=_config["max_epoch"] if max_steps is None else 1000,
