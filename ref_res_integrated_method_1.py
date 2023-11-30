@@ -39,8 +39,8 @@ from meter.datamodules.multitask_datamodule import MTDataModule
 from meter.datasets.base_dataset import BaseDataset
 
 # temporary variable switch between servers, fix before deployment
-tensor_book = False
-frege = True
+tensor_book = True
+frege = False
 
 if tensor_book:
     data_root =  "/home/claytonfields/nlp/code/vilt/data/arrow"
@@ -375,7 +375,7 @@ trainer = pl.Trainer(
     gpus=num_gpus,
     num_nodes=_config["num_nodes"],
     precision=_config["precision"],
-    accelerator="ddp",
+    # accelerator="ddp",
     benchmark=True,
     deterministic=True,
     max_epochs=_config["max_epoch"] if max_steps is None else 1000,

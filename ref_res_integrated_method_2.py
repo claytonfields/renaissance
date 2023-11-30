@@ -75,7 +75,9 @@ _config = {
     'irtr': 0,
     'contras': 0,
     'snli': 0,
-    'ref': 1},
+    'ref': 1,
+    'ref_2' : 0
+    },
     "batch_size" : 10,  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
 
     # Image setting
@@ -147,14 +149,14 @@ refer = REFER(refer_root, dataset, splitBy)
 
 class RefcocoDataset(torch.utils.data.Dataset):
 
-    def __init__(self, refer, tokenizer, device, errors, split='', max_bb = 42):
+    def __init__(self, refer, tokenizer, errors=None, split='', max_bb = 42):
         self.tokenizer = tokenizer
         self.refer = refer
         self.max_bb = max_bb
         self.device = device
         self.errors = errors
         self.split = split
-        self.sent_ids = self.get_sent_ids()[:30]
+        self.sent_ids = self.get_sent_ids()
         self.duds = []
 
     def __len__(self):
@@ -184,8 +186,6 @@ class RefcocoDataset(torch.utils.data.Dataset):
         ann_id = ref['ann_id']
         objs = refer.imgToAnns[img_id]
         obj_ids = [obj['id'] for obj in objs]
-        obj_pad = [0 for _ in range(max_bb-len(obj_ids))]
-        obj_ids_total = obj_ids+obj_pad
 
         sub_images = []
         for obj in objs:
@@ -196,10 +196,6 @@ class RefcocoDataset(torch.utils.data.Dataset):
         num_sub_images = len(sub_images)
         num_pad = max_bb - num_sub_images 
         
-        pad_image = torch.zeros(1,3,224,224)
-        for _ in range(max_bb - num_sub_images):
-            sub_images.append(pad_image)
-        
         # text ids
         ids = self.tokenizer.encode(
             sent['sent'],
@@ -208,28 +204,26 @@ class RefcocoDataset(torch.utils.data.Dataset):
             max_length=40,
             return_special_tokens_mask=True,
         )
-        repeat_ids = torch.tensor(ids).repeat(num_sub_images,1)
-        pad_ids =  torch.zeros(num_pad,40)
-        text_ids = torch.cat((repeat_ids, pad_ids)).to(torch.long)
+        ids = ids
+        text_ids = torch.tensor(ids).repeat(num_sub_images,1)
+
         # text masks
         num_tokens = torch.where(text_ids[0] > 0)[0].size(dim=0)
         masks = torch.cat((torch.ones(num_tokens), torch.zeros(40-num_tokens))).to(torch.long)
-        repeat_masks = masks.repeat(num_sub_images,1)
-        pad_masks = torch.zeros(num_pad, 40)
-        text_masks = torch.cat((repeat_masks, pad_masks)).to(torch.long)
+        text_masks = masks.repeat(num_sub_images,1)
+
         # text_labels
         labels = torch.full((40,),-100)
-        repeat_labels = labels.repeat(num_sub_images, 1)
-        pad_labels = torch.zeros(num_pad, 40)
-        text_labels = torch.cat((repeat_labels, pad_labels)).to(torch.long)
-        
+        text_labels = labels.repeat(num_sub_images, 1)
+
         target = torch.tensor([obj_ids.index(ann_id)])
 
         return_dict = {
             'ann_id' : ann_id,
-            'image' : [torch.cat(sub_images)],#.to(self.device)],
-            'obj_ids' : torch.tensor(obj_ids_total),#.to(self.device),
+            'image' : sub_images,#.to(self.device)],
+            'obj_ids' : torch.tensor(obj_ids),#.to(self.device),
             'target' : target,#.to(self.device),
+            'num_bb' : num_sub_images,
             'text' : sent['sent'],
             'text_ids' : text_ids,#.to(self.device),
             'text_labels' : text_labels,#.to(self.device),
@@ -239,21 +233,69 @@ class RefcocoDataset(torch.utils.data.Dataset):
         return return_dict
 
 
-def collate(batch):
+
+
+
+def collate_fn(batch):
     targets = []
     for b in batch:
         targets.append(b['target'])
     targets = torch.tensor(targets)
+    
+    max_bb = max([b['num_bb'] for b in batch])
+
+    pad_image = torch.zeros(1,3,224,224)
+    
+    for b in batch:
+        num_examples = b['num_bb']
+        num_pad = max_bb - num_examples
+
+
+        for _ in range(num_pad):
+            b['image'].append(pad_image)
+        b['image'] = [torch.cat(b['image'])]
+
+        pad_masks = torch.zeros(num_pad, 40)
+        b['text_masks'] = torch.cat((b['text_masks'], pad_masks)).to(torch.long)
+
+
+        pad_labels = torch.zeros(num_pad, 40)
+        b['text_labels'] = torch.cat((b['text_labels'], pad_labels)).to(torch.long)
+
+        pad_ids =  torch.zeros(num_pad,40)
+        b['text_ids'] = torch.cat((b['text_ids'], pad_ids)).to(torch.long)
+    
     return (batch, targets)
+    
+
+# config = copy.deepcopy(_config)
+# pl.seed_everything(_config["seed"])
+# model = METERTransformerSS(config)
+# model.current_tasks = ['ref']
+
+# errors_df = pd.read_csv('Errors.csv')
+# errors_list = errors_df['Sent ID'].to_list()
+# tokenizer = ElectraTokenizer.from_pretrained('google/electra-small-discriminator')
+
+# ds = RefcocoDataset(refer, tokenizer, errors_list, split='train', max_bb=42)
+# train_params = {'batch_size': 10,
+#                 'shuffle': False,
+#                 'num_workers': 0,
+#                 'collate_fn' : collate_fn
+#                 }
+
+# training_loader = torch.utils.data.DataLoader(ds, **train_params)
+
+# batch = next(iter(training_loader))
 
 class RefcocoDataModule(LightningDataModule):
-    def __init__(self, config, refer, device, errors, collate_fn):
+    def __init__(self, config, refer, errors, collate_fn):
         super().__init__()
         
         self.refer = refer
         self.errors = errors
         self.collate_fn = collate_fn
-        self.device = device,
+        # self.device = device,
         self.data_dir = _config["data_root"]
 
         self.num_workers = _config["num_workers"]
@@ -288,7 +330,7 @@ class RefcocoDataModule(LightningDataModule):
         self.train_dataset = RefcocoDataset(
             self.refer, 
             self.tokenizer,
-            self.device,
+            # self.device,
             self.errors,
             split='train'
         )
@@ -297,7 +339,7 @@ class RefcocoDataModule(LightningDataModule):
         self.val_dataset = RefcocoDataset(
             self.refer, 
             self.tokenizer,
-            self.device,
+            # self.device,
             self.errors,
             split='val'
         )
@@ -337,7 +379,7 @@ model.current_tasks = ['ref']
 
 errors_df = pd.read_csv('Errors.csv')
 errors_list = errors_df['Sent ID'].to_list()
-dm = RefcocoDataModule(config, refer, device, errors_list, collate)
+dm = RefcocoDataModule(config, refer, errors_list, collate_fn)
 
 pl.seed_everything(_config["seed"])
 
@@ -392,13 +434,6 @@ trainer = pl.Trainer(
     fast_dev_run=_config["fast_dev_run"],
     val_check_interval=_config["val_check_interval"],
 )
-
-# log_dir = logger.log_dir
-# eval_file = 'eval.txt'
-# eval_path = os.path.join(log_dir, eval_file )
-# setattr(model, f"eval_path", eval_path)
-# f = open(eval_path,'w') 
-# f.close()
 
 if not _config["test_only"]:
     trainer.fit(model, datamodule=dm)
