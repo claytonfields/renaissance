@@ -478,7 +478,11 @@ def arc_test_step(pl_module, batch, output):
 
 
 def vqa_test_wrapup(outs, model_name):
-    rank = torch.distributed.get_rank()
+    distributed = torch.distributed.is_initialized()
+    if distributed:
+        rank = torch.distributed.get_rank()
+    else:
+        rank = 0
     qids, preds = list(), list()
     gqa = False
     for out in outs:
@@ -495,7 +499,8 @@ def vqa_test_wrapup(outs, model_name):
     with open(f"vqa_submit_{rank}.json", "w") as fp:
         json.dump(rets, fp, indent=4)
 
-    torch.distributed.barrier()
+    if distributed:
+        torch.distributed.barrier()
 
     if rank == 0:
         jsons = list()
@@ -507,7 +512,8 @@ def vqa_test_wrapup(outs, model_name):
         with open(f"result/vqa_submit_{model_name}.json", "w") as fp:
             json.dump(jsons, fp, indent=4)
 
-    torch.distributed.barrier()
+    if distributed:    
+        torch.distributed.barrier()
     os.remove(f"vqa_submit_{rank}.json")
 
 

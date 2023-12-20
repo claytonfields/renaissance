@@ -8,12 +8,17 @@ from meter.config import ex
 from meter.modules import METERTransformerSS
 from meter.datamodules.multitask_datamodule import MTDataModule
 
+import torch
+
 # import resource
 # rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
 # resource.setrlimit(resource.RLIMIT_NOFILE, (20480, rlimit[1]))
 
 @ex.automain
 def main(_config):
+    
+    
+    
     _config = copy.deepcopy(_config)
     pl.seed_everything(_config["seed"])
 
@@ -70,6 +75,8 @@ def main(_config):
         fast_dev_run=_config["fast_dev_run"],
         val_check_interval=_config["val_check_interval"],
     )
+
+    print('torch.distributed.is_initialized(): ', torch.distributed.is_initialized())
 
     if not _config["test_only"]:
         trainer.fit(model, datamodule=dm)
