@@ -127,11 +127,11 @@ def task_mlm_itm_clip_bert():
     
 @ex.named_config
 def task_mlm_itm_deit_electra():
-    exp_name = "mlm_itm"
+    exp_name = "mlm_itm_deit_electra"
     # datasets = ["coco", "vg", "sbu", "gcc"]
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
-    batch_size = 256
+    batch_size = 336
     max_epoch = None
     max_steps = 100000
     warmup_steps = 0.1
