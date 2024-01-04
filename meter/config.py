@@ -76,7 +76,11 @@ def config():
     
     
     model_type = "METER"
-
+    
+    # Trainable parameter setting
+    freeze_image_encoder = True
+    freeze_text_encoder = True
+    
     # PL Trainer Setting
     resume_from = None
     fast_dev_run = False
@@ -109,6 +113,7 @@ def task_mlm_itm_clip_bert():
     vocab_size = 30522
     max_text_len = 50
     image_size = 224
+    vit = 'vit_deit_tiny_patch16_224'
     tokenizer = "bert-base-uncased"
     train_transform_keys = ["clip"]
     val_transform_keys = ["clip"]
@@ -119,6 +124,30 @@ def task_mlm_itm_clip_bert():
     num_top_layer = 6
     hidden_size = 768
     num_heads = 12
+    
+@ex.named_config
+def task_mlm_itm_deit_electra():
+    exp_name = "mlm_itm"
+    # datasets = ["coco", "vg", "sbu", "gcc"]
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 256
+    max_epoch = None
+    max_steps = 100000
+    warmup_steps = 0.1
+    whole_word_masking = True
+
+    vocab_size = 30522
+    max_text_len = 50
+    image_size = 224
+    train_transform_keys = ["imagenet_randaug"]
+    val_transform_keys = ["imagenet_randaug"]
+    learning_rate = 1e-5
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    num_top_layer = 6
+
 
 @ex.named_config
 def task_finetune_nlvr2_clip_bert():

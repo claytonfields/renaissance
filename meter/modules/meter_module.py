@@ -96,6 +96,11 @@ class METERTransformerSS(pl.LightningModule):
                 pretrained=True, config=self.hparams.config,
             )
             self.avgpool = nn.AdaptiveAvgPool1d(1)
+            
+        # freeze parameters for self.vit_model
+        if config['freeze_image_encoder']:
+            for param in self.vit_model.parameters():
+                param.requires_grad = False
 
         if 'roberta' in config['tokenizer']:
             self.text_transformer = RobertaModel.from_pretrained(config['tokenizer'])
@@ -103,6 +108,11 @@ class METERTransformerSS(pl.LightningModule):
             self.text_transformer = ElectraModel.from_pretrained(config['tokenizer'])
         else:
             self.text_transformer = BertModel.from_pretrained(config['tokenizer'])
+            
+        # freeze parameters for self.text_transformer
+        if config['freeze_text_encoder']:
+            for param in self.text_transformer.parameters():
+                param.requires_grad = False
 
         self.cross_modal_image_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_top_layer'])])
         self.cross_modal_image_layers.apply(objectives.init_weights)
