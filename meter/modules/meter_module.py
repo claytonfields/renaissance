@@ -17,11 +17,13 @@ class METERTransformerSS(pl.LightningModule):
     def __init__(self, config):
         super().__init__()
         self.save_hyperparameters()
-
+        
+        # ===================== Architecture ===================== #
         self.is_clip= ('ViT' in config['vit'])
         self.is_deit = ('deit' in config['vit'])
         self.is_electra = ('electra' in config['tokenizer'])
 
+        # Intialize Text Encoder
         if 'roberta' in config['tokenizer']:
             bert_config = RobertaConfig(
                 vocab_size=config["vocab_size"],
@@ -58,15 +60,18 @@ class METERTransformerSS(pl.LightningModule):
             )
 
         resolution_after=config['image_size']
-
+        
+        # Intialize Transform Laayers
         self.cross_modal_text_transform = nn.Linear(config['input_text_embed_size'], config['hidden_size'])
         self.cross_modal_text_transform.apply(objectives.init_weights)
         self.cross_modal_image_transform = nn.Linear(config['input_image_embed_size'], config['hidden_size'])
         self.cross_modal_image_transform.apply(objectives.init_weights)
 
+        # Initialize Token Type Embeddings
         self.token_type_embeddings = nn.Embedding(2, config["hidden_size"])
         self.token_type_embeddings.apply(objectives.init_weights)
 
+        # Handle Distributed Case
         if torch.distributed.is_initialized():
             if torch.distributed.get_rank() == 0:
                 if self.is_clip:
@@ -84,7 +89,8 @@ class METERTransformerSS(pl.LightningModule):
                     BertModel.from_pretrained(config['tokenizer'])
 
             torch.distributed.barrier()
-
+            
+        # Initialize Vision Encoder
         if self.is_clip:
             self.vit_model = build_model(config['vit'], resolution_after=resolution_after)
         elif self.is_deit:
@@ -97,11 +103,12 @@ class METERTransformerSS(pl.LightningModule):
             )
             self.avgpool = nn.AdaptiveAvgPool1d(1)
             
-        # freeze parameters for self.vit_model
+        # Freeze Parameters for self.vit_model
         if config['freeze_image_encoder']:
             for param in self.vit_model.parameters():
                 param.requires_grad = False
-
+        
+        # Initialize Tokenizer
         if 'roberta' in config['tokenizer']:
             self.text_transformer = RobertaModel.from_pretrained(config['tokenizer'])
         elif 'electra' in config['tokenizer']:
@@ -109,11 +116,12 @@ class METERTransformerSS(pl.LightningModule):
         else:
             self.text_transformer = BertModel.from_pretrained(config['tokenizer'])
             
-        # freeze parameters for self.text_transformer
+        # Freeze Parameters for self.text_transformer
         if config['freeze_text_encoder']:
             for param in self.text_transformer.parameters():
                 param.requires_grad = False
 
+        # Define Cross Modal Layers
         self.cross_modal_image_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_top_layer'])])
         self.cross_modal_image_layers.apply(objectives.init_weights)
         self.cross_modal_text_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_top_layer'])])
@@ -123,17 +131,22 @@ class METERTransformerSS(pl.LightningModule):
         self.cross_modal_image_pooler.apply(objectives.init_weights)
         self.cross_modal_text_pooler = heads.Pooler(config["hidden_size"])
         self.cross_modal_text_pooler.apply(objectives.init_weights)
-
+        
+        # ===================== Pretraining ===================== #
+        # Masked Language Modeling
         if config["loss_names"]["mlm"] > 0:
             self.mlm_score = heads.MLMHead(bert_config)
             self.mlm_score.apply(objectives.init_weights)
-
+        
+        # Image Text Matching
         if config["loss_names"]["itm"] > 0:
             self.itm_score = heads.ITMHead(config["hidden_size"]*2)
             self.itm_score.apply(objectives.init_weights)
 
         hs = self.hparams.config["hidden_size"]
 
+        # ===================== Downstream ===================== #
+        # Initialize Visual Question Answering V2 Classifier
         if self.hparams.config["loss_names"]["vqa"] > 0:
             vs = self.hparams.config["vqav2_label_size"]
             self.vqa_classifier = nn.Sequential(
@@ -144,7 +157,7 @@ class METERTransformerSS(pl.LightningModule):
             )
             self.vqa_classifier.apply(objectives.init_weights)
 
-        # ===================== Downstream ===================== #
+        # Load Previously Trained Modules
         if (
             self.hparams.config["load_path"] != ""
             and not self.hparams.config["test_only"]
@@ -157,7 +170,7 @@ class METERTransformerSS(pl.LightningModule):
                 state_dict = swin_adapt_position_encoding(state_dict, after=resolution_after, before=config['resolution_before'])
             self.load_state_dict(state_dict, strict=False)
 
-
+        # Initialize NLVR2 Classifier
         if self.hparams.config["loss_names"]["nlvr2"] > 0:
             self.nlvr2_classifier = nn.Sequential(
                 nn.Linear(hs * 4, hs * 2),
@@ -173,6 +186,7 @@ class METERTransformerSS(pl.LightningModule):
             self.token_type_embeddings.weight.data[1, :] = emb_data[1, :]
             self.token_type_embeddings.weight.data[2, :] = emb_data[1, :]
 
+        # Initialize SNLI-VE Classifier
         if self.hparams.config["loss_names"]["snli"] > 0:
             self.snli_classifier = nn.Sequential(
                 nn.Linear(hs * 2, hs * 2),
@@ -182,6 +196,7 @@ class METERTransformerSS(pl.LightningModule):
             )
             self.snli_classifier.apply(objectives.init_weights)
 
+        # Initialize Image-Text Recall Classifier
         if self.hparams.config["loss_names"]["irtr"] > 0:
             self.rank_output = nn.Linear(hs, 1)
             self.rank_output.weight.data = self.itm_score.fc.weight.data[1:, :]
@@ -189,7 +204,8 @@ class METERTransformerSS(pl.LightningModule):
             self.margin = 0.2
             for p in self.itm_score.parameters():
                 p.requires_grad = False
-                
+        
+        # Initialize Reference Resolution Classifier
         if self.hparams.config["loss_names"]['ref'] > 0:
             self.ref_classifier = nn.Sequential(
                 nn.Linear(hs * 2, hs * 2),
@@ -227,7 +243,8 @@ class METERTransformerSS(pl.LightningModule):
             else:
                 imgkey = "image"
             img = batch[imgkey][0]
-
+        
+        # Process Text Input to Text Embeddings
         do_mlm = "_mlm" if mask_text else ""
         text_ids = batch[f"text_ids{do_mlm}"]
         text_labels = batch[f"text_labels{do_mlm}"]
@@ -237,22 +254,24 @@ class METERTransformerSS(pl.LightningModule):
         device = text_embeds.device
         input_shape = text_masks.size()
         extend_text_masks = self.text_transformer.get_extended_attention_mask(text_masks, input_shape, device)
-        ## Attempt to project embeddings
+        
+        # Project Embeddings if Necessary
         if self.is_electra:
             if self.text_transformer.config.embedding_size != self.text_transformer.config.hidden_size:
                 text_embeds = self.text_transformer.embeddings_project(text_embeds)
         
-        
-        
+        # Process Text Embeddings
         for layer in self.text_transformer.encoder.layer:
             text_embeds = layer(text_embeds, extend_text_masks)[0]
         text_embeds = self.cross_modal_text_transform(text_embeds)
-
+        
+        # Process Image Input to Image Embeddings
         image_embeds = self.vit_model(img)
         image_embeds = self.cross_modal_image_transform(image_embeds)
         image_masks = torch.ones((image_embeds.size(0), image_embeds.size(1)), dtype=torch.long, device=device)
         extend_image_masks = self.text_transformer.get_extended_attention_mask(image_masks, image_masks.size(), device)
 
+        # Cross-Modal Processing
         text_embeds, image_embeds = (
             text_embeds + self.token_type_embeddings(torch.zeros_like(text_masks)),
             image_embeds
@@ -276,6 +295,7 @@ class METERTransformerSS(pl.LightningModule):
             cls_feats_image = self.cross_modal_image_pooler(avg_image_feats)
         cls_feats = torch.cat([cls_feats_text, cls_feats_image], dim=-1)
 
+
         ret = {
             "text_feats": text_feats,
             "image_feats": image_feats,
@@ -284,8 +304,6 @@ class METERTransformerSS(pl.LightningModule):
             "text_ids": text_ids,
             "text_masks": text_masks,
         }
-
-
         return ret
 
     def forward(self, batch):
@@ -322,10 +340,6 @@ class METERTransformerSS(pl.LightningModule):
         if 'ref' in self.current_tasks:
             ret.update(objectives.compute_ref(self, batch))
              
-            
-        
-        
-
         return ret
 
     def training_step(self, batch, batch_idx):

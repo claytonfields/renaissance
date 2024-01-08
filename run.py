@@ -77,8 +77,6 @@ def main(_config):
         val_check_interval=_config["val_check_interval"],
     )
 
-    print('torch.distributed.is_initialized(): ', torch.distributed.is_initialized())
-
     if not _config["test_only"]:
         trainer.fit(model, datamodule=dm)
     else:

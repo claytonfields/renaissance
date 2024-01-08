@@ -20,7 +20,7 @@ def _loss_names(d):
     ret.update(d)
     return ret
 
-
+# ===================== Default Settings ===================== #
 @ex.config
 def config():
     exp_name = "meter"
@@ -42,18 +42,18 @@ def config():
     # Text Setting
     vqav2_label_size = 3129
     max_text_len = 40
-    tokenizer = "bert-base-uncased"
+    tokenizer = "google/electra-small-discriminator"
     vocab_size = 30522
     whole_word_masking = False # note that whole_word_masking does not work for RoBERTa
     mlm_prob = 0.15
     draw_false_text = 0
-
+    
     # Transformer Setting
     num_top_layer = 6
     input_image_embed_size = 768
-    input_text_embed_size = 768
-    vit = 'ViT-B/32'
-    hidden_size = 768
+    input_text_embed_size = 256
+    vit = 'vit_deit_tiny_patch16_224'
+    hidden_size = 256
     num_heads = 4
     num_layers = 6
     mlp_ratio = 4
@@ -77,9 +77,9 @@ def config():
     
     model_type = "METER"
     
-    # Trainable parameter setting
-    freeze_image_encoder = True
-    freeze_text_encoder = True
+    # Trainag Parameter Setting
+    freeze_image_encoder = False
+    freeze_text_encoder = False
     
     # PL Trainer Setting
     resume_from = None
@@ -98,6 +98,7 @@ def config():
     precision = 32
 
 
+# ===================== Task Settings ===================== #
 @ex.named_config
 def task_mlm_itm_clip_bert():
     exp_name = "mlm_itm"
@@ -136,6 +137,10 @@ def task_mlm_itm_deit_electra():
     max_steps = 100000
     warmup_steps = 0.1
     whole_word_masking = True
+    
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
 
     vocab_size = 30522
     max_text_len = 50
@@ -148,6 +153,32 @@ def task_mlm_itm_deit_electra():
     lr_mult_cross_modal = 5
     num_top_layer = 6
 
+@ex.named_config
+def task_mlm_itm_deit_fr_electra_fr():
+    exp_name = "mlm_itm"
+    # datasets = ["coco", "vg", "sbu", "gcc"]
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 256
+    max_epoch = None
+    max_steps = 100000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    
+    # Freeze Encoders
+    freeze_image_encoder = True
+    freeze_text_encoder = True
+
+    vocab_size = 30522
+    max_text_len = 50
+    image_size = 224
+    train_transform_keys = ["imagenet_randaug"]
+    val_transform_keys = ["imagenet_randaug"]
+    learning_rate = 1e-5
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    num_top_layer = 6
 
 @ex.named_config
 def task_finetune_nlvr2_clip_bert():
@@ -283,10 +314,7 @@ def task_finetune_ref():
     image_size = 224
 
 
-
-# Named configs for "etc" which are orthogonal to "env" and "task", need to be added at the end
-
-# vision encoder
+# ===================== Vision Encoders ===================== #
 @ex.named_config
 def swin32_base224():
     vit = "swin_base_patch4_window7_224_in22k"
@@ -352,15 +380,14 @@ def vit_deit_tiny_patch16_224():
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]
 
-# @register_model
-# def swin_tiny_patch4_window7_224(pretrained=False, **kwargs):
-#     """ Swin-T @ 224x224, trained ImageNet-1k
-#     """
-#     model_kwargs = dict(
-#         patch_size=4, window_size=7, embed_dim=96, depths=(2, 2, 6, 2), num_heads=(3, 6, 12, 24), **kwargs)
-#     return _create_swin_transformer('swin_tiny_patch4_window7_224', pretrained=pretrained, **model_kwargs)
-
-
+@ex.named_config
+def clip16():
+    vit = 'ViT-B/16'
+    image_size = 224
+    patch_size = 16
+    train_transform_keys = ["clip"]
+    val_transform_keys = ["clip"]
+    input_image_embed_size = 768
 
 @ex.named_config
 def clip32():
@@ -371,16 +398,7 @@ def clip32():
     val_transform_keys = ["clip"]
     input_image_embed_size = 768
 
-@ex.named_config
-def clip16():
-    vit = 'ViT-B/16'
-    image_size = 224
-    patch_size = 16
-    train_transform_keys = ["clip"]
-    val_transform_keys = ["clip"]
-    input_image_embed_size = 768
-
-# text encoder
+# ===================== Text Encoders ===================== #
 @ex.named_config
 def text_roberta():
     tokenizer = "roberta-base"
@@ -393,7 +411,6 @@ def text_roberta_large():
     vocab_size = 50265
     input_text_embed_size = 1024
 
-
 @ex.named_config
 def text_electra_small():
     tokenizer = "google/electra-small-discriminator"
@@ -404,14 +421,25 @@ def text_electra_small():
     mlp_ratio = 4
     hidden_size = 256
     
-
-
-
-# random augmentation
-@ex.named_config
-def imagenet_randaug():
-    train_transform_keys = ["imagenet_randaug"]
-
+# ===================== Random Augmentations ===================== #
 @ex.named_config
 def clip_randaug():
     train_transform_keys = ["clip_randaug"]
+
+@ex.named_config
+def imagenet_randaug():
+    train_transform_keys = ["imagenet_randaug"]
+    
+# =========== Freeze of Un-Freeze Encoders for Training =========== #
+@ex.named_config
+def freeze_image():
+    freeze_image_encoder = True
+
+@ex.named_config
+def freeze_text():
+    freeze_text_encoder = True
+    
+
+
+
+

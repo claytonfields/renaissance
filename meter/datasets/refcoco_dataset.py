@@ -15,39 +15,45 @@ import io
 from PIL import Image
 import torch
 
-data_root = '/home/claytonfields/nlp/code/data/coco'  # contains refclef, refcoco, refcoco+, refcocog and images
 dataset = 'refcoco' 
 splitBy = 'unc'
-refer = REFER(data_root, dataset, splitBy)
+refer = REFER(refer_root, dataset, splitBy)
 
-class RefCocoDataset(torch.utils.data.Dataset):
-    def __init__(self, data_root, tokenizer, max_bb = 75):
-        
-        self.data_root = data_root
-        self.dataset = 'refcoco'
-        self.splitBy = 'unc'
-        self.refer = REFER(data_root, dataset, splitBy)
-        
+class RefcocoDataset(torch.utils.data.Dataset):
+
+    def __init__(self, refer, tokenizer, device, errors, split='', max_bb = 42):
         self.tokenizer = tokenizer
+        self.refer = refer
         self.max_bb = max_bb
+        self.device = device
+        self.errors = errors
+        self.split = split
         self.sent_ids = self.get_sent_ids()
-        
+        self.duds = []
+
     def __len__(self):
         return len(self.sent_ids)
     
     def get_sent_ids(self):
         sent_ids = []
-        for ref_id in self.refer.getRefIds():
+        for ref_id in self.refer.getRefIds(split=self.split):
+            
             ref = self.refer.Refs[ref_id]
-            for sent_id in ref['sent_ids']:
-                sent_ids.append(sent_id)
+            img_id = ref['image_id']
+            objs = refer.imgToAnns[img_id]
+            if len(objs) <= self.max_bb:
+                for sent_id in ref['sent_ids']:
+                    if not sent_id in self.errors:
+                        sent_ids.append(sent_id)
         return sent_ids
-
-
+    
     def __getitem__(self, index):
         max_bb = self.max_bb
-        sent = refer.Sents[index]
-        ref = refer.sentToRef[index]
+        
+        sent_id = self.sent_ids[index]
+        ref = self.refer.sentToRef[sent_id]
+        sent = self.refer.Sents[sent_id]
+        
         img_id = ref['image_id']
         ann_id = ref['ann_id']
         objs = refer.imgToAnns[img_id]
@@ -78,27 +84,30 @@ class RefCocoDataset(torch.utils.data.Dataset):
         )
         repeat_ids = torch.tensor(ids).repeat(num_sub_images,1)
         pad_ids =  torch.zeros(num_pad,40)
-        text_ids = torch.concat((repeat_ids, pad_ids)).to(torch.int)
+        text_ids = torch.cat((repeat_ids, pad_ids)).to(torch.long)
         # text masks
         num_tokens = torch.where(text_ids[0] > 0)[0].size(dim=0)
-        masks = torch.concat((torch.ones(num_tokens), torch.zeros(40-num_tokens))).to(torch.int)
+        masks = torch.cat((torch.ones(num_tokens), torch.zeros(40-num_tokens))).to(torch.long)
         repeat_masks = masks.repeat(num_sub_images,1)
         pad_masks = torch.zeros(num_pad, 40)
-        text_masks = torch.concat((repeat_masks, pad_masks)).to(torch.int)
+        text_masks = torch.cat((repeat_masks, pad_masks)).to(torch.long)
         # text_labels
         labels = torch.full((40,),-100)
         repeat_labels = labels.repeat(num_sub_images, 1)
         pad_labels = torch.zeros(num_pad, 40)
-        text_labels = torch.concat((repeat_labels, pad_labels)).to(torch.int)
+        text_labels = torch.cat((repeat_labels, pad_labels)).to(torch.long)
+        
+        target = torch.tensor([obj_ids.index(ann_id)])
 
         return_dict = {
             'ann_id' : ann_id,
-            'image' : sub_images,
-            'obj_ids' : torch.tensor(obj_ids_total),
+            'image' : [torch.cat(sub_images)],#.to(self.device)],
+            'obj_ids' : torch.tensor(obj_ids_total),#.to(self.device),
+            'target' : target,#.to(self.device),
             'text' : sent['sent'],
-            'text_ids' : text_ids,
-            'text_labels' : text_labels,
-            'text_masks' : text_masks
+            'text_ids' : text_ids,#.to(self.device),
+            'text_labels' : text_labels,#.to(self.device),
+            'text_masks' : text_masks,#.to(self.device)
         }
         
         return return_dict
