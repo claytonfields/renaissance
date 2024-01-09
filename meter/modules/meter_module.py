@@ -12,6 +12,7 @@ from .clip_model import build_model, adapt_position_encoding
 from .swin_helpers import swin_adapt_position_encoding
 from transformers import RobertaConfig, RobertaModel
 from transformers import ElectraConfig, ElectraModel
+from transformers import AutoConfig, AutoModel
 
 class METERTransformerSS(pl.LightningModule):
     def __init__(self, config):
@@ -21,7 +22,10 @@ class METERTransformerSS(pl.LightningModule):
         # ===================== Architecture ===================== #
         self.is_clip= ('ViT' in config['vit'])
         self.is_deit = ('deit' in config['vit'])
+        self.is_swin = ('swin' in config['vit'])
         self.is_electra = ('electra' in config['tokenizer'])
+        
+        self.is_huggingface = config['hugging_face']
 
         # Intialize Text Encoder
         if 'roberta' in config['tokenizer']:
@@ -91,17 +95,23 @@ class METERTransformerSS(pl.LightningModule):
             torch.distributed.barrier()
             
         # Initialize Vision Encoder
-        if self.is_clip:
-            self.vit_model = build_model(config['vit'], resolution_after=resolution_after)
-        elif self.is_deit:
-            self.vit_model = getattr(vit, self.hparams.config["vit"])(
-                pretrained=True, config=self.hparams.config
+        if self.is_huggingface:
+            hf_visual_config = AutoConfig.from_pretrained(config['vit'])
+            self.vit_model = AutoModel.from_pretrained(config['vit'],
+                config=hf_visual_config
             )
         else:
-            self.vit_model = getattr(swin, self.hparams.config["vit"])(
-                pretrained=True, config=self.hparams.config,
-            )
-            self.avgpool = nn.AdaptiveAvgPool1d(1)
+            if self.is_clip:
+                self.vit_model = build_model(config['vit'], resolution_after=resolution_after)
+            elif self.is_deit:
+                self.vit_model = getattr(vit, self.hparams.config["vit"])(
+                    pretrained=True, config=self.hparams.config
+                )
+            else:
+                self.vit_model = getattr(swin, self.hparams.config["vit"])(
+                    pretrained=True, config=self.hparams.config,
+                )
+                self.avgpool = nn.AdaptiveAvgPool1d(1)
             
         # Freeze Parameters for self.vit_model
         if config['freeze_image_encoder']:
@@ -267,6 +277,8 @@ class METERTransformerSS(pl.LightningModule):
         
         # Process Image Input to Image Embeddings
         image_embeds = self.vit_model(img)
+        if self.is_huggingface:
+            image_embeds = image_embeds.last_hidden_state
         image_embeds = self.cross_modal_image_transform(image_embeds)
         image_masks = torch.ones((image_embeds.size(0), image_embeds.size(1)), dtype=torch.long, device=device)
         extend_image_masks = self.text_transformer.get_extended_attention_mask(image_masks, image_masks.size(), device)

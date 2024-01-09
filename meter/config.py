@@ -74,7 +74,7 @@ def config():
     # Downstream Setting
     get_recall_metric = False
     
-    
+    hugging_face = False
     model_type = "METER"
     
     # Trainag Parameter Setting
