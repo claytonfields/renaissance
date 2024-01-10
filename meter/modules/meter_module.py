@@ -5,11 +5,11 @@ import numpy as np
 
 from transformers.models.bert.modeling_bert import BertConfig, BertEmbeddings, BertModel, BertEncoder, BertLayer
 from .bert_model import BertCrossLayer, BertAttention
-from . import swin_transformer as swin
+# from . import swin_transformer as swin
 from . import heads, objectives, meter_utils
-import meter.modules.vit_model as vit
+# import meter.modules.vit_model as vit
 from .clip_model import build_model, adapt_position_encoding
-from .swin_helpers import swin_adapt_position_encoding
+# from .swin_helpers import swin_adapt_position_encoding
 from transformers import RobertaConfig, RobertaModel
 from transformers import ElectraConfig, ElectraModel
 from transformers import AutoConfig, AutoModel
@@ -20,7 +20,7 @@ class METERTransformerSS(pl.LightningModule):
         self.save_hyperparameters()
         
         # ===================== Architecture ===================== #
-        self.is_clip= ('ViT' in config['vit'])
+        self.is_clip= False #('ViT' in config['vit'])
         self.is_deit = ('deit' in config['vit'])
         self.is_swin = ('swin' in config['vit'])
         self.is_electra = ('electra' in config['tokenizer'])
@@ -28,8 +28,24 @@ class METERTransformerSS(pl.LightningModule):
         self.is_huggingface = config['hugging_face']
 
         # Intialize Text Encoder
-        if 'roberta' in config['tokenizer']:
-            bert_config = RobertaConfig(
+        # keyword_args = {
+        #     'vocab_size' : config["vocab_size"],
+        #     'hidden_size' : config["hidden_size"],
+        #     'num_hidden_layers' : config["num_top_layer"],
+        #     'num_attention_heads' : config["num_heads"],
+            
+        #     'intermediate_size' : config["hidden_size"] * config["mlp_ratio"],
+        #     'max_position_embeddings' : config["max_text_len"],
+        #     'hidden_dropout_prob' : config["drop_rate"],
+        #     'attention_probs_dropout_prob' : config["drop_rate"],
+        # }
+        
+        # bert_config = AutoConfig.from_pretrained(
+        #     config['tokenizer'],
+        #     kwargs = keyword_args
+        # )
+        
+        bert_config = BertConfig(
                 vocab_size=config["vocab_size"],
                 hidden_size=config["hidden_size"],
                 num_hidden_layers=config["num_layers"],
@@ -39,29 +55,43 @@ class METERTransformerSS(pl.LightningModule):
                 hidden_dropout_prob=config["drop_rate"],
                 attention_probs_dropout_prob=config["drop_rate"],
             )
-        elif 'electra' in config['tokenizer']:
-            bert_config = ElectraConfig(
+        
+        # if 'roberta' in config['tokenizer']:
+        #     bert_config = RobertaConfig(
+        #         vocab_size=config["vocab_size"],
+        #         hidden_size=config["hidden_size"],
+        #         num_hidden_layers=config["num_layers"],
+        #         num_attention_heads=config["num_heads"],
+        #         intermediate_size=config["hidden_size"] * config["mlp_ratio"],
+        #         max_position_embeddings=config["max_text_len"],
+        #         hidden_dropout_prob=config["drop_rate"],
+        #         attention_probs_dropout_prob=config["drop_rate"],
+        #     )
+        # elif 'electra' in config['tokenizer']:
+        #     bert_config = ElectraConfig(
                 
-                vocab_size=config["vocab_size"],
-                hidden_size=config["hidden_size"],
-                num_hidden_layers=config["num_layers"],
-                num_attention_heads=config["num_heads"],
-                intermediate_size=config["hidden_size"] * config["mlp_ratio"],
-                max_position_embeddings=config["max_text_len"],
-                hidden_dropout_prob=config["drop_rate"],
-                attention_probs_dropout_prob=config["drop_rate"],
-                )
-        else:
-            bert_config = BertConfig(
-                vocab_size=config["vocab_size"],
-                hidden_size=config["hidden_size"],
-                num_hidden_layers=config["num_layers"],
-                num_attention_heads=config["num_heads"],
-                intermediate_size=config["hidden_size"] * config["mlp_ratio"],
-                max_position_embeddings=config["max_text_len"],
-                hidden_dropout_prob=config["drop_rate"],
-                attention_probs_dropout_prob=config["drop_rate"],
-            )
+        #         vocab_size=config["vocab_size"],
+        #         hidden_size=config["hidden_size"],
+        #         num_hidden_layers=config["num_layers"],
+        #         num_attention_heads=config["num_heads"],
+        #         intermediate_size=config["hidden_size"] * config["mlp_ratio"],
+        #         max_position_embeddings=config["max_text_len"],
+        #         hidden_dropout_prob=config["drop_rate"],
+        #         attention_probs_dropout_prob=config["drop_rate"],
+        #         )
+        # else:
+        #     bert_config = BertConfig(
+        #         vocab_size=config["vocab_size"],
+        #         hidden_size=config["hidden_size"],
+        #         num_hidden_layers=config["num_layers"],
+        #         num_attention_heads=config["num_heads"],
+        #         intermediate_size=config["hidden_size"] * config["mlp_ratio"],
+        #         max_position_embeddings=config["max_text_len"],
+        #         hidden_dropout_prob=config["drop_rate"],
+        #         attention_probs_dropout_prob=config["drop_rate"],
+        #     )
+            
+        
 
         resolution_after=config['image_size']
         
@@ -95,36 +125,29 @@ class METERTransformerSS(pl.LightningModule):
             torch.distributed.barrier()
             
         # Initialize Vision Encoder
-        if self.is_huggingface:
-            hf_visual_config = AutoConfig.from_pretrained(config['vit'])
-            self.vit_model = AutoModel.from_pretrained(config['vit'],
-                config=hf_visual_config
-            )
+        hf_visual_config = AutoConfig.from_pretrained(config['vit'])
+        self.vit_model = AutoModel.from_pretrained(config['vit'],
+            config=hf_visual_config
+        )
+
+        if self.is_clip:
+            self.vit_model = build_model(config['vit'], resolution_after=resolution_after)
         else:
-            if self.is_clip:
-                self.vit_model = build_model(config['vit'], resolution_after=resolution_after)
-            elif self.is_deit:
-                self.vit_model = getattr(vit, self.hparams.config["vit"])(
-                    pretrained=True, config=self.hparams.config
-                )
-            else:
-                self.vit_model = getattr(swin, self.hparams.config["vit"])(
-                    pretrained=True, config=self.hparams.config,
-                )
-                self.avgpool = nn.AdaptiveAvgPool1d(1)
+            self.avgpool = nn.AdaptiveAvgPool1d(1)
             
         # Freeze Parameters for self.vit_model
         if config['freeze_image_encoder']:
             for param in self.vit_model.parameters():
                 param.requires_grad = False
         
-        # Initialize Tokenizer
-        if 'roberta' in config['tokenizer']:
-            self.text_transformer = RobertaModel.from_pretrained(config['tokenizer'])
-        elif 'electra' in config['tokenizer']:
-            self.text_transformer = ElectraModel.from_pretrained(config['tokenizer'])
-        else:
-            self.text_transformer = BertModel.from_pretrained(config['tokenizer'])
+        # Initialize Text Encoder
+        self.text_transformer = AutoModel.from_pretrained(config['tokenizer'])
+        # if 'roberta' in config['tokenizer']:
+        #     self.text_transformer = RobertaModel.from_pretrained(config['tokenizer'])
+        # elif 'electra' in config['tokenizer']:
+        #     self.text_transformer = ElectraModel.from_pretrained(config['tokenizer'])
+        # else:
+        #     self.text_transformer = BertModel.from_pretrained(config['tokenizer'])
             
         # Freeze Parameters for self.text_transformer
         if config['freeze_text_encoder']:
@@ -361,14 +384,14 @@ class METERTransformerSS(pl.LightningModule):
 
         return total_loss
 
-    def training_epoch_end(self, outs):
+    def on_train_epoch_end(self):
         meter_utils.epoch_wrapup(self)
 
     def validation_step(self, batch, batch_idx):
         meter_utils.set_task(self)
         output = self(batch)
 
-    def validation_epoch_end(self, outs):
+    def on_validation_epoch_end(self):
         meter_utils.epoch_wrapup(self)
 
     def test_step(self, batch, batch_idx):
@@ -381,7 +404,7 @@ class METERTransformerSS(pl.LightningModule):
 
         return ret
 
-    def test_epoch_end(self, outs):
+    def on_test_epoch_end(self, outs):
         model_name = self.hparams.config["load_path"].split("/")[-1][:-5]
 
         if self.hparams.config["loss_names"]["vqa"] > 0:

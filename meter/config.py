@@ -74,7 +74,7 @@ def config():
     # Downstream Setting
     get_recall_metric = False
     
-    hugging_face = False
+    hugging_face = True
     model_type = "METER"
     
     # Trainag Parameter Setting
@@ -418,6 +418,16 @@ def text_electra_small():
     input_text_embed_size = 256
     num_heads = 4
     num_layers = 6
+    mlp_ratio = 4
+    hidden_size = 256
+    
+@ex.named_config
+def text_electra_base():
+    tokenizer = "google/electra-base-discriminator"
+    vocab_size = 30522
+    input_text_embed_size = 768
+    num_heads = 4
+    num_layers = 12
     mlp_ratio = 4
     hidden_size = 256
     
