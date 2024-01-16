@@ -292,6 +292,46 @@ def task_finetune_snli_clip_bert():
     image_size = 384
 
 @ex.named_config
+def task_finetune_snli():
+    exp_name = "finetune_snli"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    batch_size = 64
+    max_epoch = 5
+    max_steps = None
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 2e-6
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    image_size = 384
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    
+@ex.named_config
+def task_finetune_snli_vision_fr_text_fr():
+    exp_name = "finetune_snli_vision_fr_text_fr"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    batch_size = 64
+    max_epoch = 5
+    max_steps = None
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 2e-6
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    image_size = 384
+    # Freeze Encoders
+    freeze_image_encoder = True
+    freeze_text_encoder = True
+
+
+
+@ex.named_config
 def task_finetune_ref():
     exp_name = "finetune_ref"
     datasets = ["coco"]
