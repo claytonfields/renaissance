@@ -56,7 +56,7 @@ class BaseDataModule(LightningDataModule):
             else _config["val_transform_keys"]
         )
 
-        tokenizer = _config["tokenizer"]
+        tokenizer = _config["text_encoder"]
         self.tokenizer = get_pretrained_tokenizer(tokenizer)
         self.vocab_size = self.tokenizer.vocab_size
 

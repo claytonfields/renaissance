@@ -28,36 +28,36 @@ def config():
     # datasets = ["coco", "vg", "sbu", "gcc"]
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
-    batch_size = 4096  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
+    batch_size = 256  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
 
-    # Image setting
+    # Image settings
+    image_encoder = 'vit_deit_tiny_patch16_224'
+    image_encoder_hidden_size = 192
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]
     image_size = 224
-    patch_size = 32
+    resolution_before = 224
+    patch_size = 16
     draw_false_image = 1
     image_only = False
-    resolution_before = 224
 
     # Text Setting
-    vqav2_label_size = 3129
+    text_encoder = "google/electra-small-discriminator"
+    text_encoder_hidden_size = 256
     max_text_len = 40
-    tokenizer = "google/electra-small-discriminator"
     vocab_size = 30522
     whole_word_masking = False # note that whole_word_masking does not work for RoBERTa
     mlm_prob = 0.15
     draw_false_text = 0
+    vqav2_label_size = 3129
     
-    # Transformer Setting
-    num_top_layer = 6
-    input_image_embed_size = 768
-    input_text_embed_size = 256
-    vit = 'vit_deit_tiny_patch16_224'
-    hidden_size = 256
-    num_heads = 4
-    num_layers = 6
-    mlp_ratio = 4
-    drop_rate = 0.1
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    # num_layers = 6
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
 
     # Optimizer Setting
     optim_type = "adamw"
@@ -75,7 +75,7 @@ def config():
     get_recall_metric = False
     
     hugging_face = False
-    model_type = "METER"
+    # model_type = "METER"
     
     # Trainag Parameter Setting
     freeze_image_encoder = False
@@ -100,31 +100,27 @@ def config():
 
 # ===================== Task Settings ===================== #
 @ex.named_config
-def task_mlm_itm_clip_bert():
+def task_mlm_itm():
     exp_name = "mlm_itm"
     # datasets = ["coco", "vg", "sbu", "gcc"]
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
     batch_size = 256
-    max_epoch = 10
+    max_epoch = None
     max_steps = 100000
     warmup_steps = 0.1
     whole_word_masking = True
 
-    vocab_size = 30522
+    # vocab_size = 30522
     max_text_len = 50
     image_size = 224
-    vit = 'vit_deit_tiny_patch16_224'
-    tokenizer = "bert-base-uncased"
-    train_transform_keys = ["clip"]
-    val_transform_keys = ["clip"]
     learning_rate = 1e-5
     val_check_interval = 1.0
     lr_mult_head = 5
     lr_mult_cross_modal = 5
-    num_top_layer = 6
-    hidden_size = 768
-    num_heads = 12
+    num_cross_layers = 6
+    # cross_layer_hidden_size = 256
+    # num_cross_layer_heads = 12
     
 @ex.named_config
 def task_mlm_itm_deit_electra():
@@ -137,21 +133,40 @@ def task_mlm_itm_deit_electra():
     max_steps = 100000
     warmup_steps = 0.1
     whole_word_masking = True
-    
     # DO NOT Freeze Encoders
     freeze_image_encoder = False
     freeze_text_encoder = False
-
-    vocab_size = 30522
-    max_text_len = 50
+    # Image settings
+    image_encoder = 'vit_deit_tiny_patch16_224'
+    image_encoder_hidden_size = 192
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
     image_size = 224
-    train_transform_keys = ["imagenet_randaug"]
-    val_transform_keys = ["imagenet_randaug"]
+    resolution_before = 224
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    # Text Setting
+    text_encoder = "google/electra-small-discriminator"
+    text_encoder_hidden_size = 256
+    max_text_len = 50
+    vocab_size = 30522
+    whole_word_masking = False # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    vqav2_label_size = 3129
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
     learning_rate = 1e-5
     val_check_interval = 1.0
     lr_mult_head = 5
     lr_mult_cross_modal = 5
-    num_top_layer = 6
+
 
 @ex.named_config
 def task_mlm_itm_deit_fr_electra_fr():
@@ -168,7 +183,7 @@ def task_mlm_itm_deit_fr_electra_fr():
     # Freeze Encoders
     freeze_image_encoder = True
     freeze_text_encoder = True
-
+    
     vocab_size = 30522
     max_text_len = 50
     image_size = 224
@@ -178,7 +193,7 @@ def task_mlm_itm_deit_fr_electra_fr():
     val_check_interval = 1.0
     lr_mult_head = 5
     lr_mult_cross_modal = 5
-    num_top_layer = 6
+    num_cross_layers = 6
 
 @ex.named_config
 def task_finetune_nlvr2_clip_bert():
@@ -193,13 +208,13 @@ def task_finetune_nlvr2_clip_bert():
     learning_rate = 1e-5
     lr_mult_head = 10
     lr_mult_cross_modal = 5
-    tokenizer = "bert-base-uncased"
+    text_encoder = "bert-base-uncased"
     max_text_len = 50
-    input_text_embed_size = 768
-    vit = 'ViT-B/32'
+    text_encoder_hidden_size = 768
+    image_encoder = 'ViT-B/32'
     train_transform_keys = ["clip"]
     val_transform_keys = ["clip"]
-    input_image_embed_size = 768
+    image_encoder_hidden_size = 768
     image_size = 288
 
 @ex.named_config
@@ -216,13 +231,13 @@ def task_finetune_vqa_clip_bert():
     val_check_interval = 0.1
     lr_mult_head = 50
     lr_mult_cross_modal = 5
-    tokenizer = "bert-base-uncased"
+    text_encoder = "bert-base-uncased"
     max_text_len = 50
-    input_text_embed_size = 768
-    vit = 'ViT-B/32'
+    text_encoder_hidden_size = 768
+    image_encoder = 'ViT-B/32'
     train_transform_keys = ["clip"]
     val_transform_keys = ["clip"]
-    input_image_embed_size = 768
+    image_encoder_hidden_size = 768
     image_size = 576
 
 @ex.named_config
@@ -239,12 +254,12 @@ def task_finetune_irtr_coco_clip_bert():
     learning_rate = 5e-6
     lr_mult_head = 5
     lr_mult_cross_modal = 5
-    tokenizer = "bert-base-uncased"
-    input_text_embed_size = 768
-    vit = 'ViT-B/32'
+    text_encoder = "bert-base-uncased"
+    text_encoder_hidden_size = 768
+    image_encoder = 'ViT-B/32'
     train_transform_keys = ["clip"]
     val_transform_keys = ["clip"]
-    input_image_embed_size = 768
+    image_encoder_hidden_size = 768
     image_size = 384
 
 @ex.named_config
@@ -261,12 +276,12 @@ def task_finetune_irtr_f30k_clip_bert():
     learning_rate = 5e-6
     lr_mult_head = 5
     lr_mult_cross_modal = 5
-    tokenizer = "bert-base-uncased"
-    input_text_embed_size = 768
-    vit = 'ViT-B/32'
+    text_encoder = "bert-base-uncased"
+    text_encoder_hidden_size = 768
+    image_encoder = 'ViT-B/32'
     train_transform_keys = ["clip"]
     val_transform_keys = ["clip"]
-    input_image_embed_size = 768
+    image_encoder_hidden_size = 768
     image_size = 384
 
 @ex.named_config
@@ -282,13 +297,13 @@ def task_finetune_snli_clip_bert():
     learning_rate = 2e-6
     lr_mult_head = 10
     lr_mult_cross_modal = 5
-    tokenizer = "bert-base-uncased"
+    text_encoder = "bert-base-uncased"
     max_text_len = 50
-    input_text_embed_size = 768
-    vit = 'ViT-B/32'
+    text_encoder_hidden_size = 768
+    image_encoder = 'ViT-B/32'
     train_transform_keys = ["clip"]
     val_transform_keys = ["clip"]
-    input_image_embed_size = 768
+    image_encoder_hidden_size = 768
     image_size = 384
 
 @ex.named_config
@@ -344,131 +359,133 @@ def task_finetune_ref():
     learning_rate = 2e-6
     lr_mult_head = 10
     lr_mult_cross_modal = 5
-    tokenizer = "google/electra-small-discriminator"
+    text_encoder = "google/electra-small-discriminator"
     max_text_len = 40
-    input_text_embed_size = 128
-    vit = 'vit_deit_tiny_patch16_224'
+    text_encoder_hidden_size = 128
+    image_encoder = 'vit_deit_tiny_patch16_224'
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]
-    input_image_embed_size = 192
+    image_encoder_hidden_size = 192
     image_size = 224
 
 
 # ===================== Vision Encoders ===================== #
 @ex.named_config
 def swin32_base224():
-    vit = "swin_base_patch4_window7_224_in22k"
+    image_encoder = "swin_base_patch4_window7_224_in22k"
     patch_size = 32
     image_size = 224
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]
-    input_image_embed_size = 1024
+    image_encoder_hidden_size = 1024
     resolution_before = 224
 
 @ex.named_config
 def swin32_base384():
-    vit = "swin_base_patch4_window12_384_in22k"
+    image_encoder = "swin_base_patch4_window12_384_in22k"
     patch_size = 32
     image_size = 384
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]
-    input_image_embed_size = 1024
+    image_encoder_hidden_size = 1024
     resolution_before = 384
 
 @ex.named_config
 def swin32_large384():
-    vit = "swin_large_patch4_window12_384_in22k"
+    image_encoder = "swin_large_patch4_window12_384_in22k"
     patch_size = 32
     image_size = 384
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]
-    input_image_embed_size = 1536
+    image_encoder_hidden_size = 1536
     resolution_before = 384
     
 @ex.named_config
 def swin_tiny_patch224():
-    vit = "swin_tiny_patch4_window7_224"
+    image_encoder = "swin_tiny_patch4_window7_224"
     patch_size = 4
     image_size = 224
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]
-    input_image_embed_size = 768
+    image_encoder_hidden_size = 768
     resolution_before = 224
     
 @ex.named_config
 def deit_small_distilled_patch16_224():    
-    vit = "vit_deit_small_distilled_patch16_224"
-    hidden_size = 384
-    num_heads = 6
-    num_layers = 12
-    mlp_ratio = 4
-    drop_rate = 0.1
+    image_encoder = "vit_deit_small_distilled_patch16_224"
+    cross_layer_hidden_size = 384
+    num_cross_layer_heads = 6
+    # num_layers = 12
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]
     
 @ex.named_config
 def vit_deit_tiny_patch16_224():    
-    vit = "vit_deit_tiny_patch16_224"
-    hidden_size = 192
-    input_image_embed_size = 192
+    image_encoder = "vit_deit_tiny_patch16_224"
+    cross_layer_hidden_size = 192
+    image_encoder_hidden_size = 192
     resolution_before = 224
     patch_size = 16
-    num_heads = 3
-    num_layers = 12
-    mlp_ratio = 4
-    drop_rate = 0.1
+    num_cross_layer_heads = 3
+    # num_layers = 12
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]
 
 @ex.named_config
 def clip16():
-    vit = 'ViT-B/16'
+    image_encoder = 'ViT-B/16'
     image_size = 224
     patch_size = 16
     train_transform_keys = ["clip"]
     val_transform_keys = ["clip"]
-    input_image_embed_size = 768
+    image_encoder_hidden_size = 768
 
 @ex.named_config
 def clip32():
-    vit = 'ViT-B/32'
+    image_encoder = 'ViT-B/32'
     image_size = 224
     patch_size = 32
     train_transform_keys = ["clip"]
     val_transform_keys = ["clip"]
-    input_image_embed_size = 768
+    image_encoder_hidden_size = 768
 
 # ===================== Text Encoders ===================== #
 @ex.named_config
 def text_roberta():
-    tokenizer = "roberta-base"
+    text_encoder = "roberta-base"
     vocab_size = 50265
-    input_text_embed_size = 768
+    text_encoder_hidden_size = 768
 
 @ex.named_config
 def text_roberta_large():
-    tokenizer = "roberta-large"
+    text_encoder = "roberta-large"
     vocab_size = 50265
-    input_text_embed_size = 1024
+    text_encoder_hidden_size = 1024
 
 @ex.named_config
 def text_electra_small():
-    tokenizer = "google/electra-small-discriminator"
+    text_encoder = "google/electra-small-discriminator"
     vocab_size = 30522
-    input_text_embed_size = 256
-    num_heads = 4
-    num_layers = 6
-    mlp_ratio = 4
-    hidden_size = 256
+    text_encoder_hidden_size = 256
+    num_cross_layer_heads = 4
+    # num_layers = 6
+    cross_layer_mlp_ratio = 4
+    cross_layer_hidden_size = 256
     
 # ===================== Random Augmentations ===================== #
 @ex.named_config
 def clip_randaug():
-    train_transform_keys = ["clip_randaug"]
+    train_transform_keys = ["clip"]
+    val_transform_keys = ["clip"]
 
 @ex.named_config
 def imagenet_randaug():
-    train_transform_keys = ["imagenet_randaug"]
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
     
 # =========== Freeze of Un-Freeze Encoders for Training =========== #
 @ex.named_config

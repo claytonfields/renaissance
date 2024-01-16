@@ -20,111 +20,111 @@ class METERTransformerSS(pl.LightningModule):
         self.save_hyperparameters()
         
         # ===================== Architecture ===================== #
-        self.is_clip= ('ViT' in config['vit'])
-        self.is_deit = ('deit' in config['vit'])
-        self.is_swin = ('swin' in config['vit'])
-        self.is_electra = ('electra' in config['tokenizer'])
+        self.is_clip= ('ViT' in config['image_encoder'])
+        self.is_deit = ('deit' in config['image_encoder'])
+        self.is_swin = ('swin' in config['image_encoder'])
+        self.is_electra = ('electra' in config['text_encoder'])
         
         self.is_huggingface = config['hugging_face']
 
         # Intialize Text Encoder
-        if 'roberta' in config['tokenizer']:
+        if 'roberta' in config['text_encoder']:
             bert_config = RobertaConfig(
                 vocab_size=config["vocab_size"],
-                hidden_size=config["hidden_size"],
-                num_hidden_layers=config["num_layers"],
-                num_attention_heads=config["num_heads"],
-                intermediate_size=config["hidden_size"] * config["mlp_ratio"],
+                hidden_size=config["cross_layer_hidden_size"],
+                # num_hidden_layers=config["num_layers"],
+                num_attention_heads=config["num_cross_layer_heads"],
+                intermediate_size=config["cross_layer_hidden_size"] * config["cross_layer_mlp_ratio"],
                 max_position_embeddings=config["max_text_len"],
-                hidden_dropout_prob=config["drop_rate"],
-                attention_probs_dropout_prob=config["drop_rate"],
+                hidden_dropout_prob=config["cross_layer_drop_rate"],
+                attention_probs_dropout_prob=config["cross_layer_drop_rate"],
             )
-        elif 'electra' in config['tokenizer']:
+        elif 'electra' in config['text_encoder']:
             bert_config = ElectraConfig(
                 
                 vocab_size=config["vocab_size"],
-                hidden_size=config["hidden_size"],
-                num_hidden_layers=config["num_layers"],
-                num_attention_heads=config["num_heads"],
-                intermediate_size=config["hidden_size"] * config["mlp_ratio"],
+                hidden_size=config["cross_layer_hidden_size"],
+                # num_hidden_layers=config["num_layers"],
+                num_attention_heads=config["num_cross_layer_heads"],
+                intermediate_size=config["cross_layer_hidden_size"] * config["cross_layer_mlp_ratio"],
                 max_position_embeddings=config["max_text_len"],
-                hidden_dropout_prob=config["drop_rate"],
-                attention_probs_dropout_prob=config["drop_rate"],
+                hidden_dropout_prob=config["cross_layer_drop_rate"],
+                attention_probs_dropout_prob=config["cross_layer_drop_rate"],
                 )
         else:
             bert_config = BertConfig(
                 vocab_size=config["vocab_size"],
-                hidden_size=config["hidden_size"],
-                num_hidden_layers=config["num_layers"],
-                num_attention_heads=config["num_heads"],
-                intermediate_size=config["hidden_size"] * config["mlp_ratio"],
+                hidden_size=config["cross_layer_hidden_size"],
+                # num_hidden_layers=config["num_layers"],
+                num_attention_heads=config["num_cross_layer_heads"],
+                intermediate_size=config["cross_layer_hidden_size"] * config["cross_layer_mlp_ratio"],
                 max_position_embeddings=config["max_text_len"],
-                hidden_dropout_prob=config["drop_rate"],
-                attention_probs_dropout_prob=config["drop_rate"],
+                hidden_dropout_prob=config["cross_layer_drop_rate"],
+                attention_probs_dropout_prob=config["cross_layer_drop_rate"],
             )
 
         resolution_after=config['image_size']
         
         # Intialize Transform Laayers
-        self.cross_modal_text_transform = nn.Linear(config['input_text_embed_size'], config['hidden_size'])
+        self.cross_modal_text_transform = nn.Linear(config['text_encoder_hidden_size'], config['cross_layer_hidden_size'])
         self.cross_modal_text_transform.apply(objectives.init_weights)
-        self.cross_modal_image_transform = nn.Linear(config['input_image_embed_size'], config['hidden_size'])
+        self.cross_modal_image_transform = nn.Linear(config['image_encoder_hidden_size'], config['cross_layer_hidden_size'])
         self.cross_modal_image_transform.apply(objectives.init_weights)
 
         # Initialize Token Type Embeddings
-        self.token_type_embeddings = nn.Embedding(2, config["hidden_size"])
+        self.token_type_embeddings = nn.Embedding(2, config["cross_layer_hidden_size"])
         self.token_type_embeddings.apply(objectives.init_weights)
 
         # Handle Distributed Case
         if torch.distributed.is_initialized():
             if torch.distributed.get_rank() == 0:
                 if self.is_clip:
-                    build_model(config['vit'], resolution_after=resolution_after)
+                    build_model(config['image_encoder'], resolution_after=resolution_after)
                 else:
-                    getattr(swin, self.hparams.config["vit"])(
+                    getattr(swin, self.hparams.config["image_encoder"])(
                         pretrained=True, config=self.hparams.config,
                     )
 
-                if 'roberta' in config['tokenizer']:
-                    RobertaModel.from_pretrained(config['tokenizer'])
-                elif 'electra' in config['tokenizer']:
-                    ElectraModel.from_pretrained(config['tokenizer'])
+                if 'roberta' in config['text_encoder']:
+                    RobertaModel.from_pretrained(config['text_encoder'])
+                elif 'electra' in config['text_encoder']:
+                    ElectraModel.from_pretrained(config['text_encoder'])
                 else:
-                    BertModel.from_pretrained(config['tokenizer'])
+                    BertModel.from_pretrained(config['text_encoder'])
 
             torch.distributed.barrier()
             
         # Initialize Vision Encoder
         if self.is_huggingface:
-            hf_visual_config = AutoConfig.from_pretrained(config['vit'])
-            self.vit_model = AutoModel.from_pretrained(config['vit'],
+            hf_visual_config = AutoConfig.from_pretrained(config['image_encoder'])
+            self.image_encoder = AutoModel.from_pretrained(config['image_encoder'],
                 config=hf_visual_config
             )
         else:
             if self.is_clip:
-                self.vit_model = build_model(config['vit'], resolution_after=resolution_after)
+                self.image_encoder = build_model(config['image_encoder'], resolution_after=resolution_after)
             elif self.is_deit:
-                self.vit_model = getattr(vit, self.hparams.config["vit"])(
+                self.image_encoder = getattr(vit, self.hparams.config["image_encoder"])(
                     pretrained=True, config=self.hparams.config
                 )
             else:
-                self.vit_model = getattr(swin, self.hparams.config["vit"])(
+                self.image_encoder = getattr(swin, self.hparams.config["image_encoder"])(
                     pretrained=True, config=self.hparams.config,
                 )
                 self.avgpool = nn.AdaptiveAvgPool1d(1)
             
-        # Freeze Parameters for self.vit_model
+        # Freeze Parameters for self.image_encoder
         if config['freeze_image_encoder']:
-            for param in self.vit_model.parameters():
+            for param in self.image_encoder.parameters():
                 param.requires_grad = False
         
-        # Initialize Tokenizer
-        if 'roberta' in config['tokenizer']:
-            self.text_transformer = RobertaModel.from_pretrained(config['tokenizer'])
-        elif 'electra' in config['tokenizer']:
-            self.text_transformer = ElectraModel.from_pretrained(config['tokenizer'])
+        # Initialize text_encoder
+        if 'roberta' in config['text_encoder']:
+            self.text_transformer = RobertaModel.from_pretrained(config['text_encoder'])
+        elif 'electra' in config['text_encoder']:
+            self.text_transformer = ElectraModel.from_pretrained(config['text_encoder'])
         else:
-            self.text_transformer = BertModel.from_pretrained(config['tokenizer'])
+            self.text_transformer = BertModel.from_pretrained(config['text_encoder'])
             
         # Freeze Parameters for self.text_transformer
         if config['freeze_text_encoder']:
@@ -132,14 +132,14 @@ class METERTransformerSS(pl.LightningModule):
                 param.requires_grad = False
 
         # Define Cross Modal Layers
-        self.cross_modal_image_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_top_layer'])])
+        self.cross_modal_image_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_cross_layers'])])
         self.cross_modal_image_layers.apply(objectives.init_weights)
-        self.cross_modal_text_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_top_layer'])])
+        self.cross_modal_text_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_cross_layers'])])
         self.cross_modal_text_layers.apply(objectives.init_weights)
 
-        self.cross_modal_image_pooler = heads.Pooler(config["hidden_size"])
+        self.cross_modal_image_pooler = heads.Pooler(config["cross_layer_hidden_size"])
         self.cross_modal_image_pooler.apply(objectives.init_weights)
-        self.cross_modal_text_pooler = heads.Pooler(config["hidden_size"])
+        self.cross_modal_text_pooler = heads.Pooler(config["cross_layer_hidden_size"])
         self.cross_modal_text_pooler.apply(objectives.init_weights)
         
         # ===================== Pretraining ===================== #
@@ -150,10 +150,10 @@ class METERTransformerSS(pl.LightningModule):
         
         # Image Text Matching
         if config["loss_names"]["itm"] > 0:
-            self.itm_score = heads.ITMHead(config["hidden_size"]*2)
+            self.itm_score = heads.ITMHead(config["cross_layer_hidden_size"]*2)
             self.itm_score.apply(objectives.init_weights)
 
-        hs = self.hparams.config["hidden_size"]
+        hs = self.hparams.config["cross_layer_hidden_size"]
 
         # ===================== Downstream ===================== #
         # Initialize Visual Question Answering V2 Classifier
@@ -276,7 +276,7 @@ class METERTransformerSS(pl.LightningModule):
         text_embeds = self.cross_modal_text_transform(text_embeds)
         
         # Process Image Input to Image Embeddings
-        image_embeds = self.vit_model(img)
+        image_embeds = self.image_encoder(img)
         if self.is_huggingface:
             image_embeds = image_embeds.last_hidden_state
         image_embeds = self.cross_modal_image_transform(image_embeds)
