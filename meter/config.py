@@ -167,10 +167,65 @@ def task_mlm_itm_deit_electra():
     lr_mult_head = 5
     lr_mult_cross_modal = 5
 
+@ex.named_config
+def task_mlm_itm_deit_fr_electra():
+    exp_name = "mlm_itm_deit_fr_electra"
+    # datasets = ["coco", "vg", "sbu", "gcc"]
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 256
+    max_epoch = None
+    max_steps = 100000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    
+    # Freeze Image Encoder
+    freeze_image_encoder = True
+    # DO NOT Freeze Text Encoder
+    freeze_text_encoder = False
+    
+    vocab_size = 30522
+    max_text_len = 50
+    image_size = 224
+    train_transform_keys = ["imagenet_randaug"]
+    val_transform_keys = ["imagenet_randaug"]
+    learning_rate = 1e-5
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    num_cross_layers = 6
+    
+@ex.named_config
+def task_mlm_itm_deit_electra_fr():
+    exp_name = "mlm_itm_deit_electra_fr"
+    # datasets = ["coco", "vg", "sbu", "gcc"]
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 256
+    max_epoch = None
+    max_steps = 100000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    
+    # DO NOT Freeze Image Encoder
+    freeze_image_encoder = False
+    # Freeze Text Encoder
+    freeze_text_encoder = True
+    
+    vocab_size = 30522
+    max_text_len = 50
+    image_size = 224
+    train_transform_keys = ["imagenet_randaug"]
+    val_transform_keys = ["imagenet_randaug"]
+    learning_rate = 1e-5
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    num_cross_layers = 6
 
 @ex.named_config
 def task_mlm_itm_deit_fr_electra_fr():
-    exp_name = "mlm_itm"
+    exp_name = "mlm_itm_deit_fr_electra_fr"
     # datasets = ["coco", "vg", "sbu", "gcc"]
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
