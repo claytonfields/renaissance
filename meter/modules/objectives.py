@@ -470,14 +470,16 @@ def vqa_test_step(pl_module, batch, output):
     vqa_preds = [id2answer[pred.item()] for pred in vqa_preds]
     questions = batch["text"]
     qids = batch["qid"]
-    return {"qids": qids, "preds": vqa_preds, "gqa": False}
+    ret = {"qids": qids, "preds": vqa_preds, "gqa": False}
+    pl_module.vqa_outs.append(ret)
+    return ret
 
 
 def arc_test_step(pl_module, batch, output):
     return output
 
 
-def vqa_test_wrapup(outs, model_name):
+def vqa_test_wrapup(pl_module, model_name):
     distributed = torch.distributed.is_initialized()
     if distributed:
         rank = torch.distributed.get_rank()
@@ -485,7 +487,7 @@ def vqa_test_wrapup(outs, model_name):
         rank = 0
     qids, preds = list(), list()
     gqa = False
-    for out in outs:
+    for out in pl_module.vqa_outs:
         qids += out["qids"]
         preds += out["preds"]
         gqa = out['gqa']

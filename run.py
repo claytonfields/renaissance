@@ -20,7 +20,7 @@ def main(_config):
     
     
     _config = copy.deepcopy(_config)
-    print(_config)
+    # print(_config)
     pl.seed_everything(_config["seed"])
 
     dm = MTDataModule(_config, dist=False)

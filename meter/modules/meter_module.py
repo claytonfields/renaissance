@@ -21,23 +21,25 @@ class METERTransformerSS(pl.LightningModule):
         
         # ===================== Architecture ===================== #
         self.is_clip= False #('ViT' in config['vit'])
-        self.is_deit = ('deit' in config['vit'])
-        self.is_swin = ('swin' in config['vit'])
+        self.is_deit = False #('deit' in config['vit'])
+        self.is_swin = False #('swin' in config['vit'])
         self.is_electra = ('electra' in config['tokenizer'])
-        
-        self.is_huggingface = config['hugging_face']
+        self.fine_tune = (self.hparams.config["load_path"] != ""
+            and not self.hparams.config["test_only"])
+        self.test = (self.hparams.config["load_path"] != "" 
+            and self.hparams.config["test_only"])
 
         # Intialize Text Encoder
         # keyword_args = {
         #     'vocab_size' : config["vocab_size"],
-        #     'hidden_size' : config["hidden_size"],
-        #     'num_hidden_layers' : config["num_top_layer"],
-        #     'num_attention_heads' : config["num_heads"],
+        #     'cross_layer_hidden_size' : config["cross_layer_hidden_size"],
+        #     'num_hidden_layers' : config["num_cross_layer"],
+        #     'num_attention_heads' : config["cross_layer_num_heads"],
             
-        #     'intermediate_size' : config["hidden_size"] * config["mlp_ratio"],
+        #     'intermediate_size' : config["cross_layer_hidden_size"] * config["cross_layer_mlp_ratio"],
         #     'max_position_embeddings' : config["max_text_len"],
-        #     'hidden_dropout_prob' : config["drop_rate"],
-        #     'attention_probs_dropout_prob' : config["drop_rate"],
+        #     'hidden_dropout_prob' : config["cross_layer_drop_rate"],
+        #     'attention_probs_dropout_prob' : config["cross_layer_drop_rate"],
         # }
         
         # bert_config = AutoConfig.from_pretrained(
@@ -47,62 +49,25 @@ class METERTransformerSS(pl.LightningModule):
         
         bert_config = BertConfig(
                 vocab_size=config["vocab_size"],
-                hidden_size=config["hidden_size"],
-                num_hidden_layers=config["num_layers"],
-                num_attention_heads=config["num_heads"],
-                intermediate_size=config["hidden_size"] * config["mlp_ratio"],
+                hidden_size=config["cross_layer_hidden_size"],
+                # num_hidden_layers=config["num_layers"],
+                num_attention_heads=config["cross_layer_num_heads"],
+                intermediate_size=config["cross_layer_hidden_size"] * config["cross_layer_mlp_ratio"],
                 max_position_embeddings=config["max_text_len"],
-                hidden_dropout_prob=config["drop_rate"],
-                attention_probs_dropout_prob=config["drop_rate"],
+                hidden_dropout_prob=config["cross_layer_drop_rate"],
+                attention_probs_dropout_prob=config["cross_layer_drop_rate"],
             )
-        
-        # if 'roberta' in config['tokenizer']:
-        #     bert_config = RobertaConfig(
-        #         vocab_size=config["vocab_size"],
-        #         hidden_size=config["hidden_size"],
-        #         num_hidden_layers=config["num_layers"],
-        #         num_attention_heads=config["num_heads"],
-        #         intermediate_size=config["hidden_size"] * config["mlp_ratio"],
-        #         max_position_embeddings=config["max_text_len"],
-        #         hidden_dropout_prob=config["drop_rate"],
-        #         attention_probs_dropout_prob=config["drop_rate"],
-        #     )
-        # elif 'electra' in config['tokenizer']:
-        #     bert_config = ElectraConfig(
-                
-        #         vocab_size=config["vocab_size"],
-        #         hidden_size=config["hidden_size"],
-        #         num_hidden_layers=config["num_layers"],
-        #         num_attention_heads=config["num_heads"],
-        #         intermediate_size=config["hidden_size"] * config["mlp_ratio"],
-        #         max_position_embeddings=config["max_text_len"],
-        #         hidden_dropout_prob=config["drop_rate"],
-        #         attention_probs_dropout_prob=config["drop_rate"],
-        #         )
-        # else:
-        #     bert_config = BertConfig(
-        #         vocab_size=config["vocab_size"],
-        #         hidden_size=config["hidden_size"],
-        #         num_hidden_layers=config["num_layers"],
-        #         num_attention_heads=config["num_heads"],
-        #         intermediate_size=config["hidden_size"] * config["mlp_ratio"],
-        #         max_position_embeddings=config["max_text_len"],
-        #         hidden_dropout_prob=config["drop_rate"],
-        #         attention_probs_dropout_prob=config["drop_rate"],
-        #     )
-            
-        
-
+    
         resolution_after=config['image_size']
         
-        # Intialize Transform Laayers
-        self.cross_modal_text_transform = nn.Linear(config['input_text_embed_size'], config['hidden_size'])
+        # Intialize Transform Layers
+        self.cross_modal_text_transform = nn.Linear(config['text_encoder_hidden_size'], config['cross_layer_hidden_size'])
         self.cross_modal_text_transform.apply(objectives.init_weights)
-        self.cross_modal_image_transform = nn.Linear(config['input_image_embed_size'], config['hidden_size'])
+        self.cross_modal_image_transform = nn.Linear(config['image_encoder_hidden_size'], config['cross_layer_hidden_size'])
         self.cross_modal_image_transform.apply(objectives.init_weights)
 
         # Initialize Token Type Embeddings
-        self.token_type_embeddings = nn.Embedding(2, config["hidden_size"])
+        self.token_type_embeddings = nn.Embedding(2, config["cross_layer_hidden_size"])
         self.token_type_embeddings.apply(objectives.init_weights)
 
         # Handle Distributed Case
@@ -125,14 +90,22 @@ class METERTransformerSS(pl.LightningModule):
             torch.distributed.barrier()
             
         # Initialize Vision Encoder
-        hf_visual_config = AutoConfig.from_pretrained(config['vit'])
-        self.vit_model = AutoModel.from_pretrained(config['vit'],
-            config=hf_visual_config
+        visual_config = AutoConfig.from_pretrained(
+            config['vit'],
+            image_size = config['image_size'],
+            patch_size = config['patch_size']
         )
+        if self.fine_tune or self.test:
+            self.vit_model = AutoModel.from_config(
+                visual_config
+            )
+        else:       
+            self.vit_model = AutoModel.from_pretrained(
+                config['vit'],
+                config=visual_config
+            )
 
-        if self.is_clip:
-            self.vit_model = build_model(config['vit'], resolution_after=resolution_after)
-        else:
+        if self.is_swin:
             self.avgpool = nn.AdaptiveAvgPool1d(1)
             
         # Freeze Parameters for self.vit_model
@@ -141,28 +114,35 @@ class METERTransformerSS(pl.LightningModule):
                 param.requires_grad = False
         
         # Initialize Text Encoder
-        self.text_transformer = AutoModel.from_pretrained(config['tokenizer'])
-        # if 'roberta' in config['tokenizer']:
-        #     self.text_transformer = RobertaModel.from_pretrained(config['tokenizer'])
-        # elif 'electra' in config['tokenizer']:
-        #     self.text_transformer = ElectraModel.from_pretrained(config['tokenizer'])
+        text_config = AutoConfig.from_pretrained(
+            config['tokenizer']
+        )
+        # if self.fine_tune or self.test:
+        #     self.text_transformer = AutoModel.from_config(text_config)
         # else:
-        #     self.text_transformer = BertModel.from_pretrained(config['tokenizer'])
-            
+        #     self.text_transformer = AutoModel.from_pretrained(
+        #         config['tokenizer'],
+        #         config=text_config
+        #     )
+        
+        self.text_transformer = AutoModel.from_pretrained(
+            config['tokenizer'],
+        )
+        
         # Freeze Parameters for self.text_transformer
         if config['freeze_text_encoder']:
             for param in self.text_transformer.parameters():
                 param.requires_grad = False
 
         # Define Cross Modal Layers
-        self.cross_modal_image_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_top_layer'])])
+        self.cross_modal_image_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_cross_layer'])])
         self.cross_modal_image_layers.apply(objectives.init_weights)
-        self.cross_modal_text_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_top_layer'])])
+        self.cross_modal_text_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_cross_layer'])])
         self.cross_modal_text_layers.apply(objectives.init_weights)
 
-        self.cross_modal_image_pooler = heads.Pooler(config["hidden_size"])
+        self.cross_modal_image_pooler = heads.Pooler(config["cross_layer_hidden_size"])
         self.cross_modal_image_pooler.apply(objectives.init_weights)
-        self.cross_modal_text_pooler = heads.Pooler(config["hidden_size"])
+        self.cross_modal_text_pooler = heads.Pooler(config["cross_layer_hidden_size"])
         self.cross_modal_text_pooler.apply(objectives.init_weights)
         
         # ===================== Pretraining ===================== #
@@ -173,13 +153,15 @@ class METERTransformerSS(pl.LightningModule):
         
         # Image Text Matching
         if config["loss_names"]["itm"] > 0:
-            self.itm_score = heads.ITMHead(config["hidden_size"]*2)
+            self.itm_score = heads.ITMHead(config["cross_layer_hidden_size"]*2)
             self.itm_score.apply(objectives.init_weights)
 
-        hs = self.hparams.config["hidden_size"]
+        hs = self.hparams.config["cross_layer_hidden_size"]
 
-        # ===================== Downstream ===================== #
+        # =========== Fine-Tuning/Downstream Training ============= #
+        
         # Initialize Visual Question Answering V2 Classifier
+        self.vqa_outs = []
         if self.hparams.config["loss_names"]["vqa"] > 0:
             vs = self.hparams.config["vqav2_label_size"]
             self.vqa_classifier = nn.Sequential(
@@ -190,17 +172,13 @@ class METERTransformerSS(pl.LightningModule):
             )
             self.vqa_classifier.apply(objectives.init_weights)
 
-        # Load Previously Trained Modules
+        # Load Previously Trained Modules for Fine-Tuning
         if (
             self.hparams.config["load_path"] != ""
             and not self.hparams.config["test_only"]
         ):
             ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
             state_dict = ckpt["state_dict"]
-            if self.is_clip:
-                state_dict = adapt_position_encoding(state_dict, after=resolution_after, patch_size=self.hparams.config['patch_size'])
-            else:
-                state_dict = swin_adapt_position_encoding(state_dict, after=resolution_after, before=config['resolution_before'])
             self.load_state_dict(state_dict, strict=False)
 
         # Initialize NLVR2 Classifier
@@ -253,14 +231,13 @@ class METERTransformerSS(pl.LightningModule):
 
         # ===================== load downstream (test_only) ======================
 
-        if self.hparams.config["load_path"] != "" and self.hparams.config["test_only"]:
+        if self.test:
             ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
             state_dict = ckpt["state_dict"]
-            if self.is_clip:
-                state_dict = adapt_position_encoding(state_dict, after=resolution_after, patch_size=self.hparams.config['patch_size'])
-            else:
-                state_dict = swin_adapt_position_encoding(state_dict, after=resolution_after, before=config['resolution_before'])
             self.load_state_dict(state_dict, strict=False)
+        
+        # print('image_size: ', self.vit_model.config.image_size)
+        # print('patch_size: ', self.vit_model.config.patch_size)
 
     def infer(
         self,
@@ -276,6 +253,9 @@ class METERTransformerSS(pl.LightningModule):
             else:
                 imgkey = "image"
             img = batch[imgkey][0]
+            
+        # print('image_size: ', self.vit_model.config.image_size)
+        # print('patch_size: ', self.vit_model.config.patch_size)
         
         # Process Text Input to Text Embeddings
         do_mlm = "_mlm" if mask_text else ""
@@ -299,9 +279,8 @@ class METERTransformerSS(pl.LightningModule):
         text_embeds = self.cross_modal_text_transform(text_embeds)
         
         # Process Image Input to Image Embeddings
-        image_embeds = self.vit_model(img)
-        if self.is_huggingface:
-            image_embeds = image_embeds.last_hidden_state
+        image_embeds = self.vit_model(img)#, interpolate_pos_encoding=True)
+        image_embeds = image_embeds.last_hidden_state
         image_embeds = self.cross_modal_image_transform(image_embeds)
         image_masks = torch.ones((image_embeds.size(0), image_embeds.size(1)), dtype=torch.long, device=device)
         extend_image_masks = self.text_transformer.get_extended_attention_mask(image_masks, image_masks.size(), device)
@@ -323,13 +302,12 @@ class METERTransformerSS(pl.LightningModule):
 
         text_feats, image_feats = x, y
         cls_feats_text = self.cross_modal_text_pooler(x)
-        if self.is_clip or self.is_deit:
-            cls_feats_image = self.cross_modal_image_pooler(y)
-        else:
+        if self.is_swin:
             avg_image_feats = self.avgpool(image_feats.transpose(1, 2)).view(image_feats.size(0), 1, -1)
             cls_feats_image = self.cross_modal_image_pooler(avg_image_feats)
+        else:
+            cls_feats_image = self.cross_modal_image_pooler(y)
         cls_feats = torch.cat([cls_feats_text, cls_feats_image], dim=-1)
-
 
         ret = {
             "text_feats": text_feats,
@@ -404,11 +382,11 @@ class METERTransformerSS(pl.LightningModule):
 
         return ret
 
-    def on_test_epoch_end(self, outs):
+    def on_test_epoch_end(self):
         model_name = self.hparams.config["load_path"].split("/")[-1][:-5]
 
         if self.hparams.config["loss_names"]["vqa"] > 0:
-            objectives.vqa_test_wrapup(outs, model_name)
+            objectives.vqa_test_wrapup(self, model_name)
         meter_utils.epoch_wrapup(self)
 
     def configure_optimizers(self):
