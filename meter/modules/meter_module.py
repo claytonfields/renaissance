@@ -26,6 +26,11 @@ class METERTransformerSS(pl.LightningModule):
         self.is_electra = ('electra' in config['text_encoder'])
         
         self.is_huggingface = config['hugging_face']
+        
+        self.fine_tune = (self.hparams.config["load_path"] != ""
+            and not self.hparams.config["test_only"])
+        self.test_only = (self.hparams.config["load_path"] != "" 
+            and self.hparams.config["test_only"])
 
         # Intialize Text Encoder
         if 'roberta' in config['text_encoder']:
@@ -96,10 +101,13 @@ class METERTransformerSS(pl.LightningModule):
             
         # Initialize Vision Encoder
         if self.is_huggingface:
-            hf_visual_config = AutoConfig.from_pretrained(config['image_encoder'])
-            self.image_encoder = AutoModel.from_pretrained(config['image_encoder'],
-                config=hf_visual_config
-            )
+            # if self.fine_tune or self.test_only:
+            #     visual_config = AutoConfig.from_pretrained(config['image_encoder'])
+            #     self.image_encoder = AutoModel.from_config(visual_config)
+            # else:
+            #     
+            self.image_encoder = AutoModel.from_pretrained(config['image_encoder'])
+            
         else:
             if self.is_clip:
                 self.image_encoder = build_model(config['image_encoder'], resolution_after=resolution_after)
@@ -168,10 +176,7 @@ class METERTransformerSS(pl.LightningModule):
             self.vqa_classifier.apply(objectives.init_weights)
 
         # Load Previously Trained Modules
-        if (
-            self.hparams.config["load_path"] != ""
-            and not self.hparams.config["test_only"]
-        ):
+        if self.fine_tune:
             ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
             state_dict = ckpt["state_dict"]
             if self.is_clip:
@@ -230,13 +235,21 @@ class METERTransformerSS(pl.LightningModule):
 
         # ===================== load downstream (test_only) ======================
 
-        if self.hparams.config["load_path"] != "" and self.hparams.config["test_only"]:
+        # if self.test_only:
+        #     ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
+        #     state_dict = ckpt["state_dict"]
+        #     if self.is_clip:
+        #         state_dict = adapt_position_encoding(state_dict, after=resolution_after, patch_size=self.hparams.config['patch_size'])
+        #     else:
+        #         state_dict = swin_adapt_position_encoding(state_dict, after=resolution_after, before=config['resolution_before'])
+        #     self.load_state_dict(state_dict, strict=False)
+        if self.test_only:
             ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
             state_dict = ckpt["state_dict"]
-            if self.is_clip:
-                state_dict = adapt_position_encoding(state_dict, after=resolution_after, patch_size=self.hparams.config['patch_size'])
-            else:
-                state_dict = swin_adapt_position_encoding(state_dict, after=resolution_after, before=config['resolution_before'])
+            # if self.is_clip:
+            #     state_dict = adapt_position_encoding(state_dict, after=resolution_after, patch_size=self.hparams.config['patch_size'])
+            # else:
+            #     state_dict = swin_adapt_position_encoding(state_dict, after=resolution_after, before=config['resolution_before'])
             self.load_state_dict(state_dict, strict=False)
 
     def infer(

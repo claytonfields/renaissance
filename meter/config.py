@@ -477,6 +477,16 @@ def deit_small_distilled_patch16_224():
     val_transform_keys = ["imagenet"]
     
 @ex.named_config
+def deit_tiny_patch16_224():    
+    image_encoder = "facebook/deit-tiny-patch16-224"
+    image_encoder_hidden_size = 192
+    image_size = 224
+    resolution_before = 224
+    patch_size = 16
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    
+@ex.named_config
 def vit_deit_tiny_patch16_224():    
     image_encoder = "vit_deit_tiny_patch16_224"
     cross_layer_hidden_size = 192
