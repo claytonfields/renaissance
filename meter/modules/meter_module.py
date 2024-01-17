@@ -20,10 +20,10 @@ class METERTransformerSS(pl.LightningModule):
         self.save_hyperparameters()
         
         # ===================== Architecture ===================== #
-        self.is_clip= ('ViT' in config['image_encoder'])
-        self.is_deit = ('deit' in config['image_encoder'])
-        self.is_swin = ('swin' in config['image_encoder'])
-        self.is_electra = ('electra' in config['text_encoder'])
+        self.is_clip= ('ViT' in config['image_encoder']) # used on 86, 183, 317
+        self.is_deit = ('deit' in config['image_encoder']) # used on 317
+        # self.is_swin = ('swin' in config['image_encoder']) # not used 
+        self.is_electra = ('electra' in config['text_encoder']) # used on 283
         
         # self.is_huggingface = config['hugging_face']
         
@@ -33,40 +33,40 @@ class METERTransformerSS(pl.LightningModule):
             and self.hparams.config["test_only"])
 
         # Intialize Text Encoder
-        if 'roberta' in config['text_encoder']:
-            bert_config = RobertaConfig(
-                vocab_size=config["vocab_size"],
-                hidden_size=config["cross_layer_hidden_size"],
-                # num_hidden_layers=config["num_layers"],
-                num_attention_heads=config["num_cross_layer_heads"],
-                intermediate_size=config["cross_layer_hidden_size"] * config["cross_layer_mlp_ratio"],
-                max_position_embeddings=config["max_text_len"],
-                hidden_dropout_prob=config["cross_layer_drop_rate"],
-                attention_probs_dropout_prob=config["cross_layer_drop_rate"],
-            )
-        elif 'electra' in config['text_encoder']:
-            bert_config = ElectraConfig(
+        # if 'roberta' in config['text_encoder']:
+        #     bert_config = RobertaConfig(
+        #         vocab_size=config["vocab_size"],
+        #         hidden_size=config["cross_layer_hidden_size"],
+        #         # num_hidden_layers=config["num_layers"],
+        #         num_attention_heads=config["num_cross_layer_heads"],
+        #         intermediate_size=config["cross_layer_hidden_size"] * config["cross_layer_mlp_ratio"],
+        #         max_position_embeddings=config["max_text_len"],
+        #         hidden_dropout_prob=config["cross_layer_drop_rate"],
+        #         attention_probs_dropout_prob=config["cross_layer_drop_rate"],
+        #     )
+        # elif 'electra' in config['text_encoder']:
+        #     bert_config = ElectraConfig(
                 
-                vocab_size=config["vocab_size"],
-                hidden_size=config["cross_layer_hidden_size"],
-                # num_hidden_layers=config["num_layers"],
-                num_attention_heads=config["num_cross_layer_heads"],
-                intermediate_size=config["cross_layer_hidden_size"] * config["cross_layer_mlp_ratio"],
-                max_position_embeddings=config["max_text_len"],
-                hidden_dropout_prob=config["cross_layer_drop_rate"],
-                attention_probs_dropout_prob=config["cross_layer_drop_rate"],
-                )
-        else:
-            bert_config = BertConfig(
-                vocab_size=config["vocab_size"],
-                hidden_size=config["cross_layer_hidden_size"],
-                # num_hidden_layers=config["num_layers"],
-                num_attention_heads=config["num_cross_layer_heads"],
-                intermediate_size=config["cross_layer_hidden_size"] * config["cross_layer_mlp_ratio"],
-                max_position_embeddings=config["max_text_len"],
-                hidden_dropout_prob=config["cross_layer_drop_rate"],
-                attention_probs_dropout_prob=config["cross_layer_drop_rate"],
-            )
+        #         vocab_size=config["vocab_size"],
+        #         hidden_size=config["cross_layer_hidden_size"],
+        #         # num_hidden_layers=config["num_layers"],
+        #         num_attention_heads=config["num_cross_layer_heads"],
+        #         intermediate_size=config["cross_layer_hidden_size"] * config["cross_layer_mlp_ratio"],
+        #         max_position_embeddings=config["max_text_len"],
+        #         hidden_dropout_prob=config["cross_layer_drop_rate"],
+        #         attention_probs_dropout_prob=config["cross_layer_drop_rate"],
+        #         )
+        # else:
+        bert_config = BertConfig(
+            vocab_size=config["vocab_size"],
+            hidden_size=config["cross_layer_hidden_size"],
+            # num_hidden_layers=config["num_layers"],
+            num_attention_heads=config["num_cross_layer_heads"],
+            intermediate_size=config["cross_layer_hidden_size"] * config["cross_layer_mlp_ratio"],
+            max_position_embeddings=config["max_text_len"],
+            hidden_dropout_prob=config["cross_layer_drop_rate"],
+            attention_probs_dropout_prob=config["cross_layer_drop_rate"],
+        )
 
         resolution_after=config['image_size']
         
@@ -176,13 +176,14 @@ class METERTransformerSS(pl.LightningModule):
             self.vqa_classifier.apply(objectives.init_weights)
 
         # Load Previously Trained Modules
+        # TODO: Make this method similar to test when ready to test
         if self.fine_tune:
             ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
             state_dict = ckpt["state_dict"]
-            if self.is_clip:
-                state_dict = adapt_position_encoding(state_dict, after=resolution_after, patch_size=self.hparams.config['patch_size'])
-            else:
-                state_dict = swin_adapt_position_encoding(state_dict, after=resolution_after, before=config['resolution_before'])
+            # if self.is_clip:
+            #     state_dict = adapt_position_encoding(state_dict, after=resolution_after, patch_size=self.hparams.config['patch_size'])
+            # else:
+            #     state_dict = swin_adapt_position_encoding(state_dict, after=resolution_after, before=config['resolution_before'])
             self.load_state_dict(state_dict, strict=False)
 
         # Initialize NLVR2 Classifier
@@ -374,14 +375,14 @@ class METERTransformerSS(pl.LightningModule):
 
         return total_loss
 
-    def on_train_epoch_end(self, outs):
+    def on_train_epoch_end(self):
         meter_utils.epoch_wrapup(self)
 
     def validation_step(self, batch, batch_idx):
         meter_utils.set_task(self)
         output = self(batch)
 
-    def on_validation_epoch_end(self, outs):
+    def on_validation_epoch_end(self):
         meter_utils.epoch_wrapup(self)
 
     def test_step(self, batch, batch_idx):
