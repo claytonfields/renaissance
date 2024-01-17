@@ -368,7 +368,7 @@ def task_finetune_snli():
     loss_names = _loss_names({"snli": 1})
     batch_size = 64
     max_epoch = 5
-    max_steps = None
+    max_steps = 10e6
     warmup_steps = 0.1
     draw_false_image = 0
     learning_rate = 2e-6

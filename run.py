@@ -57,7 +57,7 @@ def main(_config):
     max_steps = _config["max_steps"] if _config["max_steps"] is not None else None
 
     trainer = pl.Trainer(
-        gpus=_config["num_gpus"],
+        devices= _config["num_gpus"],
         num_nodes=_config["num_nodes"],
         precision=_config["precision"],
         # accelerator = 'ddp',
@@ -71,9 +71,9 @@ def main(_config):
         #replace_sampler_ddp=False,
         accumulate_grad_batches=grad_steps,
         log_every_n_steps=10,
-        flush_logs_every_n_steps=10,
-        resume_from_checkpoint=_config["resume_from"],
-        weights_summary="top",
+        # flush_logs_every_n_steps=10,
+        # resume_from_checkpoint=_config["resume_from"],
+        # weights_summary="top",
         fast_dev_run=_config["fast_dev_run"],
         val_check_interval=_config["val_check_interval"],
     )
