@@ -560,9 +560,9 @@ def test_case_finetune_snli():
     # Settings
     test_only=False
     data_root = 'data/arrow/' 
-    num_gpus=12
-    num_nodes=1 
-    per_gpu_batchsize=64 
+    num_gpus = 2
+    num_nodes = 1 
+    per_gpu_batchsize = 64 
     load_path = '/data/clayton/meter/result/mlm_itm_deit_fr_electra_fr_seed0_from_/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints'
     # SNLI-VE
     exp_name = "test_case_finetune_snli"
@@ -583,7 +583,7 @@ def test_case_finetune_snli():
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
     # Image Encoder Settings
-    image_encoder = "facebook/deit-tiny-patch16-224"
+    image_encoder = "vit_deit_tiny_patch16_224"
     image_encoder_hidden_size = 192
     image_size = 224
     resolution_before = 224
@@ -630,7 +630,7 @@ def test_case_eval_snli():
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
     # Image Encoder Settings
-    image_encoder = "facebook/deit-tiny-patch16-224"
+    image_encoder = "vit_deit_tiny_patch16_224"
     image_encoder_hidden_size = 192
     image_size = 224
     resolution_before = 224
