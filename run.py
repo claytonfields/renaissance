@@ -62,7 +62,7 @@ def main(_config):
         precision=_config["precision"],
         # accelerator = 'ddp',
         benchmark=True,
-        deterministic=True,
+        deterministic='warn',
         max_epochs=_config["max_epoch"] if max_steps is None else 1000,
         max_steps=max_steps,
         callbacks=callbacks,

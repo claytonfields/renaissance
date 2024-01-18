@@ -25,37 +25,12 @@ class METERTransformerSS(pl.LightningModule):
         # self.is_swin = ('swin' in config['image_encoder']) # not used 
         self.is_electra = ('electra' in config['text_encoder']) # used on 283
         
-        # self.is_huggingface = config['hugging_face']
-        
         self.fine_tune = (self.hparams.config["load_path"] != ""
             and not self.hparams.config["test_only"])
         self.test_only = (self.hparams.config["load_path"] != "" 
             and self.hparams.config["test_only"])
 
         # Intialize Text Encoder
-        # if 'roberta' in config['text_encoder']:
-        #     bert_config = RobertaConfig(
-        #         vocab_size=config["vocab_size"],
-        #         hidden_size=config["cross_layer_hidden_size"],
-        #         # num_hidden_layers=config["num_layers"],
-        #         num_attention_heads=config["num_cross_layer_heads"],
-        #         intermediate_size=config["cross_layer_hidden_size"] * config["cross_layer_mlp_ratio"],
-        #         max_position_embeddings=config["max_text_len"],
-        #         hidden_dropout_prob=config["cross_layer_drop_rate"],
-        #         attention_probs_dropout_prob=config["cross_layer_drop_rate"],
-        #     )
-        # elif 'electra' in config['text_encoder']:
-        #     bert_config = ElectraConfig(
-        #         vocab_size=config["vocab_size"],
-        #         hidden_size=config["cross_layer_hidden_size"],
-        #         # num_hidden_layers=config["num_layers"],
-        #         num_attention_heads=config["num_cross_layer_heads"],
-        #         intermediate_size=config["cross_layer_hidden_size"] * config["cross_layer_mlp_ratio"],
-        #         max_position_embeddings=config["max_text_len"],
-        #         hidden_dropout_prob=config["cross_layer_drop_rate"],
-        #         attention_probs_dropout_prob=config["cross_layer_drop_rate"],
-        #         )
-        # else:
         bert_config = BertConfig(
             vocab_size=config["vocab_size"],
             hidden_size=config["cross_layer_hidden_size"],
@@ -99,12 +74,6 @@ class METERTransformerSS(pl.LightningModule):
             torch.distributed.barrier()
             
         # Initialize Vision Encoder
-        # if self.is_huggingface:
-            # if self.fine_tune or self.test_only:
-            #     visual_config = AutoConfig.from_pretrained(config['image_encoder'])
-            #     self.image_encoder = AutoModel.from_config(visual_config)
-            # else:
-            #     
         self.image_encoder = AutoModel.from_pretrained(config['image_encoder'])
             
         # else:
@@ -126,13 +95,14 @@ class METERTransformerSS(pl.LightningModule):
                 param.requires_grad = False
         
         # Initialize text_encoder
-        if 'roberta' in config['text_encoder']:
-            self.text_transformer = RobertaModel.from_pretrained(config['text_encoder'])
-        elif 'electra' in config['text_encoder']:
-            self.text_transformer = ElectraModel.from_pretrained(config['text_encoder'])
-        else:
-            self.text_transformer = BertModel.from_pretrained(config['text_encoder'])
+        # if 'roberta' in config['text_encoder']:
+        #     self.text_transformer = RobertaModel.from_pretrained(config['text_encoder'])
+        # elif 'electra' in config['text_encoder']:
+        #     self.text_transformer = ElectraModel.from_pretrained(config['text_encoder'])
+        # else:
+        #     self.text_transformer = BertModel.from_pretrained(config['text_encoder'])
             
+        self.text_transformer = AutoModel.from_pretrained(config['text_encoder'])
         # Freeze Parameters for self.text_transformer
         if config['freeze_text_encoder']:
             for param in self.text_transformer.parameters():
@@ -285,7 +255,10 @@ class METERTransformerSS(pl.LightningModule):
         text_embeds = self.cross_modal_text_transform(text_embeds)
         
         # Process Image Input to Image Embeddings
-        image_embeds = self.image_encoder(img)
+        try:
+            image_embeds = self.image_encoder(img, interpolate_pos_encoding = True)
+        except:
+            image_embeds = self.image_encoder(img)
         # if self.is_huggingface:
         image_embeds = image_embeds.last_hidden_state
         image_embeds = self.cross_modal_image_transform(image_embeds)
