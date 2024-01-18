@@ -560,8 +560,8 @@ def test_case_mlm_itm():
     data_root = 'data/arrow/' 
     num_gpus=1 
     num_nodes=1 
-    per_gpu_batchsize=64 
-    resume_from = ''
+    per_gpu_batchsize=32 
+    resume_from = None
     # SNLI-VE
     exp_name = "test_case_mlm_itm"
     datasets = ["coco", "vg"]
@@ -581,7 +581,7 @@ def test_case_mlm_itm():
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
     # Image Encoder Settings
-    image_encoder = "facebook/deit-tiny-patch16-224"
+    image_encoder = "vit_deit_tiny_patch16_224"
     image_encoder_hidden_size = 192
     image_size = 224
     resolution_before = 224
