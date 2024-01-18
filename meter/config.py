@@ -560,10 +560,10 @@ def test_case_finetune_snli():
     # Settings
     test_only=False
     data_root = 'data/arrow/' 
-    num_gpus = 2
+    num_gpus = 1
     num_nodes = 1 
     per_gpu_batchsize = 64 
-    load_path = '/data/clayton/meter/result/mlm_itm_deit_fr_electra_fr_seed0_from_/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/version_0/checkpoints/epoch=0-step=30613.ckpt'
+    load_path = '/data/clayton/meter/result/mlm_itm_deit_fr_electra_fr_seed0_from_/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints/epoch=5-step=96215.ckpt'
     # SNLI-VE
     exp_name = "test_case_finetune_snli"
     datasets = ["snli"]
