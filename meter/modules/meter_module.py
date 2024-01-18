@@ -46,7 +46,6 @@ class METERTransformerSS(pl.LightningModule):
         #     )
         # elif 'electra' in config['text_encoder']:
         #     bert_config = ElectraConfig(
-                
         #         vocab_size=config["vocab_size"],
         #         hidden_size=config["cross_layer_hidden_size"],
         #         # num_hidden_layers=config["num_layers"],
@@ -180,10 +179,6 @@ class METERTransformerSS(pl.LightningModule):
         if self.fine_tune:
             ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
             state_dict = ckpt["state_dict"]
-            # if self.is_clip:
-            #     state_dict = adapt_position_encoding(state_dict, after=resolution_after, patch_size=self.hparams.config['patch_size'])
-            # else:
-            #     state_dict = swin_adapt_position_encoding(state_dict, after=resolution_after, before=config['resolution_before'])
             self.load_state_dict(state_dict, strict=False)
 
         # Initialize NLVR2 Classifier
