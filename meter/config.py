@@ -460,9 +460,19 @@ def swin32_large384():
     image_encoder_hidden_size = 1536
     resolution_before = 384
     
+# @ex.named_config
+# def swin_tiny_patch224():
+#     image_encoder = "swin_tiny_patch4_window7_224"
+#     patch_size = 4
+#     image_size = 224
+#     train_transform_keys = ["imagenet"]
+#     val_transform_keys = ["imagenet"]
+#     image_encoder_hidden_size = 768
+#     resolution_before = 224
+    
 @ex.named_config
-def swin_tiny_patch224():
-    image_encoder = "swin_tiny_patch4_window7_224"
+def swin_tiny_patch4_window7_224():
+    image_encoder = "microsoft/swin-tiny-patch4-window7-224"
     patch_size = 4
     image_size = 224
     train_transform_keys = ["imagenet"]
@@ -546,6 +556,12 @@ def text_electra_small():
     cross_layer_mlp_ratio = 4
     cross_layer_hidden_size = 256
     
+@ex.named_config
+def text_electra_base():
+    tokenizer = "google/electra-base-discriminator"
+    vocab_size = 30522
+    text_encoder_hidden_size = 768
+    
 # ===================== Random Augmentations ===================== #
 @ex.named_config
 def clip_randaug():
@@ -575,7 +591,7 @@ def freeze_text():
     
    
 @ex.named_config
-def test_case_mlm_itm():
+def test_case_mlm_itm_a():
     # Settings
     test_only=False
     data_root = 'data/arrow/' 
@@ -625,10 +641,60 @@ def test_case_mlm_itm():
     freeze_text_encoder = False
 
 
+@ex.named_config
+def test_case_mlm_itm_b():
+    # Settings
+    test_only=False
+    data_root = 'data/arrow/' 
+    num_gpus=1 
+    num_nodes=1 
+    per_gpu_batchsize=64 
+    resume_from = ''
+    # SNLI-VE
+    exp_name = "test_case_mlm_itm"
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    # Training Time
+    max_epoch = 1
+    max_steps = 10
+    # Text Encoder
+    text_encoder = "google/electra-base-discriminator"
+    vocab_size = 30522
+    text_encoder_hidden_size = 768
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    # num_layers = 6
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Image Encoder Settings
+    image_encoder = "microsoft/swin-tiny-patch4-window7-224"
+    patch_size = 4
+    image_size = 224
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    image_encoder_hidden_size = 768
+    resolution_before = 224
+    # Training Settings
+    batch_size = 64
+    warmup_steps = 0.1
+    draw_false_image = 1
+    draw_false_text = 0
+    learning_rate = 2e-6
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    whole_word_masking = True
+    mlm_prob = 0.15
+    # Freeze or UnFreeze Encoders
+    freeze_image_encoder = True
+    freeze_text_encoder = True
+
 
 # SNLI
 @ex.named_config
-def test_case_finetune_snli():
+def test_case_finetune_snli_a():
     # Settings
     test_only=False
     data_root = 'data/arrow/' 
@@ -675,7 +741,7 @@ def test_case_finetune_snli():
     freeze_text_encoder = False
 
 @ex.named_config
-def test_case_eval_snli():
+def test_case_eval_snli_a():
     # Settings
     test_only=True
     data_root = 'data/arrow/' 
@@ -721,7 +787,97 @@ def test_case_eval_snli():
     freeze_image_encoder = False
     freeze_text_encoder = False
     
+@ex.named_config
+def test_case_finetune_snli_b():
+    # Settings
+    test_only=False
+    data_root = 'data/arrow/' 
+    num_gpus=1 
+    num_nodes=1 
+    per_gpu_batchsize=32 
+    # load_path = '/home/claytonfields/nlp/code/meter/result/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints/epoch=5-step=96215.ckpt'
+    # SNLI-VE
+    exp_name = "test_case_finetune_snli"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    # Training Time
+    max_epoch = 1
+    max_steps = 10
+    # Text Encoder
+    text_encoder = "google/electra-base-discriminator"
+    vocab_size = 30522
+    text_encoder_hidden_size = 768
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    # num_layers = 6
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Image Encoder Settings
+    image_encoder = "microsoft/swin-tiny-patch4-window7-224"
+    patch_size = 4
+    image_size = 224
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    image_encoder_hidden_size = 768
+    resolution_before = 224
+    # Training Settings
+    batch_size = 64
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 2e-6
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    # Freeze or UnFreeze Encoders
+    freeze_image_encoder = True
+    freeze_text_encoder = True
 
-
-
+@ex.named_config
+def test_case_eval_snli_b():
+    # Settings
+    test_only=True
+    data_root = 'data/arrow/' 
+    num_gpus=1 
+    num_nodes=1 
+    per_gpu_batchsize=64 
+    # load_path = 'result/finetune_snli_mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/version_0/checkpoints/epoch\=4-step\=20684.ckpt deit_tiny_patch16_224'
+    # SNLI-VE
+    exp_name = "test_case_finetune_snli"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    # Training Time
+    max_epoch = 1
+    max_steps = 1000
+    # Text Encoder
+    text_encoder = "google/electra-base-discriminator"
+    vocab_size = 30522
+    text_encoder_hidden_size = 768
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    # num_layers = 6
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Image Encoder Settings
+    image_encoder = "microsoft/swin-tiny-patch4-window7-224"
+    patch_size = 4
+    image_size = 224
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    image_encoder_hidden_size = 768
+    resolution_before = 224
+    # Training Settings
+    batch_size = 64
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 2e-6
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    # Freeze or UnFreeze Encoders
+    freeze_image_encoder = True
+    freeze_text_encoder = True
 
