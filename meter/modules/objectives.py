@@ -434,6 +434,10 @@ def compute_irtr_recall(pl_module):
 
     return (ir_r1, ir_r5, ir_r10, tr_r1, tr_r5, tr_r10)
 
+# ======================= Text Only ======================= #
+
+def compute_cola(pl_module, batch):
+    pass
 
 def init_weights(module):
     if isinstance(module, (nn.Linear, nn.Embedding)):

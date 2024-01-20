@@ -32,6 +32,7 @@ def config():
 
     # Image settings
     image_encoder = 'vit_deit_tiny_patch16_224'
+    random_init_vision_encoder = False
     image_encoder_hidden_size = 192
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]
@@ -43,6 +44,7 @@ def config():
 
     # Text Setting
     text_encoder = "google/electra-small-discriminator"
+    random_init_text_encoder = False
     text_encoder_hidden_size = 256
     max_text_len = 40
     vocab_size = 30522
@@ -741,7 +743,7 @@ def test_case_finetune_snli_a():
     freeze_text_encoder = False
 
 @ex.named_config
-def test_case_eval_snli_a():
+def test_case_eval_snli_c():
     # Settings
     test_only=True
     data_root = 'data/arrow/' 
