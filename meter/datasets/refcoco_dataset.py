@@ -8,25 +8,28 @@ Created on Thu Aug 17 12:34:37 2023
 Dataset class for refCOCO 
 """
 
-
+import pandas as pd
 from .base_dataset import BaseDataset
 from  refer import REFER, get_bounded_subimage
 import io
 from PIL import Image
 import torch
 
+refer_root = "/home/claytonfields/nlp/code/data/coco"
 dataset = 'refcoco' 
 splitBy = 'unc'
 refer = REFER(refer_root, dataset, splitBy)
 
 class RefcocoDataset(torch.utils.data.Dataset):
 
-    def __init__(self, refer, tokenizer, device, errors, split='', max_bb = 42):
+    def __init__(self, tokenizer, split='', max_bb = 42):
         self.tokenizer = tokenizer
         self.refer = refer
         self.max_bb = max_bb
-        self.device = device
-        self.errors = errors
+        # self.device = device
+        errors_df = pd.read_csv('Errors.csv')
+        errors_list = errors_df['Sent ID'].to_list()
+        self.errors = errors_list
         self.split = split
         self.sent_ids = self.get_sent_ids()
         self.duds = []
@@ -46,6 +49,8 @@ class RefcocoDataset(torch.utils.data.Dataset):
                     if not sent_id in self.errors:
                         sent_ids.append(sent_id)
         return sent_ids
+    
+    
     
     def __getitem__(self, index):
         max_bb = self.max_bb
