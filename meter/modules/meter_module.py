@@ -20,8 +20,8 @@ class METERTransformerSS(pl.LightningModule):
         self.test_only = (self.hparams.config["load_path"] != "" 
             and self.hparams.config["test_only"])
 
-        self.random_init_vision_encoder = False
-        self.random_init_text_encoder = False
+        self.random_init_vision_encoder = config['random_init_vision_encoder']
+        self.random_init_text_encoder = config['random_init_text_encoder']
 
         # Cross Modal Layers
         bert_config = BertConfig(
@@ -179,6 +179,19 @@ class METERTransformerSS(pl.LightningModule):
                 nn.Linear(hs * 2, 1),
             )
             self.ref_classifier.apply(objectives.init_weights)
+            
+        # MRPC Text Classifier
+        if self.hparams.config["loss_names"]['mrpc'] > 0:
+            self.mrpc_classifier = nn.Sequential(
+                nn.Linear(hs, hs),
+                nn.LayerNorm(hs),
+                nn.GELU(),
+                nn.Linear(hs, 2)
+            )
+            self.mrpc_classifier.apply(objectives.init_weights)
+        
+        
+        
 
         meter_utils.set_metrics(self)
         self.current_tasks = list()

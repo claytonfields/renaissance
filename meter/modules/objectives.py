@@ -439,6 +439,9 @@ def compute_irtr_recall(pl_module):
 def compute_cola(pl_module, batch):
     pass
 
+def compute_mrpc(pl_module, batch):
+    pass
+
 def init_weights(module):
     if isinstance(module, (nn.Linear, nn.Embedding)):
         module.weight.data.normal_(mean=0.0, std=0.02)
