@@ -2,6 +2,9 @@ import torch
 from torchmetrics import Metric
 
 
+### TODO: Implement F1 metric
+
+
 class Accuracy(Metric):
     def __init__(self, dist_sync_on_step=False):
         super().__init__(dist_sync_on_step=dist_sync_on_step)

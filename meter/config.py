@@ -15,7 +15,8 @@ def _loss_names(d):
         "irtr": 0,
         "contras": 0,
         "snli": 0,
-        "ref": 0
+        "ref": 0,
+        "mrpc" : 0
     }
     ret.update(d)
     return ret
@@ -82,6 +83,7 @@ def config():
     # Trainag Parameter Setting
     freeze_image_encoder = False
     freeze_text_encoder = False
+    freeze_cross_modal_layers = False
     
     # PL Trainer Setting
     resume_from = None
@@ -743,7 +745,7 @@ def test_case_finetune_snli_a():
     freeze_text_encoder = False
 
 @ex.named_config
-def test_case_eval_snli_c():
+def test_case_eval_snli_a():
     # Settings
     test_only=True
     data_root = 'data/arrow/' 
@@ -882,4 +884,52 @@ def test_case_eval_snli_b():
     # Freeze or UnFreeze Encoders
     freeze_image_encoder = True
     freeze_text_encoder = True
+    
+# SNLI
+@ex.named_config
+def test_case_finetune_mrpc_a():
+    # Settings
+    test_only=False
+    data_root = 'data/arrow/' 
+    num_gpus=1 
+    num_nodes=1 
+    per_gpu_batchsize=32 
+    load_path = '/home/claytonfields/nlp/code/meter/result/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints/epoch=5-step=96215.ckpt'
+    # SNLI-VE
+    exp_name = "test_case_finetune"
+    datasets = ["mrpc"]
+    loss_names = _loss_names({"mrpc": 1})
+    # Training Time
+    max_epoch = 1
+    max_steps = 10e6
+    # Text Encoder
+    text_encoder = "google/electra-small-discriminator"
+    vocab_size = 30522
+    text_encoder_hidden_size = 256
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    # num_layers = 6
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Image Encoder Settings
+    image_encoder = "facebook/deit-tiny-patch16-224"
+    image_encoder_hidden_size = 192
+    image_size = 224
+    resolution_before = 224
+    patch_size = 16
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    # Training Settings
+    batch_size = 32
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 2e-6
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    # Freeze or UnFreeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
 
