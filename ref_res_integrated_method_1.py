@@ -90,22 +90,22 @@ _config = {
     # Text Setting
     "vqav2_label_size" : 3129,
     "max_text_len" : 40,
-    "tokenizer" : "google/electra-small-discriminator",
+    "text_encoder" : "google/electra-small-discriminator",
     "vocab_size" : 30522,
     "whole_word_masking" : False, # note that whole_word_masking does not work for RoBERTa
     "mlm_prob" : 0.15,
     "draw_false_text" : 0,
 
     # Transformer Setting
-    "num_top_layer" : 6,
-    "input_image_embed_size" : 192,
-    "input_text_embed_size" : 256,
-    "vit" : "vit_deit_tiny_patch16_224",
-    "hidden_size" : 256,
-    "num_heads" : 4,
+    "num_cross_layers" : 6,
+    "image_encoder_hidden_size" : 192,
+    "text_encoder_hidden_size" : 256,
+    "image_encoder" : "vit_deit_tiny_patch16_224",
+    "cross_layer_hidden_size" : 256,
+    "num_cross_layer_heads" : 4,
     "num_layers" : 6,
-    "mlp_ratio" : 4,
-    "drop_rate" : 0.1,
+    "cross_layer_mlp_ratio" : 4,
+    "cross_layer_drop_rate" : 0.1,
 
     # Optimizer Setting
     "optim_type" : "adamw",
@@ -122,7 +122,11 @@ _config = {
     # Downstream Setting
     "get_recall_metric" : False,
     
-    
+    'freeze_image_encoder' : False,
+    'freeze_text_encoder' : False,
+    'random_init_text_encoder' : False,
+    'random_init_vision_encoder' : False,
+    'freeze_cross_modal_layers' : False,
     "model_type" : "METER",
 
     # PL Trainer Setting
