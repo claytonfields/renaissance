@@ -176,8 +176,8 @@ class METERTransformerSS(pl.LightningModule):
             state_dict = ckpt["state_dict"]
             if self.is_clip:
                 state_dict = adapt_position_encoding(state_dict, after=resolution_after, patch_size=self.hparams.config['patch_size'])
-            elif self.is_deit:
-                state_dict = adapt_position_encoding(state_dict, after=resolution_after, patch_size=self.hparams.config['patch_size'], suffix='embeddings.position_embeddings')
+            # elif self.is_deit:
+            #    state_dict = adapt_position_encoding(state_dict, after=resolution_after, patch_size=self.hparams.config['patch_size'], suffix='embeddings.position_embeddings')
             else:
                 state_dict = swin_adapt_position_encoding(state_dict, after=resolution_after, before=config['resolution_before'])
             self.load_state_dict(state_dict, strict=False)
