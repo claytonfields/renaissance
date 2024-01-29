@@ -113,8 +113,8 @@ _config = {
     "per_gpu_batchsize" : 32,  # you should define this manually with per_gpu_batch_size:#
     "num_gpus" : 1,
     "num_nodes" : 1,
-    # "load_path" : "/home/claytonfields/nlp/code/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
-    "load_path" : '/home/claytonfields/nlp/code/meter/result/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints/epoch=5-step=96215.ckpt',
+    "load_path" : "/home/claytonfields/nlp/code/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
+    # "load_path" : '/home/claytonfields/nlp/code/meter/result/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints/epoch=5-step=96215.ckpt',
     "num_workers" : 12,
     "precision" : 32
 }
@@ -256,8 +256,6 @@ num_gpus = (
 grad_steps = max(_config["batch_size"] // (
     _config["per_gpu_batchsize"] * num_gpus * _config["num_nodes"]
 ), 1)
-
-print('grad_steps: ', grad_steps)
 
 max_steps = _config["max_steps"] if _config["max_steps"] is not None else None
 

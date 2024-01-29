@@ -10,26 +10,29 @@ Dataset class for refCOCO
 
 
 from .base_dataset import BaseDataset
-from  refer import REFER, get_bounded_subimage
+from  .refer import REFER, get_bounded_subimage
 import io
 from PIL import Image
 import torch
 
-dataset = 'refcoco' 
-splitBy = 'unc'
-refer = REFER(refer_root, dataset, splitBy)
+# refer_root = "/home/claytonfields/nlp/code/data/coco"
+# dataset = 'refcoco' 
+# splitBy = 'unc'
+# refer = REFER(refer_root, dataset, splitBy)
 
-class RefcocoDataset(torch.utils.data.Dataset):
+class RefcocoDataset(BaseDataset):
 
-    def __init__(self, refer, tokenizer, device, errors, split='', max_bb = 42):
-        self.tokenizer = tokenizer
+    def __init__(self, *args, errors=None, refer=None, split='', max_bb = 42, **kwargs):
+        
+        # self.tokenizer = tokenizer
         self.refer = refer
         self.max_bb = max_bb
-        self.device = device
+        # self.device = device
         self.errors = errors
         self.split = split
         self.sent_ids = self.get_sent_ids()
-        self.duds = []
+        
+        super().__init__(*args, **kwargs)
 
     def __len__(self):
         return len(self.sent_ids)
@@ -40,7 +43,7 @@ class RefcocoDataset(torch.utils.data.Dataset):
             
             ref = self.refer.Refs[ref_id]
             img_id = ref['image_id']
-            objs = refer.imgToAnns[img_id]
+            objs = self.refer.imgToAnns[img_id]
             if len(objs) <= self.max_bb:
                 for sent_id in ref['sent_ids']:
                     if not sent_id in self.errors:
@@ -56,14 +59,14 @@ class RefcocoDataset(torch.utils.data.Dataset):
         
         img_id = ref['image_id']
         ann_id = ref['ann_id']
-        objs = refer.imgToAnns[img_id]
+        objs = self.refer.imgToAnns[img_id]
         obj_ids = [obj['id'] for obj in objs]
         obj_pad = [0 for _ in range(max_bb-len(obj_ids))]
         obj_ids_total = obj_ids+obj_pad
 
         sub_images = []
         for obj in objs:
-            x_a = get_bounded_subimage(refer, img_id, obj['id'], xs=224,ys=224, show=False)
+            x_a = get_bounded_subimage(self.refer, img_id, obj['id'], xs=224,ys=224, show=False)
             if x_a is not None:
                 sub_images.append(x_a)
         

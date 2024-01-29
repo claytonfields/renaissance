@@ -58,19 +58,11 @@ class METERTransformerSS(pl.LightningModule):
         # self.fusion_encoder = CrossModalEncoder(config)
         # self.fusion_encoder.apply(objectives.init_weights)
         
-        # if config['freeze_cross_modal_layers']:
-        #     for param in self.cross_modal_text_transform.parameters():
-        #         param.requires_grad = False
 
         # Token Type Embeddings
         self.token_type_embeddings = nn.Embedding(2, config["cross_layer_hidden_size"])
         self.token_type_embeddings.apply(objectives.init_weights)
         
-        ## TEST CASE ##
-        # self.dense_x = nn.Linear(config['cross_layer_hidden_size'], config['cross_layer_hidden_size'])
-        # self.activation_x = nn.Tanh()
-        # self.dense_y = nn.Linear(config['cross_layer_hidden_size'], config['cross_layer_hidden_size'])
-        # self.activation_y = nn.Tanh()
 
         # Handle Distributed Case
         # Test this on frege when time permits
@@ -104,23 +96,11 @@ class METERTransformerSS(pl.LightningModule):
             text_config = AutoConfig.from_pretrained(config['text_encoder'], kwargs=text_kwargs)
             self.text_encoder = AutoModel.from_config(text_config)
         
-        
-        
         # Freeze Parameters for self.text_encoder
         if config['freeze_text_encoder']:
             for param in self.text_encoder.parameters():
                 param.requires_grad = False
-
-        # # Define Cross Modal Layers
-        # self.cross_modal_image_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_cross_layers'])])
-        # self.cross_modal_image_layers.apply(objectives.init_weights)
-        # self.cross_modal_text_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_cross_layers'])])
-        # self.cross_modal_text_layers.apply(objectives.init_weights)
-
-        # self.cross_modal_image_pooler = heads.Pooler(config["cross_layer_hidden_size"])
-        # self.cross_modal_image_pooler.apply(objectives.init_weights)
-        # self.cross_modal_text_pooler = heads.Pooler(config["cross_layer_hidden_size"])
-        # self.cross_modal_text_pooler.apply(objectives.init_weights)
+        
         
         # ===================== Pretraining ===================== #
         
@@ -199,13 +179,10 @@ class METERTransformerSS(pl.LightningModule):
                 nn.Linear(hs * 2, 1),
             )
             self.ref_classifier.apply(objectives.init_weights)
+        
             
         # MRPC Text Classifier
         text_hs = config['text_encoder_hidden_size']
-        
-        # self.dense_text = nn.Linear(text_hs, text_hs)
-        # self.activation_text = nn.GELU()
-        # Pool cls feature for text- only classification
         self.text_classification_pooler = heads.Pooler(config['text_encoder_hidden_size'])
         self.text_classification_pooler.apply(objectives.init_weights)
         
@@ -218,10 +195,6 @@ class METERTransformerSS(pl.LightningModule):
             )
             self.mrpc_classifier.apply(objectives.init_weights)
             # self.load_text_classifier()
-            print(type(self.text_encoder))
-        
-        
-        
 
         meter_utils.set_metrics(self)
         self.current_tasks = list()
@@ -232,7 +205,6 @@ class METERTransformerSS(pl.LightningModule):
             state_dict = ckpt["state_dict"]
             self.load_state_dict(state_dict, strict=False)
             
-            
     def _freeze_cross_modal_layers(self):
         self._freeze_layer(self.cross_modal_text_transform)
         self._freeze_layer(self.cross_modal_image_transform)
@@ -240,8 +212,6 @@ class METERTransformerSS(pl.LightningModule):
         self._freeze_layer(self.cross_modal_text_layers)
         self._freeze_layer(self.cross_modal_image_pooler )
         self._freeze_layer(self.cross_modal_text_pooler)
-        
-        
         
     def _freeze_layer(self, layer):
         for param in layer.parameters():
@@ -317,17 +287,7 @@ class METERTransformerSS(pl.LightningModule):
 
         text_feats, image_feats = x, y
         cls_feats_text = self.cross_modal_text_pooler(x)
-        # first_token_tensor_x = x[:, 0]
-        # pooled_output_x = self.dense_x(first_token_tensor_x)
-        # cls_feats_text = self.activation_x(pooled_output_x)
         cls_feats_image = self.cross_modal_image_pooler(y)
-        # first_token_tensor_y = y[:, 0]
-        # pooled_output_y = self.dense_y(first_token_tensor_y)
-        # cls_feats_image = self.activation_y(pooled_output_y)
-        
-        # original swin case
-        # avg_image_feats = self.avgpool(image_feats.transpose(1, 2)).view(image_feats.size(0), 1, -1)
-        # cls_feats_image = self.cross_modal_image_pooler(avg_image_feats)
         cls_feats = torch.cat([cls_feats_text, cls_feats_image], dim=-1)
         
         # cls_feats, text_feats, image_feats = self.fusion_encoder(text_embeds, image_embeds, extend_text_masks, extend_image_masks)
@@ -349,10 +309,6 @@ class METERTransformerSS(pl.LightningModule):
     # Implement text only infer method
     def infer_text_only(self, batch):
         hidden_state = self.text_encoder(**batch).last_hidden_state#.squeeze()
-        # cls_feat = pl_module.text_classification_pooler(hidden_state)
-        # first_token_tensor = hidden_state[:, 0]
-        # pooled_output = self.dense_text(first_token_tensor
-        # cls_feat = self.activation_text(pooled_output)
         cls_feat = self.text_classification_pooler(hidden_state)
         
         return cls_feat
@@ -360,66 +316,7 @@ class METERTransformerSS(pl.LightningModule):
     def load_text_classifier(self):
         # self.text_encoder.save_pretrained('temp')
         self.text_encoder = AutoModelForSequenceClassification.from_pretrained('google/electra-small-discriminator')
-        
-    # def compute_mrpc(self, batch):
-    #     mrpc_labels = batch['labels']
-    #     # hidden_state = self.text_encoder(**batch).last_hidden_state#.squeeze()
-    #     # # cls_feat = self.text_classification_pooler(hidden_state)
-    #     # first_token_tensor = hidden_state[:, 0]
-    #     # pooled_output = self.dense_text(first_token_tensor)
-    #     # cls_feat = self.activation_text(pooled_output)
-    #     # cls_feat = self.infer_text_only(batch)
-    #     # cls_feat.shape
-    #     output = self.text_encoder(**batch)
-    #     mrpc_logits = output['logits']
-    #     mrpc_loss = output['loss']
-        
-    #     ret = {
-    #         'mrpc_logits' : mrpc_logits,
-    #         'mrpc_targets' : mrpc_labels,
-    #         'mrpc_loss' : mrpc_loss
-    #     }
-        
-    #     phase = "train" if self.training else "val"
-    #     loss = getattr(self, f"{phase}_mrpc_loss")(ret["mrpc_loss"])
-    #     acc = getattr(self, f"{phase}_mrpc_accuracy")(
-    #         ret["mrpc_logits"], ret["mrpc_targets"]
-    #     )
-    #     self.log(f"mrpc/{phase}/loss", loss)
-    #     self.log(f"mrpc/{phase}/accuracy", acc)
-    #     # self.log(f"mrpc/{phase}/score", score)
-        
-    #     return ret
-    
-    
-    def compute_mrpc(self, batch):
-        mrpc_labels = batch.pop('label', None)
-        # hidden_state = self.text_encoder(**batch).last_hidden_state#.squeeze()
-        # # cls_feat = self.text_classification_pooler(hidden_state)
-        # first_token_tensor = hidden_state[:, 0]
-        # pooled_output = self.dense_text(first_token_tensor)
-        # cls_feat = self.activation_text(pooled_output)
-        cls_feat = self.infer_text_only(batch)
-        # cls_feat.shape
-        mrpc_logits = self.mrpc_classifier(cls_feat)
-        mrpc_loss = F.cross_entropy(mrpc_logits, mrpc_labels)
-        
-        ret = {
-            'mrpc_logits' : mrpc_logits,
-            'mrpc_targets' : mrpc_labels,
-            'mrpc_loss' : mrpc_loss
-        }
-        
-        phase = "train" if self.training else "val"
-        loss = getattr(self, f"{phase}_mrpc_loss")(ret["mrpc_loss"])
-        acc = getattr(self, f"{phase}_mrpc_accuracy")(
-            ret["mrpc_logits"], ret["mrpc_targets"]
-        )
-        self.log(f"mrpc/{phase}/loss", loss)
-        self.log(f"mrpc/{phase}/accuracy", acc)
-        # self.log(f"mrpc/{phase}/score", score)
-        
-        return ret
+     
 
     def forward(self, batch):
         ret = dict()
@@ -460,7 +357,7 @@ class METERTransformerSS(pl.LightningModule):
         # MRPC Task from GLUE
         if 'mrpc' in self.current_tasks:
             # ret.update(objectives.compute_mrpc(self, batch))
-            ret.update(self.compute_mrpc(batch))
+            ret.update(objectives.compute_mrpc(self, batch))
              
         return ret
 

@@ -54,6 +54,10 @@ def config():
     draw_false_text = 0
     vqav2_label_size = 3129
     
+    # Architecture Setting
+    two_tower = True
+    multi_model_encoder = 'dandelin/vilt-b32-mlm'
+    
     # Cross Layer Settings
     cross_layer_hidden_size = 256
     num_cross_layers = 6
@@ -743,8 +747,8 @@ def test_case_finetune_snli_a():
     # Freeze or UnFreeze Encoders
     freeze_image_encoder = False
     freeze_text_encoder = False
-
 @ex.named_config
+
 def test_case_eval_snli_a():
     # Settings
     test_only=True
@@ -932,4 +936,56 @@ def test_case_finetune_mrpc_a():
     # Freeze or UnFreeze Encoders
     freeze_image_encoder = False
     freeze_text_encoder = False
+    
+    
+# Refcoco Reference Resolution
+@ex.named_config
+def test_case_finetune_refcoco_a():
+    exp_name = "test_finetune_ref_case_a"
+    datasets = ["refcoco"]
+    # "itm": 0, "mlm": 0
+    loss_names = _loss_names({"ref": 1})
+    # Settings
+    test_only=False
+    data_root = 'data/arrow/' 
+    num_gpus=1 
+    num_nodes=1 
+    batch_size = 5
+    per_gpu_batchsize=5
+    load_path = '/home/claytonfields/nlp/code/meter/result/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints/epoch=5-step=96215.ckpt'
+    # Image Encoder Settings
+    image_encoder = "facebook/deit-tiny-patch16-224"
+    image_encoder_hidden_size = 192
+    image_size = 224
+    resolution_before = 224
+    patch_size = 16
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    draw_false_image = 0
+    # Text Encoder Settings
+    text_encoder = "google/electra-small-discriminator"
+    vocab_size = 30522
+    text_encoder_hidden_size = 256
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    # num_layers = 6
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+
+    # Optimizer and Training Settings
+    warmup_steps = 0
+    learning_rate = 2e-6
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    # Freeze or UnFreeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+
+    # Downstream Setting
+    get_recall_metric = False
+
 

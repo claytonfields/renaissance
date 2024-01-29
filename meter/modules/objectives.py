@@ -441,13 +441,7 @@ def compute_cola(pl_module, batch):
 
 def compute_mrpc(pl_module, batch):
     mrpc_labels = batch.pop('label', None)
-    # hidden_state = pl_module.text_encoder(**batch).last_hidden_state#.squeeze()
-    # # cls_feat = pl_module.text_classification_pooler(hidden_state)
-    # first_token_tensor = hidden_state[:, 0]
-    # pooled_output = pl_module.dense_text(first_token_tensor)
-    # cls_feat = pl_module.activation_text(pooled_output)
     cls_feat = pl_module.infer_text_only(batch)
-    # cls_feat.shape
     mrpc_logits = pl_module.mrpc_classifier(cls_feat)
     mrpc_loss = F.cross_entropy(mrpc_logits, mrpc_labels)
     
@@ -467,6 +461,35 @@ def compute_mrpc(pl_module, batch):
     # pl_module.log(f"mrpc/{phase}/score", score)
     
     return ret
+
+# def compute_mrpc(pl_module, batch):
+#     mrpc_labels = batch.pop('label', None)
+#     # hidden_state = pl_module.text_encoder(**batch).last_hidden_state#.squeeze()
+#     # # cls_feat = pl_module.text_classification_pooler(hidden_state)
+#     # first_token_tensor = hidden_state[:, 0]
+#     # pooled_output = pl_module.dense_text(first_token_tensor)
+#     # cls_feat = pl_module.activation_text(pooled_output)
+#     cls_feat = pl_module.infer_text_only(batch)
+#     # cls_feat.shape
+#     mrpc_logits = pl_module.mrpc_classifier(cls_feat)
+#     mrpc_loss = F.cross_entropy(mrpc_logits, mrpc_labels)
+    
+#     ret = {
+#         'mrpc_logits' : mrpc_logits,
+#         'mrpc_targets' : mrpc_labels,
+#         'mrpc_loss' : mrpc_loss
+#     }
+    
+#     phase = "train" if pl_module.training else "val"
+#     loss = getattr(pl_module, f"{phase}_mrpc_loss")(ret["mrpc_loss"])
+#     acc = getattr(pl_module, f"{phase}_mrpc_accuracy")(
+#         ret["mrpc_logits"], ret["mrpc_targets"]
+#     )
+#     pl_module.log(f"mrpc/{phase}/loss", loss)
+#     pl_module.log(f"mrpc/{phase}/accuracy", acc)
+#     # pl_module.log(f"mrpc/{phase}/score", score)
+    
+#     return ret
 
 def init_weights(module):
     if isinstance(module, (nn.Linear, nn.Embedding)):
