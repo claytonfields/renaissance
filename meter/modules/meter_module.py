@@ -180,12 +180,12 @@ class METERTransformerSS(pl.LightningModule):
             )
             self.ref_classifier.apply(objectives.init_weights)
         
-            
-        # MRPC Text Classifier
+        # Text-Only Classification
         text_hs = config['text_encoder_hidden_size']
         self.text_classification_pooler = heads.Pooler(config['text_encoder_hidden_size'])
         self.text_classification_pooler.apply(objectives.init_weights)
         
+        # MRPC Text Classifier
         if self.hparams.config["loss_names"]['mrpc'] > 0:
             self.mrpc_classifier = nn.Sequential(
                 nn.Linear(text_hs, text_hs),
@@ -195,7 +195,76 @@ class METERTransformerSS(pl.LightningModule):
             )
             self.mrpc_classifier.apply(objectives.init_weights)
             # self.load_text_classifier()
-
+        
+        # rte Text Classifier
+        if self.hparams.config["loss_names"]['rte'] > 0:
+            self.rte_classifier = nn.Sequential(
+                nn.Linear(text_hs, text_hs),
+                nn.LayerNorm(text_hs),
+                nn.GELU(),
+                nn.Linear(text_hs, 2)
+            )
+            self.rte_classifier.apply(objectives.init_weights)
+        
+        # wnli Text Classifier
+        if self.hparams.config["loss_names"]['wnli'] > 0:
+            self.wnli_classifier = nn.Sequential(
+                nn.Linear(text_hs, text_hs),
+                nn.LayerNorm(text_hs),
+                nn.GELU(),
+                nn.Linear(text_hs, 2)
+            )
+            self.wnli_classifier.apply(objectives.init_weights)
+            
+        # sst2 Text Classifier
+        if self.hparams.config["loss_names"]['sst2'] > 0:
+            self.sst2_classifier = nn.Sequential(
+                nn.Linear(text_hs, text_hs),
+                nn.LayerNorm(text_hs),
+                nn.GELU(),
+                nn.Linear(text_hs, 2)
+            )
+            self.sst2_classifier.apply(objectives.init_weights)
+            
+        # qqp Text Classifier
+        if self.hparams.config["loss_names"]['qqp'] > 0:
+            self.qqp_classifier = nn.Sequential(
+                nn.Linear(text_hs, text_hs),
+                nn.LayerNorm(text_hs),
+                nn.GELU(),
+                nn.Linear(text_hs, 2)
+            )
+            self.qqp_classifier.apply(objectives.init_weights)
+            
+        # qnli Text Classifier
+        if self.hparams.config["loss_names"]['qnli'] > 0:
+            self.qnli_classifier = nn.Sequential(
+                nn.Linear(text_hs, text_hs),
+                nn.LayerNorm(text_hs),
+                nn.GELU(),
+                nn.Linear(text_hs, 2)
+            )
+            self.qnli_classifier.apply(objectives.init_weights)
+            
+        # mnli Text Classifier
+        if self.hparams.config["loss_names"]['mnli'] > 0:
+            self.mnli_classifier = nn.Sequential(
+                nn.Linear(text_hs, text_hs),
+                nn.LayerNorm(text_hs),
+                nn.GELU(),
+                nn.Linear(text_hs, 3)
+            )
+        
+        # cola Text Classifier
+        if self.hparams.config["loss_names"]['cola'] > 0:
+            self.cola_classifier = nn.Sequential(
+                nn.Linear(text_hs, text_hs),
+                nn.LayerNorm(text_hs),
+                nn.GELU(),
+                nn.Linear(text_hs, 2)
+            )
+            self.cola_classifier.apply(objectives.init_weights)
+            
         meter_utils.set_metrics(self)
         self.current_tasks = list()
 
@@ -356,9 +425,36 @@ class METERTransformerSS(pl.LightningModule):
         
         # MRPC Task from GLUE
         if 'mrpc' in self.current_tasks:
-            # ret.update(objectives.compute_mrpc(self, batch))
             ret.update(objectives.compute_mrpc(self, batch))
-             
+        
+        # rte Task from GLUE
+        if 'rte' in self.current_tasks:
+            ret.update(objectives.compute_rte(self, batch))
+        
+        # wnli Task from GLUE
+        if 'wnli' in self.current_tasks:
+            ret.update(objectives.compute_wnli(self, batch))
+            
+        # sst2 Task from GLUE
+        if 'sst2' in self.current_tasks:
+            ret.update(objectives.compute_sst2(self, batch))
+            
+        # qqp Task from GLUE
+        if 'qqp' in self.current_tasks:
+            ret.update(objectives.compute_qqp(self, batch))
+            
+        # qnli Task from GLUE
+        if 'qnli' in self.current_tasks:
+            ret.update(objectives.compute_qnli(self, batch))
+            
+        # mnli Task from GLUE
+        if 'mnli' in self.current_tasks:
+            ret.update(objectives.compute_mnli(self, batch))
+            
+        # cola Task from GLUE
+        if 'cola' in self.current_tasks:
+            ret.update(objectives.compute_cola(self, batch))
+            
         return ret
 
     def training_step(self, batch, batch_idx):

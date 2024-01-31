@@ -16,7 +16,14 @@ def _loss_names(d):
         "contras": 0,
         "snli": 0,
         "ref": 0,
-        "mrpc" : 0
+        "mrpc" : 0,
+        "rte" : 0,
+        'wnli' : 0,
+        'sst2' : 0,
+        'qqp' : 0,
+        'qnli' : 0,
+        'mnli' : 0,
+        'cola' : 0
     }
     ret.update(d)
     return ret

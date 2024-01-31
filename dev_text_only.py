@@ -41,7 +41,14 @@ _config = {
     'contras': 0,
     'snli': 0,
     'ref': 0,
-    'mrpc':1
+    'mrpc': 0,
+    'rte' : 0,
+    'wnli': 0,
+    'sst2' : 0,
+    'qqp' : 0,
+    'qnli' : 0,
+    'mnli' : 0,
+    'cola' : 1
     },
     "batch_size" : 32,  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
 
@@ -59,6 +66,7 @@ _config = {
 
     # Text Setting
     "text_encoder" : "google/electra-small-discriminator",
+    # "text_encoder" : "distilbert-base-uncased",
     "random_init_text_encoder" : False,
     "text_encoder_hidden_size" : 256,
     "vocab_size" : 30522,
@@ -113,7 +121,8 @@ _config = {
     "per_gpu_batchsize" : 32,  # you should define this manually with per_gpu_batch_size:#
     "num_gpus" : 1,
     "num_nodes" : 1,
-    "load_path" : "/home/claytonfields/nlp/code/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
+    "load_path" : '',
+    # "load_path" : "/home/claytonfields/nlp/code/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
     # "load_path" : '/home/claytonfields/nlp/code/meter/result/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints/epoch=5-step=96215.ckpt',
     "num_workers" : 12,
     "precision" : 32
@@ -124,15 +133,34 @@ class GlueDataset(torch.utils.data.Dataset):
     def __init__(self, task, split, tokenizer, max_length=128):
 
         self.task = task
+        self.tasks = ["cola","mnli","mrpc","qnli","qqp","rte","sst2","stsb","wnli"]
+        if self.task not in self.tasks:
+            raise ValueError("The selected GLUE task is not supported.")
         self.split = split
         self.tokenizer = tokenizer
         self.max_length = max_length
 
         self.data_dict = load_dataset('glue', self.task, split=self.split).to_dict()
-        self.sentence1 = self.data_dict['sentence1']
-        self.sentence2 = self.data_dict['sentence2']
+        if self.task in ["rte", "mrpc", "stsb", "wnli"]:
+            self.sentence1 = self.data_dict['sentence1']
+            self.sentence2 = self.data_dict['sentence2']
+        elif self.task in ["cola", "sst2"]:
+            self.sentence1 = self.data_dict['sentence']
+            self.sentence2 = None
+        elif self.task in ["qqp"]:
+            self.sentence1 = self.data_dict["question1"]
+            self.sentence2 = self.data_dict["question2'"]
+        elif self.task in ["qnli"]:
+            self.sentence1 = self.data_dict["question"]
+            self.sentence2 = self.data_dict["sentence"]
+        elif self.task in ["mnli"]:
+            self.sentence1 = self.data_dict["premise"]
+            self.sentence2 = self.data_dict["hypothesis"]
         self.label = self.data_dict['label']
-        self.idx = self.data_dict['idx']
+        if self.task == "cola":
+            self.idx = self.data_dict["idx"]
+        else:
+            self.idx = self.data_dict['idx']
 
     def __len__(self):
         return len(self.idx)
@@ -140,7 +168,10 @@ class GlueDataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
 
         sent1 = self.sentence1[index]
-        sent2 = self.sentence2[index]
+        if self.sentence2:
+            sent2 = self.sentence2[index]
+        else:
+            sent2 = None
         label = self.label[index]
         # idx = self.idx[index]
 
@@ -222,10 +253,12 @@ config = copy.deepcopy(_config)
 print(config)
 pl.seed_everything(_config["seed"])
 model = METERTransformerSS(config)
-model.current_tasks = ['mrpc']
+
+task = 'cola'
+model.current_tasks = [task]
 
 
-dm = GlueDataModule(_config, 'mrpc')
+dm = GlueDataModule(_config, task)
 
 pl.seed_everything(_config["seed"])
 
