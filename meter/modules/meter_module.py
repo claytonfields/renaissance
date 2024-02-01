@@ -93,13 +93,13 @@ class METERTransformerSS(pl.LightningModule):
         if self.random_init_text_encoder:
             text_kwargs = None
             text_config = AutoConfig.from_pretrained(config['text_encoder'], kwargs=text_kwargs)
-            self.text_encoder = AutoModel.from_config(text_config)
+            self.text_transformer = AutoModel.from_config(text_config)
         else:
-            self.text_encoder = AutoModel.from_pretrained(config['text_encoder'])
+            self.text_transformer = AutoModel.from_pretrained(config['text_encoder'])
         
-        # Freeze Parameters for self.text_encoder
+        # Freeze Parameters for self.text_transformer
         if config['freeze_text_encoder']:
-            for param in self.text_encoder.parameters():
+            for param in self.text_transformer.parameters():
                 param.requires_grad = False
         
         
@@ -309,18 +309,18 @@ class METERTransformerSS(pl.LightningModule):
         text_labels = batch[f"text_labels{do_mlm}"]
         text_masks = batch["text_masks"]
 
-        text_embeds = self.text_encoder.embeddings(input_ids=text_ids)
+        text_embeds = self.text_transformer.embeddings(input_ids=text_ids)
         device = text_embeds.device
         input_shape = text_masks.size()
-        extend_text_masks = self.text_encoder.get_extended_attention_mask(text_masks, input_shape, device)
+        extend_text_masks = self.text_transformer.get_extended_attention_mask(text_masks, input_shape, device)
         
         # Project Embeddings if Necessary
         if self.is_electra:
-            if self.text_encoder.config.embedding_size != self.text_encoder.config.hidden_size:
-                text_embeds = self.text_encoder.embeddings_project(text_embeds)
+            if self.text_transformer.config.embedding_size != self.text_transformer.config.hidden_size:
+                text_embeds = self.text_transformer.embeddings_project(text_embeds)
         
         # Process Text Embeddings
-        for layer in self.text_encoder.encoder.layer:
+        for layer in self.text_transformer.encoder.layer:
             text_embeds = layer(text_embeds, extend_text_masks)[0]
         text_embeds = self.cross_modal_text_transform(text_embeds)
         
@@ -337,7 +337,7 @@ class METERTransformerSS(pl.LightningModule):
         image_embeds = image_embeds.last_hidden_state
         image_embeds = self.cross_modal_image_transform(image_embeds)
         image_masks = torch.ones((image_embeds.size(0), image_embeds.size(1)), dtype=torch.long, device=device)
-        extend_image_masks = self.text_encoder.get_extended_attention_mask(image_masks, image_masks.size(), device)
+        extend_image_masks = self.text_transformer.get_extended_attention_mask(image_masks, image_masks.size(), device)
 
         # Cross-Modal Processing
         text_embeds, image_embeds = (
