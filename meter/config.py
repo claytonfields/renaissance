@@ -32,6 +32,7 @@ def config():
 
     # Image settings
     image_encoder = 'vit_deit_tiny_patch16_224'
+    random_init_vision_encoder = False
     image_encoder_hidden_size = 192
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]
@@ -43,6 +44,7 @@ def config():
 
     # Text Setting
     text_encoder = "google/electra-small-discriminator"
+    random_init_text_encoder = False
     text_encoder_hidden_size = 256
     max_text_len = 40
     vocab_size = 30522
@@ -711,6 +713,7 @@ def test_case_finetune_snli_a():
     max_steps = 10
     # Text Encoder
     text_encoder = "google/electra-small-discriminator"
+    random_init_text_encoder = False
     vocab_size = 30522
     text_encoder_hidden_size = 256
     # Cross Layer Settings
@@ -722,6 +725,7 @@ def test_case_finetune_snli_a():
     cross_layer_drop_rate = 0.1
     # Image Encoder Settings
     image_encoder = "facebook/deit-tiny-patch16-224"
+    random_init_vision_encoder = False
     image_encoder_hidden_size = 192
     image_size = 224
     resolution_before = 224

@@ -51,8 +51,15 @@ class METERTransformerSS(pl.LightningModule):
             torch.distributed.barrier()
             
         # Initialize Vision Encoder
-        self.image_encoder = AutoModel.from_pretrained(config['image_encoder'])
-            
+        # self.image_encoder = AutoModel.from_pretrained(config['image_encoder'])
+        # Vision Encoder
+        if config['random_init_vision_encoder']:
+            visual_kwargs = None
+            visual_config = AutoConfig.from_pretrained(config['image_encoder'], kwargs=visual_kwargs)
+            self.image_encoder = AutoModel.from_config(visual_config)
+        else:
+            visual_config = AutoConfig.from_pretrained(config['image_encoder'])
+            self.image_encoder = AutoModel.from_pretrained(config['image_encoder'])
         # original swin case
         # self.avgpool = nn.AdaptiveAvgPool1d(1)
             
@@ -62,8 +69,14 @@ class METERTransformerSS(pl.LightningModule):
                 param.requires_grad = False
         
         # Initialize text_encoder
-        self.text_transformer = AutoModel.from_pretrained(config['text_encoder'])
-        
+        # self.text_transformer = AutoModel.from_pretrained(config['text_encoder'])
+        if config['random_init_text_encoder']:
+            text_kwargs = None
+            text_config = AutoConfig.from_pretrained(config['text_encoder'], kwargs=text_kwargs)
+            self.text_transformer = AutoModel.from_config(text_config)
+        else:
+            self.text_transformer = AutoModel.from_pretrained(config['text_encoder'])
+            
         # Freeze Parameters for self.text_transformer
         if config['freeze_text_encoder']:
             for param in self.text_transformer.parameters():
