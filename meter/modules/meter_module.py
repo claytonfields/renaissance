@@ -74,6 +74,7 @@ class METERTransformerSS(pl.LightningModule):
             
         # Vision Encoder
         if not self.random_init_vision_encoder:
+            visual_config = AutoConfig.from_pretrained(config['image_encoder'])
             self.image_encoder = AutoModel.from_pretrained(config['image_encoder'])
         else:
             visual_kwargs = None

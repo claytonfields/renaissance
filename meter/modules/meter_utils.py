@@ -24,6 +24,32 @@ def set_metrics(pl_module):
             elif k == "ref":
                 setattr(pl_module, f"{split}_ref_accuracy", Accuracy())
                 setattr(pl_module, f"{split}_{k}_loss", Scalar())
+            
+            elif k == "nlvr2":
+                if split == "train":
+                    setattr(pl_module, f"train_{k}_accuracy", Accuracy())
+                    setattr(pl_module, f"train_{k}_loss", Scalar())
+                else:
+                    setattr(pl_module, f"dev_{k}_accuracy", Accuracy())
+                    setattr(pl_module, f"dev_{k}_loss", Scalar())
+                    setattr(pl_module, f"test_{k}_accuracy", Accuracy())
+                    setattr(pl_module, f"test_{k}_loss", Scalar())
+            elif k == "snli":
+                if split == "train":
+                    setattr(pl_module, f"train_{k}_accuracy", Accuracy())
+                    setattr(pl_module, f"train_{k}_loss", Scalar())
+                else:
+                    setattr(pl_module, f"dev_{k}_accuracy", Accuracy())
+                    setattr(pl_module, f"dev_{k}_loss", Scalar())
+                    setattr(pl_module, f"test_{k}_accuracy", Accuracy())
+                    setattr(pl_module, f"test_{k}_loss", Scalar())
+            elif k == "irtr":
+                setattr(pl_module, f"{split}_irtr_loss", Scalar())
+            elif k == "mppd" or k == "mpfr":
+                setattr(pl_module, f"{split}_{k}_loss", Scalar())
+            elif k == "itm":
+                setattr(pl_module, f"{split}_{k}_accuracy", Accuracy())
+                setattr(pl_module, f"{split}_{k}_loss", Scalar())
             elif k == "mrpc":
                 # f1 = BinaryF1Score()
                 setattr(pl_module, f"{split}_mrpc_f1", BinaryF1Score())
@@ -49,31 +75,6 @@ def set_metrics(pl_module):
                 setattr(pl_module, f"{split}_{k}_loss", Scalar())
             elif k == "cola":
                 setattr(pl_module, f"{split}_{k}_mcc", MatthewsCorrCoef(task='binary'))
-                setattr(pl_module, f"{split}_{k}_loss", Scalar())
-            elif k == "nlvr2":
-                if split == "train":
-                    setattr(pl_module, f"train_{k}_accuracy", Accuracy())
-                    setattr(pl_module, f"train_{k}_loss", Scalar())
-                else:
-                    setattr(pl_module, f"dev_{k}_accuracy", Accuracy())
-                    setattr(pl_module, f"dev_{k}_loss", Scalar())
-                    setattr(pl_module, f"test_{k}_accuracy", Accuracy())
-                    setattr(pl_module, f"test_{k}_loss", Scalar())
-            elif k == "snli":
-                if split == "train":
-                    setattr(pl_module, f"train_{k}_accuracy", Accuracy())
-                    setattr(pl_module, f"train_{k}_loss", Scalar())
-                else:
-                    setattr(pl_module, f"dev_{k}_accuracy", Accuracy())
-                    setattr(pl_module, f"dev_{k}_loss", Scalar())
-                    setattr(pl_module, f"test_{k}_accuracy", Accuracy())
-                    setattr(pl_module, f"test_{k}_loss", Scalar())
-            elif k == "irtr":
-                setattr(pl_module, f"{split}_irtr_loss", Scalar())
-            elif k == "mppd" or k == "mpfr":
-                setattr(pl_module, f"{split}_{k}_loss", Scalar())
-            elif k == "itm":
-                setattr(pl_module, f"{split}_{k}_accuracy", Accuracy())
                 setattr(pl_module, f"{split}_{k}_loss", Scalar())
             else:
                 setattr(pl_module, f"{split}_{k}_accuracy", Accuracy())
@@ -140,6 +141,34 @@ def epoch_wrapup(pl_module):
                 f.write(loss_string)
                 acc_string = f'Epoch: {epoch}, Acurracy on {phase} Set: {value} \n\n'
                 f.write(acc_string)
+        elif loss_name == "nlvr2" or loss_name == 'snli':
+            if phase == "train":
+                value = getattr(pl_module, f"train_{loss_name}_accuracy").compute()
+                pl_module.log(f"{loss_name}/train/accuracy_epoch", value)
+                getattr(pl_module, f"train_{loss_name}_accuracy").reset()
+                pl_module.log(
+                    f"{loss_name}/train/loss_epoch",
+                    getattr(pl_module, f"train_{loss_name}_loss").compute(),
+                )
+                getattr(pl_module, f"train_{loss_name}_loss").reset()
+            else:
+                value = getattr(pl_module, f"test_{loss_name}_accuracy").compute()
+                pl_module.log(f"{loss_name}/test/accuracy_epoch", value)
+                getattr(pl_module, f"test_{loss_name}_accuracy").reset()
+                pl_module.log(
+                    f"{loss_name}/test/loss_epoch",
+                    getattr(pl_module, f"test_{loss_name}_loss").compute(),
+                )
+                getattr(pl_module, f"test_{loss_name}_loss").reset()
+
+                value = getattr(pl_module, f"dev_{loss_name}_accuracy").compute()
+                pl_module.log(f"{loss_name}/dev/accuracy_epoch", value)
+                getattr(pl_module, f"dev_{loss_name}_accuracy").reset()
+                pl_module.log(
+                    f"{loss_name}/dev/loss_epoch",
+                    getattr(pl_module, f"dev_{loss_name}_loss").compute(),
+                )
+                getattr(pl_module, f"dev_{loss_name}_loss").reset()
         elif loss_name == 'mrpc':
             epoch = pl_module.current_epoch
             # f1 = getattr(pl_module, f"{phase}_{loss_name}_f1").compute()
@@ -290,34 +319,7 @@ def epoch_wrapup(pl_module):
                 f.write(loss_string)
                 mcc_string = f'Epoch: {epoch}, Matthews Correlation on {phase} Set: {value} \n\n'
                 f.write(mcc_string)
-        elif loss_name == "nlvr2" or loss_name == 'snli':
-            if phase == "train":
-                value = getattr(pl_module, f"train_{loss_name}_accuracy").compute()
-                pl_module.log(f"{loss_name}/train/accuracy_epoch", value)
-                getattr(pl_module, f"train_{loss_name}_accuracy").reset()
-                pl_module.log(
-                    f"{loss_name}/train/loss_epoch",
-                    getattr(pl_module, f"train_{loss_name}_loss").compute(),
-                )
-                getattr(pl_module, f"train_{loss_name}_loss").reset()
-            else:
-                value = getattr(pl_module, f"test_{loss_name}_accuracy").compute()
-                pl_module.log(f"{loss_name}/test/accuracy_epoch", value)
-                getattr(pl_module, f"test_{loss_name}_accuracy").reset()
-                pl_module.log(
-                    f"{loss_name}/test/loss_epoch",
-                    getattr(pl_module, f"test_{loss_name}_loss").compute(),
-                )
-                getattr(pl_module, f"test_{loss_name}_loss").reset()
-
-                value = getattr(pl_module, f"dev_{loss_name}_accuracy").compute()
-                pl_module.log(f"{loss_name}/dev/accuracy_epoch", value)
-                getattr(pl_module, f"dev_{loss_name}_accuracy").reset()
-                pl_module.log(
-                    f"{loss_name}/dev/loss_epoch",
-                    getattr(pl_module, f"dev_{loss_name}_loss").compute(),
-                )
-                getattr(pl_module, f"dev_{loss_name}_loss").reset()
+        
         elif loss_name == "irtr":
             pl_module.log(
                 f"{loss_name}/{phase}/irtr_loss_epoch",
