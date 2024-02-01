@@ -20,7 +20,7 @@ from transformers import AutoTokenizer
 from datasets import load_dataset
 
 from meter.modules import METERTransformerSS
-# from meter.datamodules.multitask_datamodule import MTDataModule
+from meter.datamodules.multitask_datamodule import MTDataModule
 # from meter.datasets.base_dataset import BaseDataset
 
 
@@ -28,9 +28,9 @@ _config = {
     "exp_name":"finetune_mrpc",
     "seed" : 42,
     # "datasets" : ["coco", "vg", "sbu", "gcc"],
-    # "datasets" : ["coco", "vg"],
-    "datasets" : ["coco"],
-    "loss_names" :{'itm': 0,
+    "datasets" : ["coco", "vg"],
+    # "datasets" : ["coco"],
+    "loss_names" : {'itm': 0,
     'mlm': 0,
     'mpp': 0,
     'vqa': 0,
@@ -41,7 +41,14 @@ _config = {
     'contras': 0,
     'snli': 0,
     'ref': 0,
-    'mrpc':1
+    'mrpc': 0,
+    'rte' : 0,
+    'wnli': 0,
+    'sst2' : 0,
+    'qqp' : 0,
+    'qnli' : 0,
+    'mnli' : 0,
+    'cola' : 1
     },
     "batch_size" : 32,  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
 
@@ -137,8 +144,11 @@ print(config)
 pl.seed_everything(_config["seed"])
 model = METERTransformerSS(config)
 # model.current_tasks = ['mrpc']
-encoder = model.encoder
+# encoder = model.encoder
 
+dm = MTDataModule(config)
+dm.prepare_data()
+dm.setup(None)
 
 
 
