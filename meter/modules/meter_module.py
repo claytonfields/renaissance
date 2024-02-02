@@ -14,8 +14,6 @@ class METERTransformerSS(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
         
-        
-        
         # ===================== BaseArchitecture ===================== #
         self.is_electra = ('electra' in config['text_encoder']) # used on 283
         self.fine_tune = (self.hparams.config["load_path"] != ""
@@ -25,44 +23,6 @@ class METERTransformerSS(pl.LightningModule):
 
         self.random_init_vision_encoder = config['random_init_vision_encoder']
         self.random_init_text_encoder = config['random_init_text_encoder']
-
-        # Cross Modal Layers
-        bert_config = BertConfig(
-            vocab_size=config["vocab_size"],
-            hidden_size=config["cross_layer_hidden_size"],
-            num_attention_heads=config["num_cross_layer_heads"],
-            intermediate_size=config["cross_layer_hidden_size"] * config["cross_layer_mlp_ratio"],
-            max_position_embeddings=config["max_text_len"],
-            hidden_dropout_prob=config["cross_layer_drop_rate"],
-            attention_probs_dropout_prob=config["cross_layer_drop_rate"],
-        )
-        # resolution_after=config['image_size']
-        
-        self.cross_modal_text_transform = nn.Linear(config['text_encoder_hidden_size'], config['cross_layer_hidden_size'])
-        self.cross_modal_text_transform.apply(objectives.init_weights)
-        self.cross_modal_image_transform = nn.Linear(config['image_encoder_hidden_size'], config['cross_layer_hidden_size'])
-        self.cross_modal_image_transform.apply(objectives.init_weights)
-        
-        self.cross_modal_image_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_cross_layers'])])
-        self.cross_modal_image_layers.apply(objectives.init_weights)
-        self.cross_modal_text_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_cross_layers'])])
-        self.cross_modal_text_layers.apply(objectives.init_weights)
-
-        self.cross_modal_image_pooler = heads.Pooler(config["cross_layer_hidden_size"])
-        self.cross_modal_image_pooler.apply(objectives.init_weights)
-        self.cross_modal_text_pooler = heads.Pooler(config["cross_layer_hidden_size"])
-        self.cross_modal_text_pooler.apply(objectives.init_weights)
-        
-        if config['freeze_cross_modal_layers']:
-            self._freeze_cross_modal_layers()
-        # self.fusion_encoder = CrossModalEncoder(config)
-        # self.fusion_encoder.apply(objectives.init_weights)
-        
-
-        # Token Type Embeddings
-        self.token_type_embeddings = nn.Embedding(2, config["cross_layer_hidden_size"])
-        self.token_type_embeddings.apply(objectives.init_weights)
-        
 
         # Handle Distributed Case
         # Test this on frege when time permits
@@ -74,13 +34,14 @@ class METERTransformerSS(pl.LightningModule):
             
         # Vision Encoder
         if self.random_init_vision_encoder:
-            visual_kwargs = None
-            visual_config = AutoConfig.from_pretrained(config['image_encoder'], kwargs=visual_kwargs)
-            self.image_encoder = AutoModel.from_config(visual_config)
+            image_kwargs = None
+            image_config = AutoConfig.from_pretrained(config['image_encoder'], kwargs=image_kwargs)
+            self.image_encoder = AutoModel.from_config(image_config)
         else:
-            visual_config = AutoConfig.from_pretrained(config['image_encoder'])
+            # visual_config = AutoConfig.from_pretrained(config['image_encoder'])
             self.image_encoder = AutoModel.from_pretrained(config['image_encoder'])
-            
+        
+        self.image_config = self.image_encoder.config
         # original swin case
         # self.avgpool = nn.AdaptiveAvgPool1d(1)
             
@@ -97,25 +58,74 @@ class METERTransformerSS(pl.LightningModule):
         else:
             self.text_transformer = AutoModel.from_pretrained(config['text_encoder'])
         
+        self.text_config = self.text_transformer.config
+        
         # Freeze Parameters for self.text_transformer
         if config['freeze_text_encoder']:
             for param in self.text_transformer.parameters():
                 param.requires_grad = False
         
+        # Dimensions
+        self.image_hs = self.image_config.hidden_size
+        
+        self.text_hs = self.text_config.hidden_size
+        self.vocab_size = self.text_config.vocab_size
+        
+        self.cross_layer_hs = config['cross_layer_hidden_size']
+        self.num_cross_layer_heads = config['num_cross_layer_heads']
+        self.cross_layer_mlp_ratio =  config['cross_layer_mlp_ratio']
+        self.max_text_len = config['max_text_len']
+        self.cross_layer_drop_rate = config['cross_layer_drop_rate']
+        self.num_cross_layers = config['num_cross_layers']
+        
+        # Cross Modal Layers
+        bert_config = BertConfig(
+            vocab_size = self.vocab_size,
+            hidden_size = self.cross_layer_hs,
+            num_attention_heads = self.num_cross_layer_heads,
+            intermediate_size = self.cross_layer_hs * self.cross_layer_mlp_ratio,
+            max_position_embeddings = self.max_text_len,
+            hidden_dropout_prob = self.cross_layer_drop_rate,
+            attention_probs_dropout_prob = self.cross_layer_drop_rate,
+        )
+        # resolution_after=config['image_size']
+        
+        self.cross_modal_text_transform = nn.Linear(self.text_hs, self.cross_layer_hs)
+        self.cross_modal_text_transform.apply(objectives.init_weights)
+        self.cross_modal_image_transform = nn.Linear(self.image_hs, self.cross_layer_hs)
+        self.cross_modal_image_transform.apply(objectives.init_weights)
+        
+        self.cross_modal_image_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(self.num_cross_layers)])
+        self.cross_modal_image_layers.apply(objectives.init_weights)
+        self.cross_modal_text_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(self.num_cross_layers)])
+        self.cross_modal_text_layers.apply(objectives.init_weights)
+
+        self.cross_modal_image_pooler = heads.Pooler(self.cross_layer_hs)
+        self.cross_modal_image_pooler.apply(objectives.init_weights)
+        self.cross_modal_text_pooler = heads.Pooler(self.cross_layer_hs)
+        self.cross_modal_text_pooler.apply(objectives.init_weights)
+        
+        if config['freeze_cross_modal_layers']:
+            self._freeze_cross_modal_layers()
+        # self.fusion_encoder = CrossModalEncoder(config)
+        # self.fusion_encoder.apply(objectives.init_weights)
+        
+
+        # Token Type Embeddings
+        self.token_type_embeddings = nn.Embedding(2, self.cross_layer_hs)
+        self.token_type_embeddings.apply(objectives.init_weights)
         
         # ===================== Pretraining ===================== #
         
         # Masked Language Modeling
-        if config["loss_names"]["mlm"] > 0:
+        if self.hparams.config["loss_names"]["mlm"] > 0:
             self.mlm_score = heads.MLMHead(bert_config)
             self.mlm_score.apply(objectives.init_weights)
         
         # Image Text Matching
-        if config["loss_names"]["itm"] > 0:
-            self.itm_score = heads.ITMHead(config["cross_layer_hidden_size"]*2)
+        if self.hparams.config["loss_names"]["itm"] > 0:
+            self.itm_score = heads.ITMHead(self.cross_layer_hs*2)
             self.itm_score.apply(objectives.init_weights)
-
-        hs = self.hparams.config["cross_layer_hidden_size"]
 
         # ===================== Downstream  ===================== #
         
@@ -123,10 +133,10 @@ class METERTransformerSS(pl.LightningModule):
         if self.hparams.config["loss_names"]["vqa"] > 0:
             vs = self.hparams.config["vqav2_label_size"]
             self.vqa_classifier = nn.Sequential(
-                nn.Linear(hs * 2, hs * 2),
-                nn.LayerNorm(hs * 2),
+                nn.Linear(self.cross_layer_hs * 2, self.cross_layer_hs * 2),
+                nn.LayerNorm(self.cross_layer_hs * 2),
                 nn.GELU(),
-                nn.Linear(hs * 2, vs),
+                nn.Linear(self.cross_layer_hs * 2, vs),
             )
             self.vqa_classifier.apply(objectives.init_weights)
 
@@ -139,14 +149,14 @@ class METERTransformerSS(pl.LightningModule):
         # Initialize NLVR2 Classifier
         if self.hparams.config["loss_names"]["nlvr2"] > 0:
             self.nlvr2_classifier = nn.Sequential(
-                nn.Linear(hs * 4, hs * 2),
-                nn.LayerNorm(hs * 2),
+                nn.Linear(self.cross_layer_hs * 4, self.cross_layer_hs * 2),
+                nn.LayerNorm(self.cross_layer_hs * 2),
                 nn.GELU(),
-                nn.Linear(hs * 2, 2),
+                nn.Linear(self.cross_layer_hs * 2, 2),
             )
             self.nlvr2_classifier.apply(objectives.init_weights)
             emb_data = self.token_type_embeddings.weight.data
-            self.token_type_embeddings = nn.Embedding(3, hs)
+            self.token_type_embeddings = nn.Embedding(3, self.cross_layer_hs)
             self.token_type_embeddings.apply(objectives.init_weights)
             self.token_type_embeddings.weight.data[0, :] = emb_data[0, :]
             self.token_type_embeddings.weight.data[1, :] = emb_data[1, :]
@@ -155,16 +165,16 @@ class METERTransformerSS(pl.LightningModule):
         # Initialize SNLI-VE Classifier
         if self.hparams.config["loss_names"]["snli"] > 0:
             self.snli_classifier = nn.Sequential(
-                nn.Linear(hs * 2, hs * 2),
-                nn.LayerNorm(hs * 2),
+                nn.Linear(self.cross_layer_hs * 2, self.cross_layer_hs * 2),
+                nn.LayerNorm(self.cross_layer_hs * 2),
                 nn.GELU(),
-                nn.Linear(hs * 2, 3),
+                nn.Linear(self.cross_layer_hs * 2, 3),
             )
             self.snli_classifier.apply(objectives.init_weights)
 
         # Initialize Image-Text Recall Classifier
         if self.hparams.config["loss_names"]["irtr"] > 0:
-            self.rank_output = nn.Linear(hs, 1)
+            self.rank_output = nn.Linear(self.cross_layer_hs, 1)
             self.rank_output.weight.data = self.itm_score.fc.weight.data[1:, :]
             self.rank_output.bias.data = self.itm_score.fc.bias.data[1:]
             self.margin = 0.2
@@ -174,25 +184,25 @@ class METERTransformerSS(pl.LightningModule):
         # Initialize Reference Resolution Classifier
         if self.hparams.config["loss_names"]['ref'] > 0:
             self.ref_classifier = nn.Sequential(
-                nn.Linear(hs * 2, hs * 2),
-                nn.LayerNorm(hs * 2),
+                nn.Linear(self.cross_layer_hs * 2, self.cross_layer_hs * 2),
+                nn.LayerNorm(self.cross_layer_hs * 2),
                 nn.GELU(),
-                nn.Linear(hs * 2, 1),
+                nn.Linear(self.cross_layer_hs * 2, 1),
             )
             self.ref_classifier.apply(objectives.init_weights)
         
         # Text-Only Classification
-        text_hs = config['text_encoder_hidden_size']
-        self.text_classification_pooler = heads.Pooler(config['text_encoder_hidden_size'])
+        # self.text_hs = config['text_encoder_hidden_size']
+        self.text_classification_pooler = heads.Pooler(self.text_hs)
         self.text_classification_pooler.apply(objectives.init_weights)
         
         # MRPC Text Classifier
         if self.hparams.config["loss_names"]['mrpc'] > 0:
             self.mrpc_classifier = nn.Sequential(
-                nn.Linear(text_hs, text_hs),
-                nn.LayerNorm(text_hs),
+                nn.Linear(self.text_hs, self.text_hs),
+                nn.LayerNorm(self.text_hs),
                 nn.GELU(),
-                nn.Linear(text_hs, 2)
+                nn.Linear(self.text_hs, 2)
             )
             self.mrpc_classifier.apply(objectives.init_weights)
             # self.load_text_classifier()
@@ -200,69 +210,69 @@ class METERTransformerSS(pl.LightningModule):
         # rte Text Classifier
         if self.hparams.config["loss_names"]['rte'] > 0:
             self.rte_classifier = nn.Sequential(
-                nn.Linear(text_hs, text_hs),
-                nn.LayerNorm(text_hs),
+                nn.Linear(self.text_hs, self.text_hs),
+                nn.LayerNorm(self.text_hs),
                 nn.GELU(),
-                nn.Linear(text_hs, 2)
+                nn.Linear(self.text_hs, 2)
             )
             self.rte_classifier.apply(objectives.init_weights)
         
         # wnli Text Classifier
         if self.hparams.config["loss_names"]['wnli'] > 0:
             self.wnli_classifier = nn.Sequential(
-                nn.Linear(text_hs, text_hs),
-                nn.LayerNorm(text_hs),
+                nn.Linear(self.text_hs, self.text_hs),
+                nn.LayerNorm(self.text_hs),
                 nn.GELU(),
-                nn.Linear(text_hs, 2)
+                nn.Linear(self.text_hs, 2)
             )
             self.wnli_classifier.apply(objectives.init_weights)
             
         # sst2 Text Classifier
         if self.hparams.config["loss_names"]['sst2'] > 0:
             self.sst2_classifier = nn.Sequential(
-                nn.Linear(text_hs, text_hs),
-                nn.LayerNorm(text_hs),
+                nn.Linear(self.text_hs, self.text_hs),
+                nn.LayerNorm(self.text_hs),
                 nn.GELU(),
-                nn.Linear(text_hs, 2)
+                nn.Linear(self.text_hs, 2)
             )
             self.sst2_classifier.apply(objectives.init_weights)
             
         # qqp Text Classifier
         if self.hparams.config["loss_names"]['qqp'] > 0:
             self.qqp_classifier = nn.Sequential(
-                nn.Linear(text_hs, text_hs),
-                nn.LayerNorm(text_hs),
+                nn.Linear(self.text_hs, self.text_hs),
+                nn.LayerNorm(self.text_hs),
                 nn.GELU(),
-                nn.Linear(text_hs, 2)
+                nn.Linear(self.text_hs, 2)
             )
             self.qqp_classifier.apply(objectives.init_weights)
             
         # qnli Text Classifier
         if self.hparams.config["loss_names"]['qnli'] > 0:
             self.qnli_classifier = nn.Sequential(
-                nn.Linear(text_hs, text_hs),
-                nn.LayerNorm(text_hs),
+                nn.Linear(self.text_hs, self.text_hs),
+                nn.LayerNorm(self.text_hs),
                 nn.GELU(),
-                nn.Linear(text_hs, 2)
+                nn.Linear(self.text_hs, 2)
             )
             self.qnli_classifier.apply(objectives.init_weights)
             
         # mnli Text Classifier
         if self.hparams.config["loss_names"]['mnli'] > 0:
             self.mnli_classifier = nn.Sequential(
-                nn.Linear(text_hs, text_hs),
-                nn.LayerNorm(text_hs),
+                nn.Linear(self.text_hs, self.text_hs),
+                nn.LayerNorm(self.text_hs),
                 nn.GELU(),
-                nn.Linear(text_hs, 3)
+                nn.Linear(self.text_hs, 3)
             )
         
         # cola Text Classifier
         if self.hparams.config["loss_names"]['cola'] > 0:
             self.cola_classifier = nn.Sequential(
-                nn.Linear(text_hs, text_hs),
-                nn.LayerNorm(text_hs),
+                nn.Linear(self.text_hs, self.text_hs),
+                nn.LayerNorm(self.text_hs),
                 nn.GELU(),
-                nn.Linear(text_hs, 2)
+                nn.Linear(self.text_hs, 2)
             )
             self.cola_classifier.apply(objectives.init_weights)
             
@@ -348,7 +358,6 @@ class METERTransformerSS(pl.LightningModule):
             ),
         )
         
-        
         x, y = text_embeds, image_embeds
         for text_layer, image_layer in zip(self.cross_modal_text_layers, self.cross_modal_image_layers):
             x1 = text_layer(x, y, extend_text_masks, extend_image_masks)
@@ -359,7 +368,6 @@ class METERTransformerSS(pl.LightningModule):
         cls_feats_text = self.cross_modal_text_pooler(x)
         cls_feats_image = self.cross_modal_image_pooler(y)
         cls_feats = torch.cat([cls_feats_text, cls_feats_image], dim=-1)
-        
         # cls_feats, text_feats, image_feats = self.fusion_encoder(text_embeds, image_embeds, extend_text_masks, extend_image_masks)
 
         ret = {
@@ -378,7 +386,7 @@ class METERTransformerSS(pl.LightningModule):
     
     # Implement text only infer method
     def infer_text_only(self, batch):
-        hidden_state = self.text_encoder(**batch).last_hidden_state#.squeeze()
+        hidden_state = self.text_transformer(**batch).last_hidden_state#.squeeze()
         cls_feat = self.text_classification_pooler(hidden_state)
         
         return cls_feat

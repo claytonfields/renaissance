@@ -705,6 +705,54 @@ def test_case_mlm_itm_b():
     # Freeze or UnFreeze Encoders
     freeze_image_encoder = True
     freeze_text_encoder = True
+    
+@ex.named_config
+def test_case_mlm_itm_c():
+    # Settings
+    test_only=False
+    data_root = 'data/arrow/' 
+    num_gpus=1 
+    num_nodes=1 
+    per_gpu_batchsize=64 
+    load_path = ''
+    # SNLI-VE
+    exp_name = "test_case_mlm_itm"
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    # Training Time
+    max_epoch = 1
+    max_steps = 10
+    # Text Encoder
+    text_encoder = "google/electra-base-discriminator"
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    # num_layers = 6
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Image Encoder Settings
+    image_encoder = "facebook/deit-small-patch16-224"
+    # patch_size = 4
+    image_size = 224
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    # image_encoder_hidden_size = 768
+    # resolution_before = 224
+    # Training Settings
+    batch_size = 16
+    warmup_steps = 0.1
+    draw_false_image = 1
+    draw_false_text = 0
+    learning_rate = 2e-6
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    whole_word_masking = True
+    mlm_prob = 0.15
+    # Freeze or UnFreeze Encoders
+    freeze_image_encoder = True
+    freeze_text_encoder = True
 
 
 # SNLI
