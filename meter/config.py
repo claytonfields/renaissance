@@ -37,41 +37,62 @@ def config():
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
     batch_size = 256  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
+    per_gpu_batchsize = 0  # you should define this manually with per_gpu_batch_size=#
+    
+    # Path to .ckpt file for fine-tuning or testing
+    load_path = ""
+    # Path to .ckpt file for resuming training from previous checkpoint
 
     # Image settings
     image_encoder = 'vit_deit_tiny_patch16_224'
-    random_init_vision_encoder = False
-    image_encoder_hidden_size = 192
-    train_transform_keys = ["imagenet"]
-    val_transform_keys = ["imagenet"]
     image_size = 224
     resolution_before = 224
-    patch_size = 16
-    draw_false_image = 1
-    image_only = False
-
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    
     # Text Setting
     text_encoder = "google/electra-small-discriminator"
-    random_init_text_encoder = False
-    text_encoder_hidden_size = 256
     max_text_len = 40
-    vocab_size = 30522
-    whole_word_masking = False # note that whole_word_masking does not work for RoBERTa
-    mlm_prob = 0.15
-    draw_false_text = 0
-    vqav2_label_size = 3129
-    
-    # Architecture Setting
-    two_tower = True
-    multi_model_encoder = 'dandelin/vilt-b32-mlm'
     
     # Cross Layer Settings
     cross_layer_hidden_size = 256
     num_cross_layers = 6
     num_cross_layer_heads = 4
-    # num_layers = 6
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
+    
+    # Freeze Module Parameter Settings
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    freeze_cross_modal_layers = False
+    
+    
+    # Train Image Encoder from Sratch if True
+    random_init_vision_encoder = False
+    # Manual Image/Text Settings
+    image_encoder_hidden_size = 192
+    patch_size = 16
+    image_only = False
+    
+    # Train Text Encoder from Sratch if True
+    random_init_text_encoder = False
+    # Manual Text Settings - Ignored unless random_init_text_encoder = True 
+    text_encoder_hidden_size = 256
+    vocab_size = 30522
+    
+    # Pretraining Settings
+    # Masked Language Mmodeling
+    whole_word_masking = False # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    # Image-Text Matching
+    draw_false_image = 1
+    draw_false_text = 0 
+
+    # Downstream Settings
+    # Image-Text Recall
+    get_recall_metric = False
+    # Visual Question Answering
+    vqav2_label_size = 3129
 
     # Optimizer Setting
     optim_type = "adamw"
@@ -84,20 +105,8 @@ def config():
     end_lr = 0
     lr_mult_head = 5  # multiply lr for downstream heads
     lr_mult_cross_modal = 5  # multiply lr for the cross-modal module
-
-    # Downstream Setting
-    get_recall_metric = False
-    
-    hugging_face = False
-    # model_type = "METER"
-    
-    # Trainag Parameter Setting
-    freeze_image_encoder = False
-    freeze_text_encoder = False
-    freeze_cross_modal_layers = False
     
     # PL Trainer Setting
-    resume_from = None
     fast_dev_run = False
     val_check_interval = 1.0
     test_only = False
@@ -105,13 +114,16 @@ def config():
     # below params varies with the environment
     data_root = ""
     log_dir = "result"
-    per_gpu_batchsize = 0  # you should define this manually with per_gpu_batch_size=#
     num_gpus = 1
     num_nodes = 1
-    load_path = ""
     num_workers = 12
     precision = 32
-
+    
+    # Possible Future Settings
+    two_tower = True
+    multi_model_encoder = 'dandelin/vilt-b32-mlm'
+    # model_type = "METER"
+    
 
 # ===================== Task Settings ===================== #
 @ex.named_config
