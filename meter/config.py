@@ -155,17 +155,17 @@ def task_mlm_itm_deit_electra():
     # datasets = ["coco", "vg", "sbu", "gcc"]
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
-    batch_size = 336
+    batch_size = 176
+    per_gpu_batch_size = 44
     max_epoch = None
-    max_steps = 100000
+    max_steps = 50000
     warmup_steps = 0.1
     whole_word_masking = True
     # DO NOT Freeze Encoders
     freeze_image_encoder = False
     freeze_text_encoder = False
     # Image settings
-    image_encoder = 'vit_deit_tiny_patch16_224'
-    image_encoder_hidden_size = 192
+    image_encoder = "facebook/deit-tiny-patch16-224"
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]
     image_size = 224
@@ -175,13 +175,10 @@ def task_mlm_itm_deit_electra():
     image_only = False
     # Text Setting
     text_encoder = "google/electra-small-discriminator"
-    text_encoder_hidden_size = 256
     max_text_len = 50
-    vocab_size = 30522
-    whole_word_masking = False # note that whole_word_masking does not work for RoBERTa
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
     mlm_prob = 0.15
     draw_false_text = 0
-    vqav2_label_size = 3129
     # Cross Layer Settings
     cross_layer_hidden_size = 256
     num_cross_layers = 6
