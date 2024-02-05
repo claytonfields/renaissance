@@ -38,6 +38,31 @@ def config():
     loss_names = _loss_names({"itm": 1, "mlm": 1})
     batch_size = 256  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
 
+    # Model Type Setting
+    two_tower = True
+    # multi_model_encoder = 'dandelin/vilt-b32-mlm'
+    
+    ### One Tower Settings ###
+    
+    # Text Setting
+    vqav2_label_size = 3129
+    max_text_len = 40
+    tokenizer = "bert-base-uncased"
+    vocab_size = 30522
+    whole_word_masking = False
+    mlm_prob = 0.15
+    draw_false_text = 0
+
+    # Transformer Setting
+    encoder = "facebook/deit-tiny-patch16-224"
+    hidden_size = 192
+    num_heads = 4
+    num_layers = 12
+    mlp_ratio = 4
+    drop_rate = 0.1
+
+
+    ### Two Tower Settings ###
     # Image settings
     image_encoder = 'vit_deit_tiny_patch16_224'
     random_init_vision_encoder = False
@@ -61,9 +86,6 @@ def config():
     draw_false_text = 0
     vqav2_label_size = 3129
     
-    # Architecture Setting
-    two_tower = True
-    multi_model_encoder = 'dandelin/vilt-b32-mlm'
     
     # Cross Layer Settings
     cross_layer_hidden_size = 256
@@ -111,7 +133,43 @@ def config():
     load_path = ""
     num_workers = 12
     precision = 32
+    
 
+@ex.named_config
+def test_one_tower_mlm_itm_case_a():
+    exp_name = "test_one_tower_mlm_itm_case_a"
+    seed = 0
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 32  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
+
+    # Transformer Setting
+    encoder = "facebook/deit-tiny-patch16-224"
+    hidden_size = 192
+    num_heads = 4
+    num_layers = 12
+    mlp_ratio = 4
+    drop_rate = 0.1
+    
+    # Image setting
+    train_transform_keys = ["pixelbert"]
+    val_transform_keys = ["pixelbert"]
+    image_size = 224
+    max_image_len = -1
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    
+    # Text Setting
+    vqav2_label_size = 3129
+    max_text_len = 40
+    tokenizer = "bert-base-uncased"
+    vocab_size = 30522
+    whole_word_masking = False
+    mlm_prob = 0.15
+    draw_false_text = 0
+
+   
 
 # ===================== Task Settings ===================== #
 @ex.named_config
