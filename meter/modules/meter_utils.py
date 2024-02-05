@@ -76,6 +76,9 @@ def set_metrics(pl_module):
             elif k == "cola":
                 setattr(pl_module, f"{split}_{k}_mcc", MatthewsCorrCoef(task='binary'))
                 setattr(pl_module, f"{split}_{k}_loss", Scalar())
+            elif k == "cifar10":
+                setattr(pl_module, f"{split}_{k}_accuracy", Accuracy())
+                setattr(pl_module, f"{split}_{k}_loss", Scalar())
             else:
                 setattr(pl_module, f"{split}_{k}_accuracy", Accuracy())
                 setattr(pl_module, f"{split}_{k}_loss", Scalar())
@@ -319,7 +322,24 @@ def epoch_wrapup(pl_module):
                 f.write(loss_string)
                 mcc_string = f'Epoch: {epoch}, Matthews Correlation on {phase} Set: {value} \n\n'
                 f.write(mcc_string)
-        
+        elif loss_name == 'cifar10':
+            epoch = pl_module.current_epoch
+            value = getattr(pl_module, f"{phase}_{loss_name}_accuracy").compute()
+            pl_module.log(f"{loss_name}/{phase}/accuracy_epoch", value)
+            getattr(pl_module, f"{phase}_{loss_name}_accuracy").reset()
+            loss =  getattr(pl_module, f"{phase}_{loss_name}_loss").compute()
+            pl_module.log(
+                f"{loss_name}/{phase}/loss_epoch",
+                loss)
+            getattr(pl_module, f"{phase}_{loss_name}_loss").reset()
+            
+            log_dir = pl_module.logger.log_dir
+            file_path = os.path.join(log_dir, 'eval.txt')
+            with open(file_path,'a') as f:
+                loss_string = f'Epoch: {epoch}, Final Loss on {phase} Set: {loss} \n'
+                f.write(loss_string)
+                acc_string = f'Epoch: {epoch}, Acurracy on {phase} Set: {value} \n\n'
+                f.write(acc_string)
         elif loss_name == "irtr":
             pl_module.log(
                 f"{loss_name}/{phase}/irtr_loss_epoch",

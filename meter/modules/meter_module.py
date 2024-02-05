@@ -276,6 +276,22 @@ class METERTransformerSS(pl.LightningModule):
             )
             self.cola_classifier.apply(objectives.init_weights)
             
+        ### Image-Only Tasks ###
+        
+        # Image-Only Classification Pooler
+        self.image_classification_pooler = heads.Pooler(self.image_hs)
+        self.image_classification_pooler.apply(objectives.init_weights)
+        
+        # CIFAR-10 Image Classifier
+        if self.hparams.config["loss_names"]['cifar10'] > 0:
+            self.cifar10_classifier = nn.Sequential(
+                nn.Linear(self.image_hs, self.image_hs),
+                nn.LayerNorm(self.image_hs),
+                nn.GELU(),
+                nn.Linear(self.image_hs, 10)
+            )
+            self.cifar10_classifier.apply(objectives.init_weights)
+            
         meter_utils.set_metrics(self)
         self.current_tasks = list()
 
@@ -463,6 +479,10 @@ class METERTransformerSS(pl.LightningModule):
         # cola Task from GLUE
         if 'cola' in self.current_tasks:
             ret.update(objectives.compute_cola(self, batch))
+        
+        # cifar10 Image-Only Classification Task
+        if 'cifar10' in self.current_tasks:
+            ret.update(objectives.compute_cifar10(self, batch))
             
         return ret
 

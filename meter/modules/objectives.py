@@ -621,6 +621,31 @@ def compute_cola(pl_module, batch):
     
     return ret
 
+def compute_cifar10(pl_module, batch):
+    image = batch['image']
+    hidden_state = pl_module.image_encoder(image).last_hidden_state#.squeeze()
+    cls_feat = pl_module.image_classification_pooler(hidden_state)
+    cifar10_logits = pl_module.cifar10_classifier(cls_feat)
+    cifar10_labels = batch['label']
+    cifar10_loss = F.cross_entropy(cifar10_logits, cifar10_labels)
+    
+    ret = {
+        'cifar10_logits' : cifar10_logits,
+        'cifar10_targets' : cifar10_labels,
+        'cifar10_loss' : cifar10_loss
+    }
+    
+    phase = "train" if pl_module.training else "val"
+    loss = getattr(pl_module, f"{phase}_cifar10_loss")(ret["cifar10_loss"])
+    acc = getattr(pl_module, f"{phase}_cifar10_accuracy")(
+        ret["cifar10_logits"], ret["cifar10_targets"]
+    )
+    pl_module.log(f"cifar10/{phase}/loss", loss)
+    pl_module.log(f"cifar10/{phase}/accuracy", acc)
+    
+    return ret
+    
+
 def init_weights(module):
     if isinstance(module, (nn.Linear, nn.Embedding)):
         module.weight.data.normal_(mean=0.0, std=0.02)
