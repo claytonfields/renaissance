@@ -23,7 +23,7 @@ def main(_config):
     pl.seed_everything(_config["seed"])
 
     print(_config)
-    dm = MTDataModule(_config, dist=False)
+    dm = MTDataModule(_config, dist=True)
 
     model = METERTransformerSS(_config)
     exp_name = f'{_config["exp_name"]}'
@@ -61,6 +61,8 @@ def main(_config):
         num_nodes=_config["num_nodes"],
         precision=_config["precision"],
         # accelerator = 'ddp',
+        # strategy = 'ddp',
+        strategy = 'ddp_find_unused_parameters_true',
         benchmark=True,
         deterministic='warn',
         max_epochs=_config["max_epoch"] if max_steps is None else 1000,

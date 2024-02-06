@@ -23,7 +23,8 @@ def _loss_names(d):
         'qqp' : 0,
         'qnli' : 0,
         'mnli' : 0,
-        'cola' : 0
+        'cola' : 0,
+        'cifar10' : 0
     }
     ret.update(d)
     return ret
@@ -112,9 +113,10 @@ def config():
     test_only = False
 
     # below params varies with the environment
-    data_root = ""
+    # data_root = ""
+    data_root = 'data/arrow/' 
     log_dir = "result"
-    num_gpus = 1
+    num_gpus = 2
     num_nodes = 1
     num_workers = 12
     precision = 32
@@ -156,7 +158,7 @@ def task_mlm_itm_deit_electra():
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
     batch_size = 176
-    per_gpu_batch_size = 44
+    per_gpu_batchsize = 44
     max_epoch = None
     max_steps = 50000
     warmup_steps = 0.1
