@@ -26,9 +26,9 @@ from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from pytorch_lightning import LightningDataModule
 
-from transformers import ElectraTokenizer
+from transformers import AutoTokenizer, AutoImageProcessor
 
-from refcoco_utils import get_bounded_subimage
+# from refcoco_utils import get_bounded_subimage
 # from refcoco_utils import _config
 # from refcoco_utils import _loss_names
 
@@ -75,13 +75,23 @@ _config = {
     'irtr': 0,
     'contras': 0,
     'snli': 0,
-    'ref': 1},
+    'ref': 1,
+    "mrpc" : 0,
+    "rte" : 0,
+    'wnli' : 0,
+    'sst2' : 0,
+    'qqp' : 0,
+    'qnli' : 0,
+    'mnli' : 0,
+    'cola' : 0,
+    'cifar10' : 0
+    },
     "batch_size" : 10,  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
 
     # Image setting
     "train_transform_keys" : ["imagenet"],
     "val_transform_keys" : ["imagenet"],
-    "image_size" : 224,
+    "image_size" : 32,
     "patch_size" : 16,
     "draw_false_image" : 1,
     "image_only" : False,
@@ -151,12 +161,14 @@ refer = REFER(refer_root, dataset, splitBy)
 
 class RefcocoDataset(torch.utils.data.Dataset):
 
-    def __init__(self, refer, tokenizer, device, errors, split='', max_bb = 42):
+    def __init__(self, refer, tokenizer, processor, errors, im_size=32, split='', max_text_len=40, max_bb = 42):
         self.tokenizer = tokenizer
+        self.processor = processor
         self.refer = refer
         self.max_bb = max_bb
-        self.device = device
+        self.max_text_len = max_text_len
         self.errors = errors
+        self.im_size = im_size
         self.split = split
         self.sent_ids = self.get_sent_ids()
         self.duds = []
@@ -176,6 +188,16 @@ class RefcocoDataset(torch.utils.data.Dataset):
                     if not sent_id in self.errors:
                         sent_ids.append(sent_id)
         return sent_ids
+
+    def get_bounded_subimage(self, img_id, ann_id, im_size):
+        bbox = self.refer.Anns[ann_id]['bbox']
+        bbox = [int(b) for b in bbox]
+        img = self.refer.Imgs[img_id]
+        I = skio.imread(os.path.join(refer.IMAGE_DIR, img['file_name']))
+        sub = I[bbox[1]:bbox[1]+bbox[3],bbox[0]:bbox[0]+bbox[2]]
+        pixel_vals = self.processor(sub, return_tensors='pt', size={"height":im_size, "width":im_size})['pixel_values'][0]
+        image = pixel_vals.unsqueeze(dim=0)
+        return image
     
     def __getitem__(self, index):
         max_bb = self.max_bb
@@ -193,14 +215,14 @@ class RefcocoDataset(torch.utils.data.Dataset):
 
         sub_images = []
         for obj in objs:
-            x_a = get_bounded_subimage(refer, img_id, obj['id'], xs=224,ys=224, show=False)
+            x_a = self.get_bounded_subimage(img_id, obj['id'], self.im_size)
             if x_a is not None:
                 sub_images.append(x_a)
         
         num_sub_images = len(sub_images)
         num_pad = max_bb - num_sub_images 
         
-        pad_image = torch.zeros(1,3,224,224)
+        pad_image = torch.zeros(1,3,self.im_size,self.im_size)
         for _ in range(max_bb - num_sub_images):
             sub_images.append(pad_image)
         
@@ -209,22 +231,22 @@ class RefcocoDataset(torch.utils.data.Dataset):
             sent['sent'],
             padding="max_length",
             truncation=True,
-            max_length=40,
+            max_length=self.max_text_len,
             return_special_tokens_mask=True,
         )
         repeat_ids = torch.tensor(ids).repeat(num_sub_images,1)
-        pad_ids =  torch.zeros(num_pad,40)
+        pad_ids =  torch.zeros(num_pad,self.max_text_len)
         text_ids = torch.cat((repeat_ids, pad_ids)).to(torch.long)
         # text masks
         num_tokens = torch.where(text_ids[0] > 0)[0].size(dim=0)
-        masks = torch.cat((torch.ones(num_tokens), torch.zeros(40-num_tokens))).to(torch.long)
+        masks = torch.cat((torch.ones(num_tokens), torch.zeros(self.max_text_len-num_tokens))).to(torch.long)
         repeat_masks = masks.repeat(num_sub_images,1)
-        pad_masks = torch.zeros(num_pad, 40)
+        pad_masks = torch.zeros(num_pad, self.max_text_len)
         text_masks = torch.cat((repeat_masks, pad_masks)).to(torch.long)
         # text_labels
-        labels = torch.full((40,),-100)
+        labels = torch.full((self.max_text_len,),-100)
         repeat_labels = labels.repeat(num_sub_images, 1)
-        pad_labels = torch.zeros(num_pad, 40)
+        pad_labels = torch.zeros(num_pad, self.max_text_len)
         text_labels = torch.cat((repeat_labels, pad_labels)).to(torch.long)
         
         target = torch.tensor([obj_ids.index(ann_id)])
@@ -243,20 +265,19 @@ class RefcocoDataset(torch.utils.data.Dataset):
         return return_dict
 
 
-def collate(batch):
-    targets = []
-    for b in batch:
-        targets.append(b['target'])
-    targets = torch.tensor(targets)
-    return (batch, targets)
+    def collate(self, batch):
+        targets = []
+        for b in batch:
+            targets.append(b['target'])
+        targets = torch.tensor(targets)
+        return (batch, targets)
 
 class RefcocoDataModule(LightningDataModule):
-    def __init__(self, config, refer, device, errors, collate_fn):
+    def __init__(self, config, refer, device, errors):
         super().__init__()
         
         self.refer = refer
         self.errors = errors
-        self.collate_fn = collate_fn
         self.device = device,
         self.data_dir = _config["data_root"]
 
@@ -275,16 +296,14 @@ class RefcocoDataModule(LightningDataModule):
             if len(_config["train_transform_keys"]) == 0
             else _config["train_transform_keys"]
         )
-
         self.val_transform_keys = (
             ["default_val"]
             if len(_config["val_transform_keys"]) == 0
             else _config["val_transform_keys"]
         )
-
-        tokenizer = _config["tokenizer"]
         # This is not adaptable, create function to accomodate changes in model
-        self.tokenizer = ElectraTokenizer.from_pretrained(tokenizer)
+        self.tokenizer = AutoTokenizer.from_pretrained(_config["text_encoder"])
+        self.processor = AutoImageProcessor.from_pretrained(config['image_encoder'])
         self.vocab_size = self.tokenizer.vocab_size
 
         
@@ -292,8 +311,9 @@ class RefcocoDataModule(LightningDataModule):
         self.train_dataset = RefcocoDataset(
             self.refer, 
             self.tokenizer,
-            self.device,
+            self.processor,
             self.errors,
+            im_size=self.image_size,
             split='train'
         )
 
@@ -301,8 +321,9 @@ class RefcocoDataModule(LightningDataModule):
         self.val_dataset = RefcocoDataset(
             self.refer, 
             self.tokenizer,
-            self.device,
+            self.processor,
             self.errors,
+            im_size=self.image_size,
             split='val'
         )
         
@@ -317,9 +338,8 @@ class RefcocoDataModule(LightningDataModule):
             shuffle=True,
             num_workers=self.num_workers,
             pin_memory=True,
-            collate_fn=self.collate_fn,
+            collate_fn=self.train_dataset.collate,
         )
-        
         return loader
 
     def val_dataloader(self):
@@ -329,9 +349,8 @@ class RefcocoDataModule(LightningDataModule):
             shuffle=False,
             num_workers=self.num_workers,
             pin_memory=True,
-            collate_fn=self.collate_fn,
-        )
-        
+            collate_fn=self.val_dataset.collate,
+        )     
         return loader
     
 config = copy.deepcopy(_config)
@@ -341,7 +360,7 @@ model.current_tasks = ['ref']
 
 errors_df = pd.read_csv('Errors.csv')
 errors_list = errors_df['Sent ID'].to_list()
-dm = RefcocoDataModule(config, refer, device, errors_list, collate)
+dm = RefcocoDataModule(config, refer, device, errors_list)
 
 pl.seed_everything(_config["seed"])
 
@@ -376,7 +395,8 @@ grad_steps = max(_config["batch_size"] // (
 max_steps = _config["max_steps"] if _config["max_steps"] is not None else None
 
 trainer = pl.Trainer(
-    gpus=num_gpus,
+    # gpus=num_gpus,
+    # devices=num_gpus,
     num_nodes=_config["num_nodes"],
     precision=_config["precision"],
     # accelerator="ddp",
@@ -390,9 +410,9 @@ trainer = pl.Trainer(
     #replace_sampler_ddp=False,
     accumulate_grad_batches=grad_steps,
     log_every_n_steps=10,
-    flush_logs_every_n_steps=10,
+    # flush_logs_every_n_steps=10,
 #     resume_from_checkpoint=_config["resume_from"],
-    weights_summary="top",
+    # weights_summary="top",
     fast_dev_run=_config["fast_dev_run"],
     val_check_interval=_config["val_check_interval"],
 )
