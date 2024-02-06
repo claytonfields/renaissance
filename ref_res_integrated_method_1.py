@@ -100,7 +100,7 @@ _config = {
     "num_cross_layers" : 6,
     "image_encoder_hidden_size" : 192,
     "text_encoder_hidden_size" : 256,
-    "image_encoder" : "vit_deit_tiny_patch16_224",
+    "image_encoder" : "facebook/deit-tiny-patch16-224",
     "cross_layer_hidden_size" : 256,
     "num_cross_layer_heads" : 4,
     "num_layers" : 6,

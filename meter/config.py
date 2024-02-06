@@ -45,7 +45,7 @@ def config():
     # Path to .ckpt file for resuming training from previous checkpoint
 
     # Image settings
-    image_encoder = 'vit_deit_tiny_patch16_224'
+    image_encoder = "facebook/deit-tiny-patch16-224"
     image_size = 224
     resolution_before = 224
     train_transform_keys = ["imagenet"]
