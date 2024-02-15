@@ -39,7 +39,14 @@ def config():
     batch_size = 256  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
 
     # Model Type Setting
-    two_tower = True
+    model_type = "one-tower"
+    encoder_type = 'text'
+    pooler_type = 'double' # 'double' or 'single'
+    # encoder = "google/electra-small-discriminator"
+    # encoder = "bert-base-uncased"
+    encoder = "FacebookAI/roberta-base"
+    random_init_encoder = False
+    # two_tower = True
     # multi_model_encoder = 'dandelin/vilt-b32-mlm'
     
     ### One Tower Settings ###
@@ -54,7 +61,7 @@ def config():
     draw_false_text = 0
 
     # Transformer Setting
-    encoder = "facebook/deit-tiny-patch16-224"
+    encoder = "google/electra-small-discriminator"
     hidden_size = 192
     num_heads = 4
     num_layers = 12
@@ -111,7 +118,7 @@ def config():
     get_recall_metric = False
     
     hugging_face = False
-    # model_type = "METER"
+    
     
     # Trainag Parameter Setting
     freeze_image_encoder = False
@@ -142,9 +149,18 @@ def test_one_tower_mlm_itm_case_a():
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
     batch_size = 32  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
-
+    
+    test_only=False
+    data_root = 'data/arrow/' 
+    num_gpus=1 
+    num_nodes=1 
+    per_gpu_batchsize=32
+    resume_from = None
+    
     # Transformer Setting
-    encoder = "facebook/deit-tiny-patch16-224"
+    # encoder = "facebook/deit-tiny-patch16-224"
+    # encoder = "FacebookAI/roberta-base"
+    encoder = "google/canine-s"
     hidden_size = 192
     num_heads = 4
     num_layers = 12
@@ -155,7 +171,7 @@ def test_one_tower_mlm_itm_case_a():
     train_transform_keys = ["pixelbert"]
     val_transform_keys = ["pixelbert"]
     image_size = 224
-    max_image_len = -1
+    # max_image_len = -1
     patch_size = 16
     draw_false_image = 1
     image_only = False
@@ -168,6 +184,8 @@ def test_one_tower_mlm_itm_case_a():
     whole_word_masking = False
     mlm_prob = 0.15
     draw_false_text = 0
+    
+    max_steps = 10
 
    
 

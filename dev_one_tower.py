@@ -20,30 +20,63 @@ from transformers import AutoTokenizer
 from datasets import load_dataset
 
 from meter.modules import METERTransformerSS
-# from meter.datamodules.multitask_datamodule import MTDataModule
+from meter.datamodules.multitask_datamodule import MTDataModule
 # from meter.datasets.base_dataset import BaseDataset
 
 
-_config = {  
+def _loss_names(d):
+    ret = {
+        "itm": 0,
+        "mlm": 0,
+        "mpp": 0,
+        "vqa": 0,
+        "vcr": 0,
+        "vcr_qar": 0,
+        "nlvr2": 0,
+        "irtr": 0,
+        "contras": 0,
+        "snli": 0,
+        "ref": 0,
+        "mrpc" : 0,
+        "rte" : 0,
+        'wnli' : 0,
+        'sst2' : 0,
+        'qqp' : 0,
+        'qnli' : 0,
+        'mnli' : 0,
+        'cola' : 0
+    }
+    ret.update(d)
+    return ret
+
+config = {  
     "exp_name":"finetune_mrpc",
     "seed" : 42,
     # "datasets" : ["coco", "vg", "sbu", "gcc"],
     # "datasets" : ["coco", "vg"],
     "datasets" : ["coco"],
-    "loss_names" :{'itm': 0,
-    'mlm': 0,
-    'mpp': 0,
-    'vqa': 0,
-    'vcr': 0,
-    'vcr_qar': 0,
-    'nlvr2': 0,
-    'irtr': 0,
-    'contras': 0,
-    'snli': 0,
-    'ref': 0,
-    'mrpc':1
-    },
+    # 'loss_names' : _loss_names({"itm": 1, "mlm": 1}),
+    'loss_names' : _loss_names({"snli": 1}),
     "batch_size" : 32,  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
+    "model_type" : 'one-tower',
+    
+    # One-Tower Settings
+    "random_init_encoder" : False,
+    # "encoder" : "facebook/deit-tiny-patch16-224",
+    # "encoder" : "microsoft/beit-base-patch16-224-pt22k-ft22k",
+    # "encoder" : "facebook/dinov2-base",
+    "encoder" : "google/electra-small-discriminator",
+    # "encoder" : "bert-base-uncased",
+    'encoder_type': 'text',
+    'pooler_type' : 'double', # 'double' or 'single'
+    # Transformer Setting
+    # 'vit' : "vit_base_patch32_384",
+    'hidden_size' : 192,
+    'num_heads' : 12,
+    'num_layers' : 12,
+    'mlp_ratio' : 4,
+    'drop_rate' : 0.1,
+    
 
     # Image setting
     "image_encoder" : "facebook/deit-tiny-patch16-224",
@@ -106,7 +139,7 @@ _config = {
     
     'freeze' : True,
     
-    "model_type" : "METER",
+    # "model_type" : "METER",
 
     # PL Trainer Setting
     "resume_from" : None,
@@ -119,7 +152,8 @@ _config = {
     "per_gpu_batchsize" : 32,  # you should define this manually with per_gpu_batch_size:#
     "num_gpus" : 1,
     "num_nodes" : 1,
-    "load_path" : "/home/claytonfields/nlp/code/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
+    'load_path' : '',
+    # "load_path" : "/home/claytonfields/nlp/code/meter/result/mlm_itm_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_is1M/checkpoints/epoch=43-step=898039.ckpt",
     # "load_path" : '/home/claytonfields/nlp/code/meter/result/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints/epoch=5-step=96215.ckpt',
     "num_workers" : 12,
     "precision" : 32
@@ -132,19 +166,24 @@ _config = {
 # dl = DataLoader(ds, batch_size=10)
 # batch = next(iter(dl))
 
-config = copy.deepcopy(_config)
+# config = copy.deepcopy(_config)
 print(config)
-pl.seed_everything(_config["seed"])
+pl.seed_everything(config["seed"])
 model = METERTransformerSS(config)
 # model.current_tasks = ['mrpc']
-encoder = model.encoder
+# encoder = model.encoder
 
+dm = MTDataModule(config)
+dm.prepare_data()
+dm.setup('train')
 
+dl = dm.train_dataloader()
 
+batch = next(iter(dl))
 
+cls_feats = model.infer_one_tower(batch)
 
-
-
+logits = model.snli_classifier(cls_feats['cls_feats'])
 
 
 
