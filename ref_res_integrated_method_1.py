@@ -39,8 +39,8 @@ from meter.datamodules.multitask_datamodule import MTDataModule
 from meter.datasets.base_dataset import BaseDataset
 
 # temporary variable switch between servers, fix before deployment
-tensor_book = True
-frege = False
+tensor_book = False
+frege = True
 
 if tensor_book:
     data_root =  "/home/claytonfields/nlp/code/vilt/data/arrow"
@@ -50,7 +50,7 @@ if tensor_book:
     num_gpus = 1
 else:
     data_root =  "/data/clayton/meter/data/arrow"
-    load_path = "/data/clayton/meter/result/meter_electra_small_deit_tiny_p16_is224_bs288_ts1M/checkpoints/epoch=43-step=898039.ckpt"
+    load_path = "/data/clayton/meter/result/mlm_itm_deit_electra_seed0_from_/meter_electra_small_deit_tiny_p16_is224_bs288_ts1M/checkpoints/epoch=43-step=898039.ckpt"
     refer_root = "/data/clayton/datasets/coco"
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     if frege:
@@ -60,7 +60,7 @@ else:
 
 
 _config = {  
-    "exp_name":"finetune_ref",
+    "exp_name":"finetune_ref_method_1",
     "seed" : 0,
     # "datasets" : ["coco", "vg", "sbu", "gcc"],
     # "datasets" : ["coco", "vg"],
@@ -86,20 +86,20 @@ _config = {
     'cola' : 0,
     'cifar10' : 0
     },
-    "batch_size" : 10,  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
+    "batch_size" : 100,  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
 
     # Image setting
     "train_transform_keys" : ["imagenet"],
     "val_transform_keys" : ["imagenet"],
     "image_size" : 32,
-    "patch_size" : 16,
+    "patch_size" : 4,
     "draw_false_image" : 1,
     "image_only" : False,
     "resolution_before" : 224,
 
     # Text Setting
     "vqav2_label_size" : 3129,
-    "max_text_len" : 40,
+    "max_text_len" : 50,
     "text_encoder" : "google/electra-small-discriminator",
     "vocab_size" : 30522,
     "whole_word_masking" : False, # note that whole_word_masking does not work for RoBERTa
@@ -123,8 +123,8 @@ _config = {
     "weight_decay" : 0.01,
     "decay_power" : 1,
     "max_epoch" : 3,
-    "max_steps" : 100000,
-    "warmup_steps" : 10000,
+    "max_steps" : 1e5,
+    "warmup_steps" : 0,
     "end_lr" : 0,
     "lr_mult_head" : 5,  # multiply lr for downstream heads
     "lr_mult_cross_modal" : 5,  # multiply lr for the cross-modal module
@@ -147,7 +147,7 @@ _config = {
 
     "data_root" : data_root,
     "log_dir" : "result",
-    "per_gpu_batchsize" : 3,  # you should define this manually with per_gpu_batch_size:#
+    "per_gpu_batchsize" : 23,  # you should define this manually with per_gpu_batch_size:#
     "num_gpus" : num_gpus,
     "num_nodes" : 1,
     "load_path" : load_path,
@@ -400,9 +400,10 @@ trainer = pl.Trainer(
     num_nodes=_config["num_nodes"],
     precision=_config["precision"],
     # accelerator="ddp",
+    strategy = 'ddp_find_unused_parameters_true',
     benchmark=True,
-    deterministic=True,
-    max_epochs=_config["max_epoch"] if max_steps is None else 1000,
+    deterministic='warn',
+    max_epochs=_config["max_epoch"], # if max_steps is None else 1000,
     max_steps=max_steps,
     callbacks=callbacks,
     logger=logger,
