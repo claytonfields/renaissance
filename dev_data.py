@@ -14,7 +14,7 @@ import pytorch_lightning as pl
 from pytorch_lightning import LightningDataModule
 
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import Dataset. DataLoader
 
 from transformers import AutoTokenizer
 from datasets import load_dataset
@@ -145,6 +145,37 @@ pl.seed_everything(_config["seed"])
 model = METERTransformerSS(config)
 # model.current_tasks = ['mrpc']
 # encoder = model.encoder
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 dm = MTDataModule(config)
 dm.prepare_data()
