@@ -7,6 +7,7 @@ from .vqav2_datamodule import VQAv2DataModule
 from .nlvr2_datamodule import NLVR2DataModule
 from .snli_datamodule import SNLIDataModule
 from .refcoco_datamodule import RefcocoDataModule
+from .glue_datamodule import GlueDataModule
 
 _datamodules = {
     "vg": VisualGenomeCaptionDataModule,
@@ -17,5 +18,6 @@ _datamodules = {
     "vqa": VQAv2DataModule,
     "nlvr2": NLVR2DataModule,
     "snli": SNLIDataModule,
-    'refcoco' : RefcocoDataModule
+    'refcoco' : RefcocoDataModule,
+    'glue' : GlueDataModule
 }

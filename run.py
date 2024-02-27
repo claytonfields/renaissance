@@ -61,6 +61,7 @@ def main(_config):
         num_nodes=_config["num_nodes"],
         precision=_config["precision"],
         # accelerator = 'ddp',
+        strategy = 'ddp_find_unused_parameters_true',
         benchmark=True,
         deterministic='warn',
         max_epochs=_config["max_epoch"] if max_steps is None else 1000,

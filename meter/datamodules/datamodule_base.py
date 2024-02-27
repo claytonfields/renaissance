@@ -7,6 +7,8 @@ from transformers import (
     DataCollatorForWholeWordMask,
     BertTokenizer,
     RobertaTokenizer,
+    AutoTokenizer,
+    AutoImageProcessor
 )
 
 
@@ -31,7 +33,7 @@ def get_pretrained_tokenizer(from_pretrained):
 class BaseDataModule(LightningDataModule):
     def __init__(self, _config):
         super().__init__()
-
+        self.config = _config
         self.data_dir = _config["data_root"]
 
         self.num_workers = _config["num_workers"]
@@ -55,9 +57,9 @@ class BaseDataModule(LightningDataModule):
             if len(_config["val_transform_keys"]) == 0
             else _config["val_transform_keys"]
         )
-
-        tokenizer = _config["text_encoder"]
-        self.tokenizer = get_pretrained_tokenizer(tokenizer)
+        
+        self.processor = AutoImageProcessor.from_pretrained(_config['image_encoder'])
+        self.tokenizer = AutoTokenizer.from_pretrained(_config["text_encoder"])
         self.vocab_size = self.tokenizer.vocab_size
 
         collator = (
@@ -70,6 +72,9 @@ class BaseDataModule(LightningDataModule):
             tokenizer=self.tokenizer, mlm=True, mlm_probability=_config["mlm_prob"]
         )
         self.setup_flag = False
+        
+        self.hf_dataset_key = ''
+        self.task = ''
 
     @property
     def dataset_cls(self):
@@ -81,8 +86,8 @@ class BaseDataModule(LightningDataModule):
 
     def set_train_dataset(self):
         self.train_dataset = self.dataset_cls(
-            self.data_dir,
-            self.train_transform_keys,
+            data_dir =self.data_dir,
+            transform_keys =self.train_transform_keys,
             split="train",
             image_size=self.image_size,
             max_text_len=self.max_text_len,
@@ -90,12 +95,15 @@ class BaseDataModule(LightningDataModule):
             draw_false_text=self.draw_false_text,
             image_only=self.image_only,
             tokenizer=self.tokenizer,
+            processor=self.processor,
+            hf_dataset_key = self.hf_dataset_key,
+            task = self.task
         )
 
     def set_val_dataset(self):
         self.val_dataset = self.dataset_cls(
-            self.data_dir,
-            self.val_transform_keys,
+            data_dir =self.data_dir,
+            transform_keys =self.val_transform_keys,
             split="val",
             image_size=self.image_size,
             max_text_len=self.max_text_len,
@@ -103,12 +111,15 @@ class BaseDataModule(LightningDataModule):
             draw_false_text=self.draw_false_text,
             image_only=self.image_only,
             tokenizer=self.tokenizer,
+            processor=self.processor,
+            hf_dataset_key = self.hf_dataset_key,
+            task = self.task
         )
 
         if hasattr(self, "dataset_cls_no_false"):
             self.val_dataset_no_false = self.dataset_cls_no_false(
-                self.data_dir,
-                self.val_transform_keys,
+                data_dir =self.data_dir,
+                transform_keys =self.val_transform_keys,
                 split="val",
                 image_size=self.image_size,
                 max_text_len=self.max_text_len,
@@ -116,12 +127,15 @@ class BaseDataModule(LightningDataModule):
                 draw_false_text=0,
                 image_only=self.image_only,
                 tokenizer=self.tokenizer,
+                processor=self.processor,
+                hf_dataset_key = self.hf_dataset_key,
+                task = self.task
             )
 
     def make_no_false_val_dset(self, image_only=False):
         return self.dataset_cls_no_false(
-            self.data_dir,
-            self.val_transform_keys,
+            data_dir =self.data_dir,
+            transform_keys =self.val_transform_keys,
             split="val",
             image_size=self.image_size,
             max_text_len=self.max_text_len,
@@ -129,12 +143,15 @@ class BaseDataModule(LightningDataModule):
             draw_false_text=0,
             image_only=image_only,
             tokenizer=self.tokenizer,
+            processor=self.processor,
+            hf_dataset_key = self.hf_dataset_key,
+            task = self.task
         )
 
     def set_test_dataset(self):
         self.test_dataset = self.dataset_cls(
-            self.data_dir,
-            self.val_transform_keys,
+            data_dir =self.data_dir,
+            transform_keys =self.val_transform_keys,
             split="test",
             image_size=self.image_size,
             max_text_len=self.max_text_len,
@@ -142,6 +159,9 @@ class BaseDataModule(LightningDataModule):
             draw_false_text=self.draw_false_text,
             image_only=self.image_only,
             tokenizer=self.tokenizer,
+            processor=self.processor,
+            hf_dataset_key = self.hf_dataset_key,
+            task = self.task
         )
 
     def setup(self, stage):
@@ -150,9 +170,9 @@ class BaseDataModule(LightningDataModule):
             self.set_val_dataset()
             self.set_test_dataset()
 
-            self.train_dataset.tokenizer = self.tokenizer
-            self.val_dataset.tokenizer = self.tokenizer
-            self.test_dataset.tokenizer = self.tokenizer
+            # self.train_dataset.tokenizer = self.tokenizer
+            # self.val_dataset.tokenizer = self.tokenizer
+            # self.test_dataset.tokenizer = self.tokenizer
 
             self.setup_flag = True
 

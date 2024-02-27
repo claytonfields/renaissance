@@ -6,29 +6,36 @@ import os
 
 from PIL import Image
 from ..transforms import keys_to_transforms
+from datasets import load_dataset
 
 
 class BaseDataset(torch.utils.data.Dataset):
     def __init__(
         self,
-        data_dir: str,
-        transform_keys: list,
-        image_size: int,
-        names: list,
+        data_dir = "",
+        transform_keys = [],
+        image_size = 224,
+        names = [],
         text_column_name: str = "",
         remove_duplicate=True,
         max_text_len=40,
         draw_false_image=0,
         draw_false_text=0,
         image_only=False,
+        # text_only=False,
+        hugging_face=False,
+        hf_dataset_key = '',
+        task = '',
         tokenizer=None,
+        processor=None
     ):
         """
         data_dir : where dataset file *.arrow lives; existence should be guaranteed via DataModule.prepare_data
         transform_keys : keys for generating augmented views of images
         text_column_name : pyarrow table column name that has list of strings as elements
         """
-        assert len(transform_keys) >= 1
+        if not hugging_face:
+            assert len(transform_keys) >= 1
         super().__init__()
 
         self.transforms = keys_to_transforms(transform_keys, size=image_size)
@@ -42,52 +49,68 @@ class BaseDataset(torch.utils.data.Dataset):
         self.max_text_len = max_text_len
         self.draw_false_image = draw_false_image
         self.draw_false_text = draw_false_text
+        
         self.image_only = image_only
+        # self.text_only = text_only
         self.data_dir = data_dir
-
-        if len(names) != 0:
-            tables = [
-                pa.ipc.RecordBatchFileReader(
-                    pa.memory_map(f"{data_dir}/{name}.arrow", "r")
-                ).read_all()
-                for name in names
-                if os.path.isfile(f"{data_dir}/{name}.arrow")
-            ]
-
-            self.table_names = list()
-            for i, name in enumerate(names):
-                self.table_names += [name] * len(tables[i])
-
-            self.table = pa.concat_tables(tables, promote=True)
-            if text_column_name != "":
-                self.text_column_name = text_column_name
-                self.all_texts = self.table[text_column_name].to_pandas().tolist()
-                if type(self.all_texts[0][0]) == str:
-                    self.all_texts = (
-                        [list(set(texts)) for texts in self.all_texts]
-                        if remove_duplicate
-                        else self.all_texts
-                    )
-                else: #snli
-                    self.all_texts = (
-                        [[t[1].strip() for t in texts] for texts in self.all_texts]
-                    )
+        
+        self.image_size = image_size
+        self.tokenizer = tokenizer
+        self.processor = processor
+        
+        self.hugging_face = hugging_face
+        # self.task = 
+        
+        # Use hugging face dataset classes to download, load and manage data
+        if self.hugging_face:
+            if self.split=='val':
+                self.split = 'validation'
+            self.data_dict = load_dataset(hf_dataset_key, self.task, split=self.split).to_dict()
+        # Use local files with pyarrow for data processing and loading
+        else:
+            if len(names) != 0:
+                tables = [
+                    pa.ipc.RecordBatchFileReader(
+                        pa.memory_map(f"{data_dir}/{name}.arrow", "r")
+                    ).read_all()
+                    for name in names
+                    if os.path.isfile(f"{data_dir}/{name}.arrow")
+                ]
+    
+                self.table_names = list()
+                for i, name in enumerate(names):
+                    self.table_names += [name] * len(tables[i])
+    
+                self.table = pa.concat_tables(tables, promote=True)
+                if text_column_name != "":
+                    self.text_column_name = text_column_name
+                    self.all_texts = self.table[text_column_name].to_pandas().tolist()
+                    if type(self.all_texts[0][0]) == str:
+                        self.all_texts = (
+                            [list(set(texts)) for texts in self.all_texts]
+                            if remove_duplicate
+                            else self.all_texts
+                        )
+                    else: #snli
+                        self.all_texts = (
+                            [[t[1].strip() for t in texts] for texts in self.all_texts]
+                        )
+                else:
+                    self.all_texts = list()
             else:
                 self.all_texts = list()
-        else:
-            self.all_texts = list()
-
-        self.index_mapper = dict()
-
-        if text_column_name != "" and not self.image_only:
-            j = 0
-            for i, texts in enumerate(self.all_texts):
-                for _j in range(len(texts)):
-                    self.index_mapper[j] = (i, _j)
-                    j += 1
-        else:
-            for i in range(len(self.table)):
-                self.index_mapper[i] = (i, None)
+    
+            self.index_mapper = dict()
+    
+            if text_column_name != "" and not self.image_only:
+                j = 0
+                for i, texts in enumerate(self.all_texts):
+                    for _j in range(len(texts)):
+                        self.index_mapper[j] = (i, _j)
+                        j += 1
+            else:
+                for i in range(len(self.table)):
+                    self.index_mapper[i] = (i, None)
 
     @property
     def corpus(self):
@@ -131,6 +154,7 @@ class BaseDataset(torch.utils.data.Dataset):
             truncation=True,
             max_length=self.max_text_len,
             return_special_tokens_mask=True,
+            return_tensors='pt'
         )
         return {
             "text": (text, encoding),

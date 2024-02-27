@@ -23,7 +23,8 @@ def get_score(occurences):
         return 1.0
 
 
-def path2rest(path, split, annotations, label2ans):
+def 
+(path, split, annotations, label2ans):
     iid = int(path.split("/")[-1].split("_")[-1][:-4])
 
     with open(path, "rb") as fp:
