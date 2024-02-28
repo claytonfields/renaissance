@@ -14,116 +14,97 @@ from  .refer import REFER, get_bounded_subimage
 import io
 from PIL import Image
 import torch
+import numpy as np
+import pyarrow as pa
 
-# refer_root = "/home/claytonfields/nlp/code/data/coco"
-# dataset = 'refcoco' 
-# splitBy = 'unc'
-# refer = REFER(refer_root, dataset, splitBy)
 
 class RefcocoDataset(BaseDataset):
-
-    def __init__(self, *args, errors=None, refer=None, split='', max_bb = 42, **kwargs):
-        
-        # self.tokenizer = tokenizer
-        self.refer = refer
-        self.max_bb = max_bb
-        # self.device = device
-        self.errors = errors
+    def __init__(self, *args, split="", max_bb = 42, **kwargs):
+        assert split in ["train", "val", "test"]
         self.split = split
-        self.sent_ids = self.get_sent_ids()
-        
-        super().__init__(*args, **kwargs)
+        self.max_bb = max_bb
 
-    def __len__(self):
-        return len(self.sent_ids)
-    
-    def get_sent_ids(self):
-        sent_ids = []
-        for ref_id in self.refer.getRefIds(split=self.split):
-            
-            ref = self.refer.Refs[ref_id]
-            img_id = ref['image_id']
-            objs = self.refer.imgToAnns[img_id]
-            if len(objs) <= self.max_bb:
-                for sent_id in ref['sent_ids']:
-                    if not sent_id in self.errors:
-                        sent_ids.append(sent_id)
-        return sent_ids
-    
+        if split == "train":
+            names = ['refcoco_unc_train']
+        elif split == "val":
+            # names = ["coco_caption_karpathy_val"]
+            names = ['refcoco_unc_val']
+        elif split == "test":
+            names = ['refcoco_unc_test']
+
+        super().__init__(*args, names=names, text_column_name="sentences", **kwargs)
+        self.filter_table()
+
+
     def __getitem__(self, index):
         max_bb = self.max_bb
-        
-        sent_id = self.sent_ids[index]
-        ref = self.refer.sentToRef[sent_id]
-        sent = self.refer.Sents[sent_id]
-        
-        img_id = ref['image_id']
-        ann_id = ref['ann_id']
-        objs = self.refer.imgToAnns[img_id]
-        obj_ids = [obj['id'] for obj in objs]
-        obj_pad = [0 for _ in range(max_bb-len(obj_ids))]
-        obj_ids_total = obj_ids+obj_pad
-
+        image_index, ref_index = self.index_mapper[index]
+        label = self.table["labels"][image_index].as_py()
+        image = np.array(self.get_raw_image(index))
+        bboxes = self.table['bboxes'][image_index].as_py()
         sub_images = []
-        for obj in objs:
-            x_a = get_bounded_subimage(self.refer, img_id, obj['id'], xs=224,ys=224, show=False)
-            if x_a is not None:
-                sub_images.append(x_a)
-        
+        for bbox in bboxes:
+            bbox = [int(b) for b in bbox]
+            sub = image[bbox[1]:bbox[1]+bbox[3],bbox[0]:bbox[0]+bbox[2]]
+            if sub is not None:
+                sub = self.processor(
+                    sub, 
+                    return_tensors='pt',
+                    size={'height':self.image_size, 'width':self.image_size}
+                )['pixel_values'][0]
+                sub_images.append(sub.unsqueeze(0))
         num_sub_images = len(sub_images)
         num_pad = max_bb - num_sub_images 
         
-        pad_image = torch.zeros(1,3,224,224)
+        pad_image = torch.zeros(1,3,self.image_size,self.image_size)
         for _ in range(max_bb - num_sub_images):
             sub_images.append(pad_image)
         
         # text ids
-        ids = self.tokenizer.encode(
-            sent['sent'],
-            padding="max_length",
-            truncation=True,
-            max_length=40,
-            return_special_tokens_mask=True,
-        )
-        repeat_ids = torch.tensor(ids).repeat(num_sub_images,1)
-        pad_ids =  torch.zeros(num_pad,40)
-        text_ids = torch.cat((repeat_ids, pad_ids)).to(torch.long)
+        text = self.get_text(index)
+        text_tokenized = text['text'][1]
+        ids = text_tokenized['input_ids']
+        repeat_ids = ids.repeat(num_sub_images,1)
+        pad_ids =  torch.zeros(num_pad,self.max_text_len,dtype=torch.int8)
+        text_ids = torch.cat((repeat_ids, pad_ids))#.to(torch.long)
         # text masks
-        num_tokens = torch.where(text_ids[0] > 0)[0].size(dim=0)
-        masks = torch.cat((torch.ones(num_tokens), torch.zeros(40-num_tokens))).to(torch.long)
+        masks = text_tokenized['attention_mask']
         repeat_masks = masks.repeat(num_sub_images,1)
-        pad_masks = torch.zeros(num_pad, 40)
-        text_masks = torch.cat((repeat_masks, pad_masks)).to(torch.long)
+        pad_masks = torch.zeros(num_pad, self.max_text_len, dtype=torch.int8)
+        text_masks = torch.cat((repeat_masks, pad_masks))#.to(torch.long)
         # text_labels
-        labels = torch.full((40,),-100)
+        labels = torch.full((self.max_text_len,),-100, dtype=torch.int8)
         repeat_labels = labels.repeat(num_sub_images, 1)
-        pad_labels = torch.zeros(num_pad, 40)
-        text_labels = torch.cat((repeat_labels, pad_labels)).to(torch.long)
+        pad_labels = torch.zeros(num_pad, self.max_text_len, dtype=torch.int8)
+        text_labels = torch.cat((repeat_labels, pad_labels))#.to(torch.long)
         
-        target = torch.tensor([obj_ids.index(ann_id)])
+        # target = self.table
 
         return_dict = {
-            'ann_id' : ann_id,
+            # 'ann_id' : ann_id,
             'image' : [torch.cat(sub_images)],#.to(self.device)],
-            'obj_ids' : torch.tensor(obj_ids_total),#.to(self.device),
-            'target' : target,#.to(self.device),
-            'text' : sent['sent'],
+            # 'obj_ids' : torch.tensor(obj_ids_total),#.to(self.device),
+            'target' : label,#.to(self.device),
+            'text' : text['text'][0],
             'text_ids' : text_ids,#.to(self.device),
             'text_labels' : text_labels,#.to(self.device),
             'text_masks' : text_masks,#.to(self.device)
         }
         
         return return_dict
-
-
-
-
-
-
-
-
-
-
-
-
-
+    
+    def filter_table(self):
+        df = self.table.to_pandas()
+        def check_len(item):
+            return item.size <= self.max_bb
+        sub = df[df['bboxes'].apply(check_len)]
+        sub.reset_index(inplace=True, drop=True)
+        self.table = pa.Table.from_pandas(sub)
+    
+    
+    def collate(self, batch, mlm_collator=None):
+        targets = []
+        for b in batch:
+            targets.append(b['target'])
+        targets = torch.tensor(targets)
+        return (batch, targets)

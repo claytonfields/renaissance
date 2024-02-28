@@ -59,7 +59,6 @@ class REFER:
 		self.ROOT_DIR = osp.abspath(osp.dirname(__file__))
 		self.DATA_DIR = osp.join(data_root, dataset)
 		if dataset in ['refcoco', 'refcoco+', 'refcocog']:
-			
 			self.IMAGE_DIR = osp.join(data_root, 'images/mscoco/train2014')
 		elif dataset == 'refclef':
 			self.IMAGE_DIR = osp.join(data_root, 'images/saiapr_tc-12')
