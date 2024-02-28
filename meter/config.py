@@ -151,15 +151,16 @@ def test_case_finetune_mrpc_b():
     val_transform_keys = ["imagenet"]
     # Training Settings
     batch_size = 32
-    warmup_steps = 0.1
+    warmup_steps = 0
     draw_false_image = 0
     learning_rate = 2e-6
     lr_mult_head = 10
     lr_mult_cross_modal = 5
     max_text_len = 50
     # Freeze or UnFreeze Encoders
-    freeze_image_encoder = False
+    freeze_image_encoder = True
     freeze_text_encoder = False
+    freeze_cross_modal_layers = True
 
 @ex.named_config
 def test_case_finetune_ref_a():

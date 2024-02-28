@@ -15,6 +15,7 @@ import io
 from PIL import Image
 import torch
 import numpy as np
+import pyarrow as pa
 
 
 class RefcocoDataset(BaseDataset):
@@ -32,6 +33,7 @@ class RefcocoDataset(BaseDataset):
             names = ['refcoco_unc_test']
 
         super().__init__(*args, names=names, text_column_name="sentences", **kwargs)
+        self.filter_table()
 
 
     def __getitem__(self, index):
@@ -90,6 +92,15 @@ class RefcocoDataset(BaseDataset):
         }
         
         return return_dict
+    
+    def filter_table(self):
+        df = self.table.to_pandas()
+        def check_len(item):
+            return item.size <= self.max_bb
+        sub = df[df['bboxes'].apply(check_len)]
+        sub.reset_index(inplace=True, drop=True)
+        self.table = pa.Table.from_pandas(sub)
+    
     
     def collate(self, batch, mlm_collator=None):
         targets = []

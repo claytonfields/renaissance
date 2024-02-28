@@ -7,7 +7,7 @@ Created on Mon Feb 26 11:37:04 2024
 """
 
 from .base_dataset import BaseDataset
-from torch.utils.data._utils.collate import default_collate
+
 
 class GlueDataset(BaseDataset):
     def __init__(self,*args,  task='', split='', max_text_length=128, **kwargs):
@@ -47,8 +47,7 @@ class GlueDataset(BaseDataset):
                 self.sentence2 = self.data_dict["hypothesis"]
             self.label = self.data_dict['label']
             self.idx = self.data_dict["idx"]
-            
-            self.collate = default_collate
+        
             
     def __len__(self):
             return len(self.idx)
