@@ -44,6 +44,39 @@ def config():
     load_path = ""
     # Path to .ckpt file for resuming training from previous checkpoint
     eval_batch_size = 32
+
+    # Model Type Setting
+    model_type = "one-tower"
+    encoder_type = 'text'
+    pooler_type = 'double' # 'double' or 'single'
+    # encoder = "google/electra-small-discriminator"
+    # encoder = "bert-base-uncased"
+    encoder = "FacebookAI/roberta-base"
+    random_init_encoder = False
+    # two_tower = True
+    # multi_model_encoder = 'dandelin/vilt-b32-mlm'
+    
+    ### One Tower Settings ###
+    
+    # Text Setting
+    vqav2_label_size = 3129
+    max_text_len = 40
+    tokenizer = "bert-base-uncased"
+    vocab_size = 30522
+    whole_word_masking = False
+    mlm_prob = 0.15
+    draw_false_text = 0
+
+    # Transformer Setting
+    encoder = "google/electra-small-discriminator"
+    hidden_size = 192
+    num_heads = 4
+    num_layers = 12
+    mlp_ratio = 4
+    drop_rate = 0.1
+
+
+    ### Two Tower Settings ###
     # Image settings
     image_encoder = "facebook/deit-tiny-patch16-224"
     random_init_vision_encoder = False
@@ -62,9 +95,6 @@ def config():
     vocab_size = 30522
     
     # glue_task = ''
-    
-    # Architecture Setting
-    two_tower = True
     
     # Cross Layer Settings
     cross_layer_hidden_size = 256
@@ -117,6 +147,7 @@ def config():
     lr_mult_head = 5  # multiply lr for downstream heads
     lr_mult_cross_modal = 5  # multiply lr for the cross-modal module
     
+    
     # PL Trainer Setting
     fast_dev_run = False
     val_check_interval = 1.0
@@ -130,6 +161,52 @@ def config():
     num_nodes = 1
     num_workers = 12
     precision = 32
+    
+
+@ex.named_config
+def test_one_tower_mlm_itm_case_a():
+    exp_name = "test_one_tower_mlm_itm_case_a"
+    seed = 0
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 32  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
+    
+    test_only=False
+    data_root = 'data/arrow/' 
+    num_gpus=1 
+    num_nodes=1 
+    per_gpu_batchsize=32
+    resume_from = None
+    
+    # Transformer Setting
+    # encoder = "facebook/deit-tiny-patch16-224"
+    # encoder = "FacebookAI/roberta-base"
+    encoder = "google/canine-s"
+    hidden_size = 192
+    num_heads = 4
+    num_layers = 12
+    mlp_ratio = 4
+    drop_rate = 0.1
+    
+    # Image setting
+    train_transform_keys = ["pixelbert"]
+    val_transform_keys = ["pixelbert"]
+    image_size = 224
+    # max_image_len = -1
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    
+    # Text Setting
+    vqav2_label_size = 3129
+    max_text_len = 40
+    tokenizer = "bert-base-uncased"
+    vocab_size = 30522
+    whole_word_masking = False
+    mlm_prob = 0.15
+    draw_false_text = 0
+    
+    max_steps = 10
 
 @ex.named_config
 def test_case_finetune_mrpc_b():

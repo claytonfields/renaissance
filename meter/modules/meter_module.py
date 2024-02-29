@@ -3,7 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
 
-from transformers.models.bert.modeling_bert import BertConfig, BertModel
+from transformers.models.bert.modeling_bert import BertConfig, BertModel, BertEmbeddings
+from transformers.models.vit.modeling_vit import ViTEmbeddings, ViTConfig
+from transformers.models.electra.modeling_electra import ElectraEmbeddings, ElectraConfig
+# from transformers.model.vit import 
 from .bert_model import BertCrossLayer
 from . import heads, objectives, meter_utils
 from transformers import AutoConfig, AutoModel, AutoModelForSequenceClassification
@@ -21,101 +24,213 @@ class METERTransformerSS(pl.LightningModule):
         self.test_only = (self.hparams.config["load_path"] != "" 
             and self.hparams.config["test_only"])
 
-        self.random_init_vision_encoder = config['random_init_vision_encoder']
-        self.random_init_text_encoder = config['random_init_text_encoder']
-
-        # Handle Distributed Case
-        # Test this on frege when time permits
-        if torch.distributed.is_initialized():
-            if torch.distributed.get_rank() == 0:
-                AutoModel.from_pretrained(config['image_encoder'])
-                AutoModel.from_pretrained(config['text_encoder'])
-            torch.distributed.barrier()
+        self.model_type = config['model_type']
+        
+        
+        if self.model_type == 'one-tower':
             
-        # Vision Encoder
-        if self.random_init_vision_encoder:
-            image_kwargs = None
-            image_config = AutoConfig.from_pretrained(config['image_encoder'], kwargs=image_kwargs)
-            self.image_encoder = AutoModel.from_config(image_config)
-        else:
-            # visual_config = AutoConfig.from_pretrained(config['image_encoder'])
-            self.image_encoder = AutoModel.from_pretrained(config['image_encoder'])
-        
-        self.image_config = self.image_encoder.config
-        # original swin case
-        # self.avgpool = nn.AdaptiveAvgPool1d(1)
+            self.encoder_type = config['encoder_type']
+            self.random_init_encoder = config['random_init_encoder']
+            self.pooler_type = config['pooler_type']
             
-        # Freeze Parameters for self.image_encoder
-        if config['freeze_image_encoder']:
-            for param in self.image_encoder.parameters(self):
-                param.requires_grad = False
+            if self.random_init_encoder:
+                hf_config = BertConfig(
+                    vocab_size=config["vocab_size"],
+                    hidden_size=config["hidden_size"],
+                    num_hidden_layers=config["num_layers"],
+                    num_attention_heads=config["num_heads"],
+                    intermediate_size=config["hidden_size"] * config["mlp_ratio"],
+                    max_position_embeddings=config["max_text_len"],
+                    hidden_dropout_prob=config["drop_rate"],
+                    attention_probs_dropout_prob=config["drop_rate"],
+                )
+                self.encoder = AutoModel.from_config(hf_config)
+            else:
+                ## START HERE !!! ###
+                # Decide how to handle embeddings
+                # Download Pretrained Model and extract embeddings?
+                # Or train embeddings from scratch?
+                
+                # Download Encoder - Get Dimensions
+                self.encoder = AutoModel.from_pretrained(config['encoder'])
+                self.hidden_size = self.encoder.config.hidden_size
+                try:
+                    self.embedding_size = self.encoder.config.embedding_size
+                except:
+                    self.embedding_size = self.hidden_size
+                
+                if self.embedding_size != self.hidden_size:
+                    self.text_embedding_projection = nn.Linear(self.embedding_size, self.hidden_size)
+                    self.image_embedding_projection = nn.Linear(self.embedding_size, self.hidden_size)
+                
+                image_config = ViTConfig(
+                    image_size=config["image_size"],
+                    patch_size=config['patch_size'],
+                    hidden_size=self.embedding_size,
+                    hidden_dropout_prob=config["drop_rate"],
+                    attention_probs_dropout_prob=config["drop_rate"],
+                )
+                
+                text_config = bert_config = ElectraConfig(
+                    vocab_size=config["vocab_size"],
+                    hidden_size=self.hidden_size,
+                    embedding_size=self.embedding_size,
+                    max_position_embeddings=config["max_text_len"],
+                    hidden_dropout_prob=config["drop_rate"],
+                    attention_probs_dropout_prob=config["drop_rate"],
+                )
+                    
+                # if self.encoder_type == 'image':
+                #     # image_config = self.encoder.config
+            
+                    
+                #     self.hs = image_config.hidden_size
+                #     text_config = bert_config = BertConfig(
+                #         vocab_size=config["vocab_size"],
+                #         hidden_size=self.hs,
+                #         # num_hidden_layers=self.encoder.config.num_layers,
+                #         # num_attention_heads=self.encoder.config.num_heads,
+                #         # intermediate_size=self.encoder.config.hidden_size * self.encoder.config.mlp_ratio,
+                #         max_position_embeddings=config["max_text_len"],
+                #         hidden_dropout_prob=config["drop_rate"],
+                #         attention_probs_dropout_prob=config["drop_rate"],
+                #     )
+                # elif self.encoder_type == 'text':
+                #     self.encoder = AutoModel.from_pretrained(config['encoder'])
+                #     text_config = bert_config = self.encoder.config
+                #     self.hs = text_config.hidden_size
+                #     image_config = ViTConfig(
+                #         image_size=config["image_size"],
+                #         patch_size=config['patch_size'],
+                #         hidden_size=self.hs,
+                #         # num_hidden_layers=self.encoder.config.num_layers,
+                #         # num_attention_heads=self.encoder.config.num_heads,
+                #         # intermediate_size=self.encoder.config.hidden_size *self.encoder.config.mlp_ratio,
+                #         max_position_embeddings=config["max_text_len"],
+                #         hidden_dropout_prob=config["drop_rate"],
+                #         attention_probs_dropout_prob=config["drop_rate"],
+                #     )
+                    
+            # self.text_embeddings = BertEmbeddings(text_config)
+            # self.text_embeddings.apply(objectives.init_weights)
+            
+            self.text_embeddings = ElectraEmbeddings(text_config)
+            self.text_embeddings.apply(objectives.init_weights)
+            
+            self.image_embeddings = ViTEmbeddings(image_config)
+            self.image_embeddings.apply(objectives.init_weights)
+            
+            self.token_type_embeddings = nn.Embedding(2, self.embedding_size)
+            self.token_type_embeddings.apply(objectives.init_weights)
+
+            # if self.hparams.config["load_path"] == "":
+            #     self.encoder = AutoModel.from_pretrained(config['encoder'])
+            # else:
+            #     self.encoder = AutoModel.from_config(hf_config)
+                
+            if self.pooler_type == 'single':
+                self.pooler = heads.Pooler(self.hidden_size)
+                self.pooler.apply(objectives.init_weights)
+            elif self.pooler_type =='double':
+                self.text_pooler = heads.Pooler(self.hidden_size)
+                self.text_pooler.apply(objectives.init_weights)
+                self.image_pooler = heads.Pooler(self.hidden_size)
+                self.image_pooler.apply(objectives.init_weights)
         
-        # Initialize text_encoder
-        if self.random_init_text_encoder:
-            text_kwargs = None
-            text_config = AutoConfig.from_pretrained(config['text_encoder'], kwargs=text_kwargs)
-            self.text_transformer = AutoModel.from_config(text_config)
+        elif self.model_type == 'two-tower':
+            # ===================== BaseArchitecture ===================== #
+            self.is_electra = ('electra' in config['text_encoder']) # used on 283
+            
+    
+            self.random_init_vision_encoder = config['random_init_vision_encoder']
+            self.random_init_text_encoder = config['random_init_text_encoder']
+    
+            # Cross Modal Layers
+            bert_config = BertConfig(
+                vocab_size=config["vocab_size"],
+                hidden_size=config["cross_layer_hidden_size"],
+                num_attention_heads=config["num_cross_layer_heads"],
+                intermediate_size=config["cross_layer_hidden_size"] * config["cross_layer_mlp_ratio"],
+                max_position_embeddings=config["max_text_len"],
+                hidden_dropout_prob=config["cross_layer_drop_rate"],
+                attention_probs_dropout_prob=config["cross_layer_drop_rate"],
+            )
+            # resolution_after=config['image_size']
+            
+            self.cross_modal_text_transform = nn.Linear(config['text_encoder_hidden_size'], config['cross_layer_hidden_size'])
+            self.cross_modal_text_transform.apply(objectives.init_weights)
+            self.cross_modal_image_transform = nn.Linear(config['image_encoder_hidden_size'], config['cross_layer_hidden_size'])
+            self.cross_modal_image_transform.apply(objectives.init_weights)
+            
+            self.cross_modal_image_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_cross_layers'])])
+            self.cross_modal_image_layers.apply(objectives.init_weights)
+            self.cross_modal_text_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_cross_layers'])])
+            self.cross_modal_text_layers.apply(objectives.init_weights)
+    
+            self.cross_modal_image_pooler = heads.Pooler(config["cross_layer_hidden_size"])
+            self.cross_modal_image_pooler.apply(objectives.init_weights)
+            self.cross_modal_text_pooler = heads.Pooler(config["cross_layer_hidden_size"])
+            self.cross_modal_text_pooler.apply(objectives.init_weights)
+            
+            if config['freeze_cross_modal_layers']:
+                self._freeze_cross_modal_layers()
+            # self.fusion_encoder = CrossModalEncoder(config)
+            # self.fusion_encoder.apply(objectives.init_weights)
+            
+    
+            # Token Type Embeddings
+            self.token_type_embeddings = nn.Embedding(2, config["cross_layer_hidden_size"])
+            self.token_type_embeddings.apply(objectives.init_weights)
+            
+    
+            # Handle Distributed Case
+            # Test this on frege when time permits
+            if torch.distributed.is_initialized():
+                if torch.distributed.get_rank() == 0:
+                    AutoModel.from_pretrained(config['image_encoder'])
+                    AutoModel.from_pretrained(config['text_encoder'])
+                torch.distributed.barrier()
+                
+            # Vision Encoder
+            if not self.random_init_vision_encoder:
+                self.image_encoder = AutoModel.from_pretrained(config['image_encoder'])
+            else:
+                visual_kwargs = None
+                visual_config = AutoConfig.from_pretrained(config['image_encoder'], kwargs=visual_kwargs)
+                self.image_encoder = AutoModel.from_config(visual_config)
+                
+            # original swin case
+            # self.avgpool = nn.AdaptiveAvgPool1d(1)
+                
+            # Freeze Parameters for self.image_encoder
+            if config['freeze_image_encoder']:
+                for param in self.image_encoder.parameters(self):
+                    param.requires_grad = False
+            
+            # Initialize text_encoder
+            if not self.random_init_text_encoder:
+                self.text_encoder = AutoModel.from_pretrained(config['text_encoder'])
+            else:
+                text_kwargs = None
+                text_config = AutoConfig.from_pretrained(config['text_encoder'], kwargs=text_kwargs)
+                self.text_encoder = AutoModel.from_config(text_config)
+            
+            # Freeze Parameters for self.text_encoder
+            if config['freeze_text_encoder']:
+                for param in self.text_encoder.parameters():
+                    param.requires_grad = False
         else:
-            self.text_transformer = AutoModel.from_pretrained(config['text_encoder'])
-        
-        self.text_config = self.text_transformer.config
-        
-        # Freeze Parameters for self.text_transformer
-        if config['freeze_text_encoder']:
-            for param in self.text_transformer.parameters():
-                param.requires_grad = False
-        
-        # Dimensions
-        self.image_hs = self.image_config.hidden_size
-        
-        self.text_hs = self.text_config.hidden_size
-        self.vocab_size = self.text_config.vocab_size
-        
-        self.cross_layer_hs = config['cross_layer_hidden_size']
-        self.num_cross_layer_heads = config['num_cross_layer_heads']
-        self.cross_layer_mlp_ratio =  config['cross_layer_mlp_ratio']
-        self.max_text_len = config['max_text_len']
-        self.cross_layer_drop_rate = config['cross_layer_drop_rate']
-        self.num_cross_layers = config['num_cross_layers']
-        
-        # Cross Modal Layers
-        bert_config = BertConfig(
-            vocab_size = self.vocab_size,
-            hidden_size = self.cross_layer_hs,
-            num_attention_heads = self.num_cross_layer_heads,
-            intermediate_size = self.cross_layer_hs * self.cross_layer_mlp_ratio,
-            max_position_embeddings = self.max_text_len,
-            hidden_dropout_prob = self.cross_layer_drop_rate,
-            attention_probs_dropout_prob = self.cross_layer_drop_rate,
-        )
-        # resolution_after=config['image_size']
-        
-        self.cross_modal_text_transform = nn.Linear(self.text_hs, self.cross_layer_hs)
-        self.cross_modal_text_transform.apply(objectives.init_weights)
-        self.cross_modal_image_transform = nn.Linear(self.image_hs, self.cross_layer_hs)
-        self.cross_modal_image_transform.apply(objectives.init_weights)
-        
-        self.cross_modal_image_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(self.num_cross_layers)])
-        self.cross_modal_image_layers.apply(objectives.init_weights)
-        self.cross_modal_text_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(self.num_cross_layers)])
-        self.cross_modal_text_layers.apply(objectives.init_weights)
-
-        self.cross_modal_image_pooler = heads.Pooler(self.cross_layer_hs)
-        self.cross_modal_image_pooler.apply(objectives.init_weights)
-        self.cross_modal_text_pooler = heads.Pooler(self.cross_layer_hs)
-        self.cross_modal_text_pooler.apply(objectives.init_weights)
-        
-        if config['freeze_cross_modal_layers']:
-            self._freeze_cross_modal_layers()
-        # self.fusion_encoder = CrossModalEncoder(config)
-        # self.fusion_encoder.apply(objectives.init_weights)
-        
-
-        # Token Type Embeddings
-        self.token_type_embeddings = nn.Embedding(2, self.cross_layer_hs)
-        self.token_type_embeddings.apply(objectives.init_weights)
+            raise TypeError('Model Type not supported.')
         
         # ===================== Pretraining ===================== #
+        
+        if self.model_type =='one-tower':
+            if self.pooler_type == 'single':
+                hs = self.hs
+            elif self.pooler_type == 'double':
+                hs = 2*self.hidden_size
+        else:
+            hs = 2*self.hparams.config["cross_layer_hidden_size"]
         
         # Masked Language Modeling
         if self.hparams.config["loss_names"]["mlm"] > 0:
@@ -123,20 +238,21 @@ class METERTransformerSS(pl.LightningModule):
             self.mlm_score.apply(objectives.init_weights)
         
         # Image Text Matching
-        if self.hparams.config["loss_names"]["itm"] > 0:
-            self.itm_score = heads.ITMHead(self.cross_layer_hs*2)
+        if config["loss_names"]["itm"] > 0:
+            self.itm_score = heads.ITMHead(hs)
             self.itm_score.apply(objectives.init_weights)
 
+        
         # ===================== Downstream  ===================== #
         
         # Initialize Visual Question Answering V2 Classifier
         if self.hparams.config["loss_names"]["vqa"] > 0:
             vs = self.hparams.config["vqav2_label_size"]
             self.vqa_classifier = nn.Sequential(
-                nn.Linear(self.cross_layer_hs * 2, self.cross_layer_hs * 2),
-                nn.LayerNorm(self.cross_layer_hs * 2),
+                nn.Linear(hs, hs),
+                nn.LayerNorm(hs ),
                 nn.GELU(),
-                nn.Linear(self.cross_layer_hs * 2, vs),
+                nn.Linear(hs, vs),
             )
             self.vqa_classifier.apply(objectives.init_weights)
 
@@ -147,16 +263,18 @@ class METERTransformerSS(pl.LightningModule):
             self.load_state_dict(state_dict, strict=False)
 
         # Initialize NLVR2 Classifier
+        # May cause error in two-tower model!
         if self.hparams.config["loss_names"]["nlvr2"] > 0:
             self.nlvr2_classifier = nn.Sequential(
-                nn.Linear(self.cross_layer_hs * 4, self.cross_layer_hs * 2),
-                nn.LayerNorm(self.cross_layer_hs * 2),
+                nn.Linear(hs * 2, hs),
+                nn.LayerNorm(hs),
                 nn.GELU(),
-                nn.Linear(self.cross_layer_hs * 2, 2),
+                nn.Linear(hs, 2),
             )
             self.nlvr2_classifier.apply(objectives.init_weights)
             emb_data = self.token_type_embeddings.weight.data
-            self.token_type_embeddings = nn.Embedding(3, self.cross_layer_hs)
+            # Possible error with wrong hidden size below
+            self.token_type_embeddings = nn.Embedding(3, hs)
             self.token_type_embeddings.apply(objectives.init_weights)
             self.token_type_embeddings.weight.data[0, :] = emb_data[0, :]
             self.token_type_embeddings.weight.data[1, :] = emb_data[1, :]
@@ -165,14 +283,15 @@ class METERTransformerSS(pl.LightningModule):
         # Initialize SNLI-VE Classifier
         if self.hparams.config["loss_names"]["snli"] > 0:
             self.snli_classifier = nn.Sequential(
-                nn.Linear(self.cross_layer_hs * 2, self.cross_layer_hs * 2),
-                nn.LayerNorm(self.cross_layer_hs * 2),
+                nn.Linear(hs, hs),
+                nn.LayerNorm(hs),
                 nn.GELU(),
-                nn.Linear(self.cross_layer_hs * 2, 3),
+                nn.Linear(hs, 3),
             )
             self.snli_classifier.apply(objectives.init_weights)
 
         # Initialize Image-Text Recall Classifier
+        # Possible error for two tower model below
         if self.hparams.config["loss_names"]["irtr"] > 0:
             self.rank_output = nn.Linear(self.cross_layer_hs, 1)
             self.rank_output.weight.data = self.itm_score.fc.weight.data[1:, :]
@@ -184,16 +303,19 @@ class METERTransformerSS(pl.LightningModule):
         # Initialize Reference Resolution Classifier
         if self.hparams.config["loss_names"]['ref'] > 0:
             self.ref_classifier = nn.Sequential(
-                nn.Linear(self.cross_layer_hs * 2, self.cross_layer_hs * 2),
-                nn.LayerNorm(self.cross_layer_hs * 2),
+                nn.Linear(hs, hs),
+                nn.LayerNorm(hs),
                 nn.GELU(),
-                nn.Linear(self.cross_layer_hs * 2, 1),
+                nn.Linear(hs, 1),
             )
             self.ref_classifier.apply(objectives.init_weights)
         
         # Text-Only Classification
-        # self.text_hs = config['text_encoder_hidden_size']
-        self.text_classification_pooler = heads.Pooler(self.text_hs)
+        if self.model_type == 'one-tower':
+            text_hs = self.hidden_size
+        else:
+            text_hs = config['text_encoder_hidden_size']
+        self.text_classification_pooler = heads.Pooler(config['text_encoder_hidden_size'])
         self.text_classification_pooler.apply(objectives.init_weights)
         
         # MRPC Text Classifier
@@ -313,8 +435,36 @@ class METERTransformerSS(pl.LightningModule):
         for param in layer.parameters():
             param.requires_grad = False
             # return self
-
-    def infer(
+            
+    def infer(self,
+        batch,
+        mask_text=False,
+        mask_image=False,
+        image_token_type_idx=1,
+        img=None,
+        image_embeds=None,
+        image_masks=None,
+    ):
+        if self.model_type == 'one-tower':
+            ret = self.infer_one_tower(
+                batch,
+                mask_text=mask_text,
+                mask_image=mask_image,
+                image_token_type_idx=image_token_type_idx,
+                image_embeds=image_embeds,
+                image_masks=image_masks,
+            )
+        elif self.model_type == 'two-tower':
+            ret = self.infer_two_tower(
+                batch,
+                mask_text=mask_text,
+                mask_image=mask_image,
+                image_token_type_idx=image_token_type_idx,
+                img=img
+            )
+        return ret
+    
+    def infer_two_tower(
         self,
         batch,
         mask_text=False,
@@ -397,8 +547,76 @@ class METERTransformerSS(pl.LightningModule):
         return ret
     
     # Implement infer method for one_tower models
-    def infer_one_tower(self, batch):
-        pass
+    def infer_one_tower(
+        self,
+        batch,
+        mask_text=False,
+        mask_image=False,
+        image_token_type_idx=1,
+        image_embeds=None,
+        image_masks=None,
+    ):
+        if f"image_{image_token_type_idx - 1}" in batch:
+            imgkey = f"image_{image_token_type_idx - 1}"
+        else:
+            imgkey = "image"
+
+        do_mlm = "_mlm" if mask_text else ""
+        text_ids = batch[f"text_ids{do_mlm}"]
+        text_labels = batch[f"text_labels{do_mlm}"]
+        text_masks = batch[f"text_masks"]
+        text_embeds = self.text_embeddings(text_ids)
+        
+        image_embeds = self.image_embeddings(batch['image'][0], interpolate_pos_encoding=True)
+        image_masks = torch.ones_like(image_embeds[:,:,0], dtype=torch.long)
+
+        text_embeds, image_embeds = (
+            text_embeds + self.token_type_embeddings(torch.zeros_like(text_masks)),
+            image_embeds
+            + self.token_type_embeddings(
+                torch.full_like(image_masks, image_token_type_idx))
+        )
+        
+        if self.embedding_size != self.hidden_size:
+            text_embeds = self.text_embedding_projection(text_embeds)
+            image_embeds = self.image_embedding_projection(image_embeds)
+
+        co_embeds = torch.cat([text_embeds, image_embeds], dim=1)
+        co_masks = torch.cat([text_masks, image_masks], dim=1)
+
+        x = co_embeds
+
+        # for i, blk in enumerate(self.encoder.blocks):
+        #     x, _attn = blk(x, mask=co_masks)
+
+        # x = self.transformer.norm(x)
+        try:
+            x = self.encoder(inputs_embeds=x)[0]
+        except:
+            x = self.encoder.encoder(x)[0]
+        
+        text_feats, image_feats = (
+            x[:, : text_embeds.shape[1]],
+            x[:, text_embeds.shape[1] :],
+        )
+        
+        if self.pooler_type == 'single':
+            cls_feats = self.pooler(x)
+        else:
+            cls_feats_text = self.text_pooler(text_feats)
+            cls_feats_image = self.image_pooler(image_feats)
+            cls_feats = torch.cat([cls_feats_text, cls_feats_image], dim=-1)
+            
+
+        ret = {
+            "text_feats": text_feats,
+            "image_feats": image_feats,
+            "cls_feats": cls_feats,
+            'text_labels' : text_labels,
+            'text_ids' : text_ids
+        }
+
+        return ret
     
     # Implement text only infer method
     def infer_text_only(self, batch):
