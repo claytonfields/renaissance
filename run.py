@@ -65,7 +65,7 @@ def main(_config):
         strategy = 'ddp_find_unused_parameters_true',
         benchmark=True,
         deterministic='warn',
-        max_epochs=_config["max_epoch"] if max_steps is None else 1000,
+        max_epochs=_config["max_epoch"],
         max_steps=max_steps,
         callbacks=callbacks,
         logger=logger,

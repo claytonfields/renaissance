@@ -299,6 +299,29 @@ def task_finetune_nlvr2_clip_bert():
     image_size = 288
 
 @ex.named_config
+def task_finetune_nlvr2_deit_electra():
+    exp_name = "nlvr2_deit_electra"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    batch_size = 256
+    max_epoch = 10
+    max_steps = None
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 1e-5
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    image_encoder = "facebook/deit-tiny-patch16-224"
+    image_size = 224
+    patch_size = 16
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    
+    
+
+@ex.named_config
 def task_finetune_vqa_clip_bert():
     exp_name = "finetune_vqa"
     datasets = ["vqa"]
@@ -799,7 +822,11 @@ def test_case_finetune_snli_a():
     image_encoder_hidden_size = 192
     image_size = 224
     resolution_before = 224
-    patch_size = 16
+    patch_size = 16image_encoder = "facebook/deit-tiny-patch16-224"
+    image_size = 224
+    resolution_before = 224
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]
     # Training Settings
