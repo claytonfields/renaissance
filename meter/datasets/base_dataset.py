@@ -9,6 +9,10 @@ from ..transforms import keys_to_transforms
 from datasets import load_dataset
 from torch.utils.data._utils.collate import default_collate
 
+'''
+Claen this up, it's ugly
+
+'''
 
 class BaseDataset(torch.utils.data.Dataset):
     def __init__(
@@ -82,7 +86,7 @@ class BaseDataset(torch.utils.data.Dataset):
                 for i, name in enumerate(names):
                     self.table_names += [name] * len(tables[i])
     
-                self.table = pa.concat_tables(tables, promote=True)
+                self.table = pa.concat_tables(tables, mode='default')
                 if text_column_name != "":
                     self.text_column_name = text_column_name
                     self.all_texts = self.table[text_column_name].to_pandas().tolist()
@@ -155,7 +159,7 @@ class BaseDataset(torch.utils.data.Dataset):
             truncation=True,
             max_length=self.max_text_len,
             return_special_tokens_mask=True,
-            return_tensors='pt'
+            # return_tensors='pt'
         )
         return {
             "text": (text, encoding),

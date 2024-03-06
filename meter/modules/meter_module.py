@@ -209,15 +209,15 @@ class METERTransformerSS(pl.LightningModule):
             
             # Initialize text_encoder
             if not self.random_init_text_encoder:
-                self.text_encoder = AutoModel.from_pretrained(config['text_encoder'])
+                self.text_transformer = AutoModel.from_pretrained(config['text_encoder'])
             else:
                 text_kwargs = None
                 text_config = AutoConfig.from_pretrained(config['text_encoder'], kwargs=text_kwargs)
-                self.text_encoder = AutoModel.from_config(text_config)
+                self.text_transformer = AutoModel.from_config(text_config)
             
-            # Freeze Parameters for self.text_encoder
+            # Freeze Parameters for self.text_transformer
             if config['freeze_text_encoder']:
-                for param in self.text_encoder.parameters():
+                for param in self.text_transformer.parameters():
                     param.requires_grad = False
         else:
             raise TypeError('Model Type not supported.')
@@ -312,25 +312,36 @@ class METERTransformerSS(pl.LightningModule):
         
         # Text-Only Classification
         if self.model_type == 'one-tower':
-            text_hs = self.hidden_size
+            self.text_hs = self.hidden_size
         else:
-            text_hs = config['text_encoder_hidden_size']
-        self.text_classification_pooler = heads.Pooler(config['text_encoder_hidden_size'])
-        self.text_classification_pooler.apply(objectives.init_weights)
+            self.text_hs = config['text_encoder_hidden_size']
         
+        
+        self.text_only = False
+        # # MRPC Text Classifier
+        # if self.hparams.config["loss_names"]['mrpc'] > 0:
+        #     self.text_only = True
+        #     self.mrpc_classifier = nn.Sequential(
+        #         nn.Linear(self.text_hs, self.text_hs),
+        #         nn.LayerNorm(self.text_hs),
+        #         nn.GELU(),
+        #         nn.Linear(self.text_hs, 2)
+        #     )
+        #     self.mrpc_classifier.apply(objectives.init_weights)
+            # self.load_text_classifier()
+            
         # MRPC Text Classifier
         if self.hparams.config["loss_names"]['mrpc'] > 0:
-            self.mrpc_classifier = nn.Sequential(
-                nn.Linear(self.text_hs, self.text_hs),
-                nn.LayerNorm(self.text_hs),
-                nn.GELU(),
-                nn.Linear(self.text_hs, 2)
-            )
+            self.text_only = True
+            # hidden_size = self.text_hs
+            num_labels = 2
+            self.mrpc_classifier = heads.TextClassificationHead(self.text_hs, num_labels)
             self.mrpc_classifier.apply(objectives.init_weights)
-            # self.load_text_classifier()
+            
         
         # rte Text Classifier
         if self.hparams.config["loss_names"]['rte'] > 0:
+            self.text_only = True
             self.rte_classifier = nn.Sequential(
                 nn.Linear(self.text_hs, self.text_hs),
                 nn.LayerNorm(self.text_hs),
@@ -341,6 +352,7 @@ class METERTransformerSS(pl.LightningModule):
         
         # wnli Text Classifier
         if self.hparams.config["loss_names"]['wnli'] > 0:
+            self.text_only = True
             self.wnli_classifier = nn.Sequential(
                 nn.Linear(self.text_hs, self.text_hs),
                 nn.LayerNorm(self.text_hs),
@@ -351,6 +363,7 @@ class METERTransformerSS(pl.LightningModule):
             
         # sst2 Text Classifier
         if self.hparams.config["loss_names"]['sst2'] > 0:
+            self.text_only = True
             self.sst2_classifier = nn.Sequential(
                 nn.Linear(self.text_hs, self.text_hs),
                 nn.LayerNorm(self.text_hs),
@@ -361,6 +374,7 @@ class METERTransformerSS(pl.LightningModule):
             
         # qqp Text Classifier
         if self.hparams.config["loss_names"]['qqp'] > 0:
+            self.text_only = True
             self.qqp_classifier = nn.Sequential(
                 nn.Linear(self.text_hs, self.text_hs),
                 nn.LayerNorm(self.text_hs),
@@ -371,6 +385,7 @@ class METERTransformerSS(pl.LightningModule):
             
         # qnli Text Classifier
         if self.hparams.config["loss_names"]['qnli'] > 0:
+            self.text_only = True
             self.qnli_classifier = nn.Sequential(
                 nn.Linear(self.text_hs, self.text_hs),
                 nn.LayerNorm(self.text_hs),
@@ -381,6 +396,7 @@ class METERTransformerSS(pl.LightningModule):
             
         # mnli Text Classifier
         if self.hparams.config["loss_names"]['mnli'] > 0:
+            self.text_only = True
             self.mnli_classifier = nn.Sequential(
                 nn.Linear(self.text_hs, self.text_hs),
                 nn.LayerNorm(self.text_hs),
@@ -390,6 +406,7 @@ class METERTransformerSS(pl.LightningModule):
         
         # cola Text Classifier
         if self.hparams.config["loss_names"]['cola'] > 0:
+            self.text_only = True
             self.cola_classifier = nn.Sequential(
                 nn.Linear(self.text_hs, self.text_hs),
                 nn.LayerNorm(self.text_hs),
@@ -397,15 +414,24 @@ class METERTransformerSS(pl.LightningModule):
                 nn.Linear(self.text_hs, 2)
             )
             self.cola_classifier.apply(objectives.init_weights)
-            
-        ### Image-Only Tasks ###
         
-        # Image-Only Classification Pooler
-        self.image_classification_pooler = heads.Pooler(self.image_hs)
-        self.image_classification_pooler.apply(objectives.init_weights)
+        if self.text_only:
+            self.text_classification_pooler = heads.Pooler(self.text_hs)
+            self.text_classification_pooler.apply(objectives.init_weights)
+            
+        
+        ### Image-Only Tasks ###
+        # Image-Only Classfification
+        self.image_only = False
+        
+        if self.model_type == 'one-tower':
+            self.image_hs = self.hidden_size
+        else:
+            self.image_hs = config['image_encoder_hidden_size']
         
         # CIFAR-10 Image Classifier
         if self.hparams.config["loss_names"]['cifar10'] > 0:
+            self.image_only = True
             self.cifar10_classifier = nn.Sequential(
                 nn.Linear(self.image_hs, self.image_hs),
                 nn.LayerNorm(self.image_hs),
@@ -413,7 +439,13 @@ class METERTransformerSS(pl.LightningModule):
                 nn.Linear(self.image_hs, 10)
             )
             self.cifar10_classifier.apply(objectives.init_weights)
+        
+        if self.image_only:
+            # Image-Only Classification Pooler
+            self.image_classification_pooler = heads.Pooler(self.image_hs)
+            self.image_classification_pooler.apply(objectives.init_weights)
             
+        
         meter_utils.set_metrics(self)
         self.current_tasks = list()
 
@@ -488,7 +520,7 @@ class METERTransformerSS(pl.LightningModule):
         text_embeds = self.text_transformer.embeddings(input_ids=text_ids)
         device = text_embeds.device
         input_shape = text_masks.size()
-        extend_text_masks = self.text_transformer.get_extended_attention_mask(text_masks, input_shape, device)
+        extend_text_masks = self.text_transformer.get_extended_attention_mask(text_masks, input_shape)#, device)
         
         # Project Embeddings if Necessary
         if self.is_electra:
@@ -513,7 +545,7 @@ class METERTransformerSS(pl.LightningModule):
         image_embeds = image_embeds.last_hidden_state
         image_embeds = self.cross_modal_image_transform(image_embeds)
         image_masks = torch.ones((image_embeds.size(0), image_embeds.size(1)), dtype=torch.long, device=device)
-        extend_image_masks = self.text_transformer.get_extended_attention_mask(image_masks, image_masks.size(), device)
+        extend_image_masks = self.text_transformer.get_extended_attention_mask(image_masks, image_masks.size())#, device)
 
         # Cross-Modal Processing
         text_embeds, image_embeds = (
@@ -580,7 +612,8 @@ class METERTransformerSS(pl.LightningModule):
         if self.embedding_size != self.hidden_size:
             text_embeds = self.text_embedding_projection(text_embeds)
             image_embeds = self.image_embedding_projection(image_embeds)
-
+        
+        # ERROR: Causes shape error with one-tower model.
         co_embeds = torch.cat([text_embeds, image_embeds], dim=1)
         co_masks = torch.cat([text_masks, image_masks], dim=1)
 
@@ -618,18 +651,20 @@ class METERTransformerSS(pl.LightningModule):
 
         return ret
     
-    # Implement text only infer method
+    # Review and if update, if needed for one-tower
     def infer_text_only(self, batch):
         hidden_state = self.text_transformer(**batch).last_hidden_state#.squeeze()
         cls_feat = self.text_classification_pooler(hidden_state)
         
         return cls_feat
     
+    # Possiply geek for test case
     def load_text_classifier(self):
-        # self.text_encoder.save_pretrained('temp')
-        self.text_encoder = AutoModelForSequenceClassification.from_pretrained('google/electra-small-discriminator')
+        # self.text_transformer.save_pretrained('temp')
+        self.text_transformer = AutoModelForSequenceClassification.from_pretrained('google/electra-small-discriminator')
      
 
+    # This is ugly. Try to generalize
     def forward(self, batch):
         ret = dict()
         if len(self.current_tasks) == 0:

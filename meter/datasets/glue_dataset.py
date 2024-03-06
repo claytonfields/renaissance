@@ -29,7 +29,7 @@ class GlueDataset(BaseDataset):
             
             self.max_text_length = max_text_length
             
-            
+            # Consider dicionary apping
             if self.task in ["rte", "mrpc", "stsb", "wnli"]:
                 self.sentence1 = self.data_dict['sentence1']
                 self.sentence2 = self.data_dict['sentence2']

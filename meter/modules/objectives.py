@@ -13,6 +13,7 @@ from einops import rearrange
 
 from .dist_utils import all_gather
 
+# Find a way to generalize logging fucntions 
 
 def compute_mlm(pl_module, batch):
     infer = pl_module.infer(batch, mask_text=True, mask_image=False)
@@ -84,9 +85,7 @@ def compute_itm(pl_module, batch):
 
     return ret
 
-## Complete this method for batching
-#  Must also decide on how to organize batch in dataset and dataloader
-#  
+# Update for one-tower mehtods
 def compute_ref(pl_module, batch):
     targets = batch[1]
     batch = batch[0]
@@ -115,8 +114,8 @@ def compute_ref(pl_module, batch):
     acc = getattr(pl_module, f"{phase}_ref_accuracy")(
         ret["ref_logits"], ret["ref_targets"]
     )
-    pl_module.log(f"ref/{phase}/loss", loss)
-    pl_module.log(f"ref/{phase}/accuracy", acc)
+    pl_module.log(f"ref/{phase}/loss", loss, batch_size=pl_module.hparams.config["batch_size"], sync_dist=True)
+    pl_module.log(f"ref/{phase}/accuracy", acc, batch_size=pl_module.hparams.config["batch_size"], sync_dist=True)
     # pl_module.log(f"ref/{phase}/score", score)
     
     return ret
@@ -436,6 +435,9 @@ def compute_irtr_recall(pl_module):
 
 # ======================= Text Only ======================= #
 
+# add glue_task function to handle these cases
+# consider text general text classifcation head
+
 def compute_cola(pl_module, batch):
     pass
 
@@ -621,6 +623,7 @@ def compute_cola(pl_module, batch):
     
     return ret
 
+# Create image classification task
 def compute_cifar10(pl_module, batch):
     image = batch['image']
     hidden_state = pl_module.image_encoder(image).last_hidden_state#.squeeze()

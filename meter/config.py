@@ -42,17 +42,19 @@ def config():
     
     # Path to .ckpt file for fine-tuning or testing
     load_path = ""
+    resume_from = None
     # Path to .ckpt file for resuming training from previous checkpoint
     eval_batch_size = 32
 
     # Model Type Setting
-    model_type = "one-tower"
+    model_type = "two-tower"
     encoder_type = 'text'
     pooler_type = 'double' # 'double' or 'single'
     # encoder = "google/electra-small-discriminator"
     # encoder = "bert-base-uncased"
-    encoder = "FacebookAI/roberta-base"
+    encoder = "google/electra-small-discriminator"
     random_init_encoder = False
+    drop_rate = 0.1
     # two_tower = True
     # multi_model_encoder = 'dandelin/vilt-b32-mlm'
     
@@ -169,19 +171,20 @@ def test_one_tower_mlm_itm_case_a():
     seed = 0
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
-    batch_size = 32  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
+    batch_size = 42  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
+    # per_gpu_batchsize = 12
     
     test_only=False
     data_root = 'data/arrow/' 
     num_gpus=1 
     num_nodes=1 
-    per_gpu_batchsize=32
+    per_gpu_batchsize=2
     resume_from = None
     
     # Transformer Setting
     # encoder = "facebook/deit-tiny-patch16-224"
     # encoder = "FacebookAI/roberta-base"
-    encoder = "google/canine-s"
+    encoder = "google/electra-small-discriminator"
     hidden_size = 192
     num_heads = 4
     num_layers = 12
@@ -206,7 +209,9 @@ def test_one_tower_mlm_itm_case_a():
     mlm_prob = 0.15
     draw_false_text = 0
     
-    max_steps = 10
+    max_steps = 50
+
+
 
 @ex.named_config
 def test_case_finetune_mrpc_b():
@@ -265,7 +270,9 @@ def test_case_finetune_ref_a():
     num_gpus=1 
     num_nodes=1 
     per_gpu_batchsize=6 
+    model_type = 'two-tower'
     load_path = '/home/claytonfields/nlp/code/meter/result/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints/epoch=5-step=96215.ckpt'
+    # load_path = "/home/claytonfields/nlp/code/meter/result/test_one_tower_mlm_itm_case_a_seed0_from_/version_29/checkpoints/last.ckpt"
     # SNLI-VE
     exp_name = "test_case_finetune_ref"
     datasets = ["refcoco"]

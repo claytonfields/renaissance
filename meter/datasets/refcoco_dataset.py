@@ -17,6 +17,10 @@ import torch
 import numpy as np
 import pyarrow as pa
 
+'''
+TODO: Integrate all three methods into this dataset.
+'''
+
 
 class RefcocoDataset(BaseDataset):
     def __init__(self, *args, split="", max_bb = 42, **kwargs):
@@ -35,7 +39,7 @@ class RefcocoDataset(BaseDataset):
         super().__init__(*args, names=names, text_column_name="sentences", **kwargs)
         self.filter_table()
 
-
+    # Generalize padding funtion for use in different methods
     def __getitem__(self, index):
         max_bb = self.max_bb
         image_index, ref_index = self.index_mapper[index]
@@ -63,12 +67,12 @@ class RefcocoDataset(BaseDataset):
         # text ids
         text = self.get_text(index)
         text_tokenized = text['text'][1]
-        ids = text_tokenized['input_ids']
+        ids = torch.tensor(text_tokenized['input_ids'])
         repeat_ids = ids.repeat(num_sub_images,1)
         pad_ids =  torch.zeros(num_pad,self.max_text_len,dtype=torch.int8)
         text_ids = torch.cat((repeat_ids, pad_ids))#.to(torch.long)
         # text masks
-        masks = text_tokenized['attention_mask']
+        masks = torch.tensor(text_tokenized['attention_mask'])
         repeat_masks = masks.repeat(num_sub_images,1)
         pad_masks = torch.zeros(num_pad, self.max_text_len, dtype=torch.int8)
         text_masks = torch.cat((repeat_masks, pad_masks))#.to(torch.long)

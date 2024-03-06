@@ -2,7 +2,7 @@ import torch
 import random
 import os
 
-from transformers.optimization import AdamW
+from torch.optim import AdamW
 from transformers import (
     get_polynomial_decay_schedule_with_warmup,
     get_cosine_schedule_with_warmup,
@@ -13,6 +13,7 @@ from ..gadgets.my_metrics import Accuracy, VQAScore, Scalar
 from torchmetrics import F1Score
 from torchmetrics.classification import BinaryF1Score, MatthewsCorrCoef
 
+# Creat a set_attribute type function to gneralize this
 def set_metrics(pl_module):
     for split in ["train", "val"]:
         for k, v in pl_module.hparams.config["loss_names"].items():
@@ -87,7 +88,8 @@ def set_metrics(pl_module):
 def epoch_wrapup(pl_module):
     phase = "train" if pl_module.training else "val"
     the_metric = 0
-
+    
+    # Create get recal funtion to extract tihs, makes it hard to read
     if pl_module.hparams.config["get_recall_metric"] and not pl_module.training:
         (ir_r1, ir_r5, ir_r10, tr_r1, tr_r5, tr_r10) = compute_irtr_recall(pl_module)
         print((ir_r1, ir_r5, ir_r10, tr_r1, tr_r5, tr_r10), pl_module.global_step)
@@ -116,7 +118,8 @@ def epoch_wrapup(pl_module):
             continue
 
         value = 0
-
+        
+        # Create function to minimeze these steps
         if loss_name == "vqa":
             value = getattr(pl_module, f"{phase}_{loss_name}_score").compute()
             pl_module.log(f"{loss_name}/{phase}/score_epoch", value)
@@ -129,12 +132,12 @@ def epoch_wrapup(pl_module):
         elif loss_name == 'ref':
             epoch = pl_module.current_epoch
             value = getattr(pl_module, f"{phase}_{loss_name}_accuracy").compute()
-            pl_module.log(f"{loss_name}/{phase}/accuracy_epoch", value)
+            pl_module.log(f"{loss_name}/{phase}/accuracy_epoch", value, sync_dist=True)
             getattr(pl_module, f"{phase}_{loss_name}_accuracy").reset()
             loss =  getattr(pl_module, f"{phase}_{loss_name}_loss").compute()
             pl_module.log(
                 f"{loss_name}/{phase}/loss_epoch",
-                loss)
+                loss, sync_dist=True)
             getattr(pl_module, f"{phase}_{loss_name}_loss").reset()
             
             log_dir = pl_module.logger.log_dir
@@ -373,7 +376,7 @@ def epoch_wrapup(pl_module):
 
         the_metric += value
 
-    pl_module.log(f"{phase}/the_metric", the_metric)
+    pl_module.log(f"{phase}/the_metric", the_metric, sync_dist=True)
 
 
 def check_non_acc_grad(pl_module):

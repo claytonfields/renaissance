@@ -8,6 +8,7 @@ from meter.config import ex
 from meter.modules import METERTransformerSS
 from meter.datamodules.multitask_datamodule import MTDataModule
 
+import warnings
 import torch
 
 # import resource
@@ -17,13 +18,13 @@ import torch
 @ex.automain
 def main(_config):
     
-    
+    # warnings.simplefilter("error")
     
     _config = copy.deepcopy(_config)
     pl.seed_everything(_config["seed"])
 
-    print(_config)
-    dm = MTDataModule(_config, dist=True)
+    # print(_config)
+    dm = MTDataModule(_config, dist=False)
 
     model = METERTransformerSS(_config)
     exp_name = f'{_config["exp_name"]}'
@@ -55,14 +56,16 @@ def main(_config):
     ), 1)
 
     max_steps = _config["max_steps"] if _config["max_steps"] is not None else None
-
+    
+    torch.set_float32_matmul_precision('medium')
+    
     trainer = pl.Trainer(
         devices= _config["num_gpus"],
         num_nodes=_config["num_nodes"],
         precision=_config["precision"],
-        # accelerator = 'ddp',
-        strategy = 'ddp_find_unused_parameters_true',
-        benchmark=True,
+        accelerator = 'cpu',
+        # strategy = 'ddp_notebook',
+        # benchmark=True,
         deterministic='warn',
         max_epochs=_config["max_epoch"] if max_steps is None else 1000,
         max_steps=max_steps,
