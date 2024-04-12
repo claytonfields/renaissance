@@ -63,7 +63,7 @@ def main(_config):
         devices= _config["num_gpus"],
         num_nodes=_config["num_nodes"],
         precision=_config["precision"],
-        accelerator = 'cpu',
+        accelerator = 'gpu',
         # strategy = 'ddp_notebook',
         # benchmark=True,
         deterministic='warn',

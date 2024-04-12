@@ -443,8 +443,8 @@ def compute_cola(pl_module, batch):
 
 def compute_mrpc(pl_module, batch):
     mrpc_labels = batch.pop('label', None)
-    cls_feat = pl_module.infer_text_only(batch)
-    mrpc_logits = pl_module.mrpc_classifier(cls_feat)
+    hidden_state = pl_module.infer_text_only(batch)
+    mrpc_logits = pl_module.mrpc_classifier(hidden_state)
     mrpc_loss = F.cross_entropy(mrpc_logits, mrpc_labels)
     
     ret = {

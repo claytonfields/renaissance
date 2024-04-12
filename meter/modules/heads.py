@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from transformers.models.bert.configuration_bert import BertConfig
 from transformers.models.bert.modeling_bert import BertPredictionHeadTransform
 
 
@@ -30,10 +31,20 @@ class ITMHead(nn.Module):
 
 class MLMHead(nn.Module):
     def __init__(self, config, weight=None):
+        
+        bert_config = BertConfig(
+            vocab_size=config["vocab_size"],
+            hidden_size=config["cross_layer_hidden_size"],
+            num_attention_heads=config["num_cross_layer_heads"],
+            intermediate_size=config["cross_layer_hidden_size"] * config["cross_layer_mlp_ratio"],
+            max_position_embeddings=config["max_text_len"],
+            hidden_dropout_prob=config["cross_layer_drop_rate"],
+            attention_probs_dropout_prob=config["cross_layer_drop_rate"],
+        )
         super().__init__()
-        self.transform = BertPredictionHeadTransform(config)
-        self.decoder = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
-        self.bias = nn.Parameter(torch.zeros(config.vocab_size))
+        self.transform = BertPredictionHeadTransform(bert_config)
+        self.decoder = nn.Linear(bert_config.hidden_size, bert_config.vocab_size, bias=False)
+        self.bias = nn.Parameter(torch.zeros(bert_config.vocab_size))
         if weight is not None:
             self.decoder.weight = weight
 
@@ -44,21 +55,9 @@ class MLMHead(nn.Module):
 
 class TextClassificationHead(nn.Module):
     """Head for sentence-level classification tasks."""
-    
-    # MRPC Text Classifier
-    # if self.hparams.config["loss_names"]['mrpc'] > 0:
-    #     self.text_only = True
-    #     self.mrpc_classifier = nn.Sequential(
-    #         nn.Linear(self.text_hs, self.text_hs),
-    #         nn.LayerNorm(self.text_hs),
-    #         nn.GELU(),
-    #         nn.Linear(self.text_hs, 2)
-    #     )
-    #     self.mrpc_classifier.apply(objectives.init_weights)
 
 
-
-    def __init__(self, hidden_size, num_labels):
+    def __init__(self, hidden_size = None, num_labels = None):
         super().__init__()
         self.hidden_size = hidden_size
         self.num_labels = num_labels
@@ -66,16 +65,16 @@ class TextClassificationHead(nn.Module):
         # classifier_dropout = (
         #     config.classifier_dropout if config.classifier_dropout is not None else config.hidden_dropout_prob
         # )
-        self.layer_norm = nn.LayerNorm(self.hidden_size),
+        self.layer_norm = nn.LayerNorm(self.hidden_size)
         # self.activation = get_activation("gelu")
         self.activation = nn.GELU()
         # self.dropout = nn.Dropout(classifier_dropout)
         self.out_proj = nn.Linear(self.hidden_size, self.num_labels)
 
     def forward(self, features, **kwargs):
-        # x = features[:, 0, :]  # take <s> token (equiv. to [CLS])
+        x = features[:, 0, :]  # take <s> token (equiv. to [CLS])
+        # x = features
         # x = self.dropout(x)
-        x = features
         x = self.dense(x)
         x = self.layer_norm(x)
         x = self.activation(x)  # although BERT uses tanh here, it seems Electra authors used gelu here

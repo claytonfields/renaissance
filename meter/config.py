@@ -835,7 +835,7 @@ def test_case_mlm_itm_a():
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]
     # Training Settings
-    batch_size = 64
+    batch_size = 32
     warmup_steps = 0.1
     draw_false_image = 1
     draw_false_text = 0
@@ -1006,6 +1006,8 @@ def test_case_eval_snli_a():
     num_nodes=1 
     per_gpu_batchsize=64 
     # load_path = 'result/finetune_snli_mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/version_0/checkpoints/epoch\=4-step\=20684.ckpt deit_tiny_patch16_224'
+    load_path = '/home/claytonfields/nlp/code/meter/result/finetune_snli_seed0_from_epoch=43-step=898039/version_1/checkpoints/epoch=4-step=20684.ckpt'
+    # load_path = '/home/claytonfields/nlp/code/meter/result/finetune_snli_mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/version_0/checkpoints/epoch=4-step=20684.ckpt'
     # SNLI-VE
     exp_name = "test_case_finetune_snli"
     datasets = ["snli"]
