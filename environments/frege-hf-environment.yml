@@ -1,0 +1,4 @@
+name: meter-hf
+channels:
+  - defaults
+prefix: /data/anaconda3/envs/meter-hf

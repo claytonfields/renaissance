@@ -10,7 +10,7 @@ from transformers.models.electra.modeling_electra import ElectraEmbeddings, Elec
 from .bert_model import BertCrossLayer
 from . import heads, objectives, meter_utils
 from transformers import AutoConfig, AutoModel, AutoModelForSequenceClassification
-from .fusion_encoder import BertCrossModalEncoder
+from .fusion_encoder import BertCrossModalEncoder, LxmertCrossModalEncoder
 
 class METERTransformerSS(pl.LightningModule):
     def __init__(self, config):
@@ -162,25 +162,29 @@ class METERTransformerSS(pl.LightningModule):
             self.cross_modal_image_transform = nn.Linear(config['image_encoder_hidden_size'], config['cross_layer_hidden_size'])
             self.cross_modal_image_transform.apply(objectives.init_weights)
             
-            self.cross_modal_image_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_cross_layers'])])
-            self.cross_modal_image_layers.apply(objectives.init_weights)
-            self.cross_modal_text_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_cross_layers'])])
-            self.cross_modal_text_layers.apply(objectives.init_weights)
+            # self.cross_modal_image_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_cross_layers'])])
+            # self.cross_modal_image_layers.apply(objectives.init_weights)
+            # self.cross_modal_text_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_cross_layers'])])
+            # self.cross_modal_text_layers.apply(objectives.init_weights)
     
-            self.cross_modal_image_pooler = heads.Pooler(config["cross_layer_hidden_size"])
-            self.cross_modal_image_pooler.apply(objectives.init_weights)
-            self.cross_modal_text_pooler = heads.Pooler(config["cross_layer_hidden_size"])
-            self.cross_modal_text_pooler.apply(objectives.init_weights)
-            
-            if config['freeze_cross_modal_layers']:
-                self._freeze_cross_modal_layers()
-            
-            # self.fusion_encoder = BertCrossModalEncoder(config)
-            # self.fusion_encoder.apply(objectives.init_weights)
+            # self.cross_modal_image_pooler = heads.Pooler(config["cross_layer_hidden_size"])
+            # self.cross_modal_image_pooler.apply(objectives.init_weights)
+            # self.cross_modal_text_pooler = heads.Pooler(config["cross_layer_hidden_size"])
+            # self.cross_modal_text_pooler.apply(objectives.init_weights)
             
             # if config['freeze_cross_modal_layers']:
-            #     for param in self.fusion_encoder.parameters(self):
-            #         param.requires_grad = False
+            #     self._freeze_cross_modal_layers()
+            
+            self.fusion_encoder = BertCrossModalEncoder(config)
+            # self.fusion_encoder = LxmertCrossModalEncoder(config)
+            
+            self.fusion_encoder.apply(objectives.init_weights)
+            
+            
+            
+            if config['freeze_cross_modal_layers']:
+                for param in self.fusion_encoder.parameters(self):
+                    param.requires_grad = False
             
     
             # Token Type Embeddings
@@ -552,17 +556,17 @@ class METERTransformerSS(pl.LightningModule):
             ),
         )
         
-        x, y = text_embeds, image_embeds
-        for text_layer, image_layer in zip(self.cross_modal_text_layers, self.cross_modal_image_layers):
-            x1 = text_layer(x, y, extend_text_masks, extend_image_masks)
-            y1 = image_layer(y, x, extend_image_masks, extend_text_masks)
-            x, y = x1[0], y1[0]
+        # x, y = text_embeds, image_embeds
+        # for text_layer, image_layer in zip(self.cross_modal_text_layers, self.cross_modal_image_layers):
+        #     x1 = text_layer(x, y, extend_text_masks, extend_image_masks)
+        #     y1 = image_layer(y, x, extend_image_masks, extend_text_masks)
+        #     x, y = x1[0], y1[0]
 
-        text_feats, image_feats = x, y
-        cls_feats_text = self.cross_modal_text_pooler(x)
-        cls_feats_image = self.cross_modal_image_pooler(y)
-        cls_feats = torch.cat([cls_feats_text, cls_feats_image], dim=-1)
-        # cls_feats, text_feats, image_feats = self.fusion_encoder(text_embeds, image_embeds, extend_text_masks, extend_image_masks)
+        # text_feats, image_feats = x, y
+        # cls_feats_text = self.cross_modal_text_pooler(x)
+        # cls_feats_image = self.cross_modal_image_pooler(y)
+        # cls_feats = torch.cat([cls_feats_text, cls_feats_image], dim=-1)
+        cls_feats, text_feats, image_feats = self.fusion_encoder(text_embeds, image_embeds, extend_text_masks, extend_image_masks)
 
         ret = {
             "text_feats": text_feats,
