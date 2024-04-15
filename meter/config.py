@@ -227,12 +227,16 @@ def task_mlm_itm_deit_electra_fr():
     # datasets = ["coco", "vg", "sbu", "gcc"]
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
-    batch_size = 256
+    batch_size = 176
+    per_gpu_batchsize = 44
     max_epoch = None
-    max_steps = 100000
+    max_steps = 50000
     warmup_steps = 0.1
     whole_word_masking = True
     
+    image_encoder = "facebook/deit-tiny-patch16-224"
+    text_encoder = "google/electra-small-discriminator"
+
     # DO NOT Freeze Image Encoder
     freeze_image_encoder = False
     # Freeze Text Encoder
@@ -248,6 +252,7 @@ def task_mlm_itm_deit_electra_fr():
     lr_mult_head = 5
     lr_mult_cross_modal = 5
     num_cross_layers = 6
+    cross_layer_hidden_size = 256
 
 @ex.named_config
 def task_mlm_itm_deit_fr_electra_fr():
@@ -305,7 +310,7 @@ def task_finetune_nlvr2_deit_electra():
     loss_names = _loss_names({"nlvr2": 1})
     batch_size = 256
     max_epoch = 10
-    max_steps = None
+    max_steps = 1e6
     warmup_steps = 0.1
     draw_false_image = 0
     learning_rate = 1e-5
@@ -822,7 +827,8 @@ def test_case_finetune_snli_a():
     image_encoder_hidden_size = 192
     image_size = 224
     resolution_before = 224
-    patch_size = 16image_encoder = "facebook/deit-tiny-patch16-224"
+    patch_size = 16
+    image_encoder = "facebook/deit-tiny-patch16-224"
     image_size = 224
     resolution_before = 224
     train_transform_keys = ["imagenet"]
