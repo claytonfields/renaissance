@@ -438,8 +438,6 @@ def compute_irtr_recall(pl_module):
 # add glue_task function to handle these cases
 # consider text general text classifcation head
 
-def compute_cola(pl_module, batch):
-    pass
 
 def compute_mrpc(pl_module, batch):
     mrpc_labels = batch.pop('label', None)

@@ -209,7 +209,7 @@ def test_one_tower_mlm_itm_case_a():
     mlm_prob = 0.15
     draw_false_text = 0
     
-    max_steps = 50
+    max_steps = 100
 
 
 
@@ -814,7 +814,7 @@ def test_case_mlm_itm_a():
     loss_names = _loss_names({"itm": 1, "mlm": 1})
     # Training Time
     max_epoch = 1
-    max_steps = 10
+    max_steps = 100
     # Text Encoder
     text_encoder = "google/electra-small-discriminator"
     vocab_size = 30522
@@ -865,11 +865,12 @@ def test_case_mlm_itm_b():
     loss_names = _loss_names({"itm": 1, "mlm": 1})
     # Training Time
     max_epoch = 1
-    max_steps = 10
+    max_steps = 100
     # Text Encoder
-    text_encoder = "google/electra-base-discriminator"
+    # text_encoder = "google/electra-base-discriminator"
+    text_encoder = "google/electra-small-discriminator"
     vocab_size = 30522
-    text_encoder_hidden_size = 768
+    # text_encoder_hidden_size = 768
     # Cross Layer Settings
     cross_layer_hidden_size = 256
     num_cross_layers = 6
@@ -878,12 +879,13 @@ def test_case_mlm_itm_b():
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
     # Image Encoder Settings
-    image_encoder = "microsoft/swin-tiny-patch4-window7-224"
+    # image_encoder = "microsoft/swin-tiny-patch4-window7-224"
+    image_encoder = "facebook/deit-tiny-patch16-224"
     patch_size = 4
     image_size = 224
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]
-    image_encoder_hidden_size = 768
+    # image_encoder_hidden_size = 768
     resolution_before = 224
     # Training Settings
     batch_size = 64
