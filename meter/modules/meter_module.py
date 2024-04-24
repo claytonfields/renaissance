@@ -146,15 +146,15 @@ class METERTransformerSS(pl.LightningModule):
             self.random_init_text_encoder = config['random_init_text_encoder']
     
             # Cross Modal Layers
-            bert_config = BertConfig(
-                vocab_size=config["vocab_size"],
-                hidden_size=config["cross_layer_hidden_size"],
-                num_attention_heads=config["num_cross_layer_heads"],
-                intermediate_size=config["cross_layer_hidden_size"] * config["cross_layer_mlp_ratio"],
-                max_position_embeddings=config["max_text_len"],
-                hidden_dropout_prob=config["cross_layer_drop_rate"],
-                attention_probs_dropout_prob=config["cross_layer_drop_rate"],
-            )
+            # bert_config = BertConfig(
+            #     vocab_size=config["vocab_size"],
+            #     hidden_size=config["cross_layer_hidden_size"],
+            #     num_attention_heads=config["num_cross_layer_heads"],
+            #     intermediate_size=config["cross_layer_hidden_size"] * config["cross_layer_mlp_ratio"],
+            #     max_position_embeddings=config["max_text_len"],
+            #     hidden_dropout_prob=config["cross_layer_drop_rate"],
+            #     attention_probs_dropout_prob=config["cross_layer_drop_rate"],
+            # )
             # resolution_after=config['image_size']
             
             self.cross_modal_text_transform = nn.Linear(config['text_encoder_hidden_size'], config['cross_layer_hidden_size'])
