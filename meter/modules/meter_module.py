@@ -175,8 +175,8 @@ class METERTransformerSS(pl.LightningModule):
             # if config['freeze_cross_modal_layers']:
             #     self._freeze_cross_modal_layers()
             
-            self.fusion_encoder = BertCrossModalEncoder(config)
-            # self.fusion_encoder = LxmertCrossModalEncoder(config)
+            # self.fusion_encoder = BertCrossModalEncoder(config)
+            self.fusion_encoder = LxmertCrossModalEncoder(config)
             
             self.fusion_encoder.apply(objectives.init_weights)
             
@@ -566,7 +566,8 @@ class METERTransformerSS(pl.LightningModule):
         # cls_feats_text = self.cross_modal_text_pooler(x)
         # cls_feats_image = self.cross_modal_image_pooler(y)
         # cls_feats = torch.cat([cls_feats_text, cls_feats_image], dim=-1)
-        cls_feats, text_feats, image_feats = self.fusion_encoder(text_embeds, image_embeds, extend_text_masks, extend_image_masks)
+        # cls_feats, text_feats, image_feats = self.fusion_encoder(text_embeds, image_embeds, extend_text_masks, extend_image_masks)
+        cls_feats, text_feats, image_feats = self.fusion_encoder(text_embeds, extend_text_masks, image_embeds, extend_image_masks)
 
         ret = {
             "text_feats": text_feats,
