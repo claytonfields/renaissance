@@ -431,6 +431,53 @@ def task_mlm_itm():
     # num_cross_layer_heads = 12
     
 @ex.named_config
+def task_mlm_itm_onetower_electra():
+    exp_name = "mlm_itm_onetower_electra"
+    seed = 0
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 44  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
+    per_gpu_batchsize = 44
+    
+    test_only=False
+    data_root = 'data/arrow/' 
+    num_gpus=1 
+    num_nodes=1 
+    per_gpu_batchsize=44
+    resume_from = None
+    
+    # Transformer Setting
+    # encoder = "facebook/deit-tiny-patch16-224"
+    # encoder = "FacebookAI/roberta-base"
+    model_type = "one-tower"
+    encoder = "google/electra-small-discriminator"
+    hidden_size = 192
+    num_heads = 4
+    num_layers = 12
+    mlp_ratio = 4
+    drop_rate = 0.1
+    
+    # Image setting
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    image_size = 224
+    # max_image_len = -1
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    
+    # Text Setting
+    vqav2_label_size = 3129
+    max_text_len = 40
+    tokenizer = "bert-base-uncased"
+    vocab_size = 30522
+    whole_word_masking = False
+    mlm_prob = 0.15
+    draw_false_text = 0
+    
+    max_steps = 50000
+    
+@ex.named_config
 def task_mlm_itm_deit_electra():
     exp_name = "mlm_itm_deit_electra"
     # datasets = ["coco", "vg", "sbu", "gcc"]
