@@ -733,6 +733,53 @@ def task_finetune_snli():
     freeze_text_encoder = False
     
 @ex.named_config
+def task_finetune_snli_onetower():
+    exp_name = "finetune_snli_onetower"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    batch_size = 64
+    per_gpu_batchsize = 64
+    max_epoch = 5
+    max_steps = 10e6
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 2e-6
+    lr_mult_head = 10
+    max_text_len = 50
+    image_size = 384
+    patch_size = 16
+    # One-tower settings
+    model_type = "one-tower"
+    encoder_type = 'text'
+    pooler_type = 'double' # 'double' or 'single'
+    random_init_encoder = False
+    
+@ex.named_config
+def task_finetune_snli_onetower_electra():
+    exp_name = "finetune_snli_onetower_electra"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    batch_size = 64
+    per_gpu_batchsize = 64
+    max_epoch = 5
+    max_steps = 10e6
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 2e-6
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    image_size = 384
+    patch_size = 16
+    # One-tower settings
+    model_type = "one-tower"
+    encoder_type = 'text'
+    pooler_type = 'double' # 'double' or 'single'
+    encoder = "google/electra-small-discriminator"
+    random_init_encoder = False
+    
+    
+@ex.named_config
 def task_finetune_snli_vision_fr_text_fr():
     exp_name = "finetune_snli_vision_fr_text_fr"
     datasets = ["snli"]
