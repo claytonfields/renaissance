@@ -300,9 +300,10 @@ def task_finetune_nlvr2_clip_bert():
 
 @ex.named_config
 def task_finetune_nlvr2_deit_electra():
-    exp_name = "nlvr2_deit_electra"
+    exp_name = "finetune_nlvr2_deit_electra"
     datasets = ["nlvr2"]
     loss_names = _loss_names({"nlvr2": 1})
+    # Training Settings
     batch_size = 256
     max_epoch = 10
     max_steps = None
@@ -311,13 +312,21 @@ def task_finetune_nlvr2_deit_electra():
     learning_rate = 1e-5
     lr_mult_head = 10
     lr_mult_cross_modal = 5
+    # Text Setting
     text_encoder = "google/electra-small-discriminator"
     max_text_len = 50
+    # Image Settings
     image_encoder = "facebook/deit-tiny-patch16-224"
-    image_size = 224
-    patch_size = 16
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]
+    patch_size = 16
+    image_size = 288
+    # Cross-Modal Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
     
     
 
