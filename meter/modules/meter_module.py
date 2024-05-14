@@ -16,13 +16,17 @@ class METERTransformerSS(pl.LightningModule):
     def __init__(self, config):
         super().__init__()
         self.save_hyperparameters()
-        
         # ===================== BaseArchitecture ===================== #
         self.is_electra = ('electra' in config['text_encoder']) # used on 283
+        # Adjust dimensions for fine-tuning
         self.fine_tune = (self.hparams.config["load_path"] != ""
             and not self.hparams.config["test_only"])
         self.test_only = (self.hparams.config["load_path"] != "" 
             and self.hparams.config["test_only"])
+        
+        if self.fine_tune or self.test_only:
+            ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
+            state_dict = ckpt["state_dict"]
 
         self.model_type = config['model_type']
         
@@ -114,6 +118,7 @@ class METERTransformerSS(pl.LightningModule):
             # self.text_embeddings = BertEmbeddings(text_config)
             # self.text_embeddings.apply(objectives.init_weights)
             
+            # Add ability to adjust embedding size for down stream changes
             self.text_embeddings = ElectraEmbeddings(text_config)
             self.text_embeddings.apply(objectives.init_weights)
             
