@@ -10,6 +10,7 @@ from meter.datamodules.multitask_datamodule import MTDataModule
 
 import torch
 
+import warnings
 # import resource
 # rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
 # resource.setrlimit(resource.RLIMIT_NOFILE, (20480, rlimit[1]))
@@ -17,7 +18,7 @@ import torch
 @ex.automain
 def main(_config):
     
-    
+    warnings.simplefilter("error")
     
     _config = copy.deepcopy(_config)
     pl.seed_everything(_config["seed"])
