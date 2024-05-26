@@ -351,7 +351,7 @@ class METERTransformerSS(pl.LightningModule):
         text_embeds = self.cross_modal_text_transform(text_embeds)
         
         # Process Image Input to Image Embeddings
-        if self.fine_tune:
+        if self.fine_tune or self.test_only:
             try:
                 image_embeds = self.image_encoder(img, interpolate_pos_encoding = True)
             except:
