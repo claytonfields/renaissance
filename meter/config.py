@@ -47,6 +47,7 @@ def config():
     eval_batch_size = 32
 
     # Model Type Setting
+    # model_type = "one-tower"
     model_type = "two-tower"
     encoder_type = 'text'
     pooler_type = 'double' # 'double' or 'single'
@@ -1034,7 +1035,7 @@ def test_case_mlm_itm_a():
     loss_names = _loss_names({"itm": 1, "mlm": 1})
     # Training Time
     max_epoch = 1
-    max_steps = 100
+    max_steps = 1
     # Text Encoder
     text_encoder = "google/electra-small-discriminator"
     vocab_size = 30522

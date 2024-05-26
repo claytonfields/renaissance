@@ -8,12 +8,41 @@ import json
 import tqdm
 import functools
 
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
+from pytorch_lightning import LightningModule
+
 from torch.utils.data.distributed import DistributedSampler
 from einops import rearrange
 
 from .dist_utils import all_gather
 
-# Find a way to generalize logging fucntions 
+# Find a way to generalize logging fucntions
+def log_metrics(pl_module: LightningModule, ret: Dict, metric_list: List, task: str, phase: str = None):
+    
+    if phase != None:
+        phase = "train" if pl_module.training else "val"
+        
+    for metric in metric_list:
+        if metric == 'loss':
+            value = getattr(pl_module, f"{phase}_{task}_{metric}")(ret[f"{task}_{metric}"])
+        elif metric in  ['accuracy','score']:
+            if task in ['snli', 'nlvr2']:
+                value = getattr(pl_module, f'{phase}_{task}_{metric}')(
+                    ret[f"{phase}_{task}_logits"], ret[f'{phase}_{task}_labels']    
+                )
+            else:
+                value = getattr(pl_module, f"{phase}_{task}_{metric}")(
+                    ret[f"{task}_logits"], ret[f"{task}_labels"]
+                )
+        elif metric == 'f1':
+            preds = ret[f'{task}_logits'].argmax(dim=-1)
+            value = getattr(pl_module, f"{phase}_{task}_f1")(
+                preds, ret["{task}_targets"]
+            )
+        pl_module.log(f"{task}/{phase}/{metric}", value)
+        # pl_module.log(f"mlm/{phase}/accuracy", acc)
+        
+# ======================= VL-Understanding Tasks ======================= #
 
 def compute_mlm(pl_module, batch):
     infer = pl_module.infer(batch, mask_text=True, mask_image=False)
@@ -32,14 +61,19 @@ def compute_mlm(pl_module, batch):
         "mlm_labels": mlm_labels,
         "mlm_ids": infer["text_ids"],
     }
+    
+    task = 'mlm'
+    metric_list = ['loss', 'accuracy']
+    log_metrics(pl_module, ret, metric_list, task)
+    
 
-    phase = "train" if pl_module.training else "val"
-    loss = getattr(pl_module, f"{phase}_mlm_loss")(ret["mlm_loss"])
-    acc = getattr(pl_module, f"{phase}_mlm_accuracy")(
-        ret["mlm_logits"], ret["mlm_labels"]
-    )
-    pl_module.log(f"mlm/{phase}/loss", loss)
-    pl_module.log(f"mlm/{phase}/accuracy", acc)
+    # phase = "train" if pl_module.training else "val"
+    # loss = getattr(pl_module, f"{phase}_mlm_loss")(ret["mlm_loss"])
+    # acc = getattr(pl_module, f"{phase}_mlm_accuracy")(
+    #     ret["mlm_logits"], ret["mlm_labels"]
+    # )
+    # pl_module.log(f"mlm/{phase}/loss", loss)
+    # pl_module.log(f"mlm/{phase}/accuracy", acc)
 
     return ret
 
@@ -74,14 +108,18 @@ def compute_itm(pl_module, batch):
         "itm_logits": itm_logits,
         "itm_labels": itm_labels,
     }
+    
+    task = 'itm'
+    metric_list = ['loss', 'accuracy']
+    log_metrics(pl_module, ret, metric_list, task)
 
-    phase = "train" if pl_module.training else "val"
-    loss = getattr(pl_module, f"{phase}_itm_loss")(ret["itm_loss"])
-    acc = getattr(pl_module, f"{phase}_itm_accuracy")(
-        ret["itm_logits"], ret["itm_labels"]
-    )
-    pl_module.log(f"itm/{phase}/loss", loss)
-    pl_module.log(f"itm/{phase}/accuracy", acc)
+    # phase = "train" if pl_module.training else "val"
+    # loss = getattr(pl_module, f"{phase}_itm_loss")(ret["itm_loss"])
+    # acc = getattr(pl_module, f"{phase}_itm_accuracy")(
+    #     ret["itm_logits"], ret["itm_labels"]
+    # )
+    # pl_module.log(f"itm/{phase}/loss", loss)
+    # pl_module.log(f"itm/{phase}/accuracy", acc)
 
     return ret
 
@@ -95,28 +133,26 @@ def compute_ref(pl_module, batch):
         infer_dict = pl_module.infer(b)
         logits = pl_module.ref_classifier(infer_dict['cls_feats'])
         logit_list.append(logits.reshape(1,-1))
-    
-        # print('Sanity Check')
             
     logit_tensor = torch.cat(logit_list)
-    # target_tensor = torch.tensor(targets)#.to('cuda')
     loss = F.cross_entropy(logit_tensor, targets)
-    
-    # losses.append(loss.item())                                                       
+                                                     
     ret = {
         "ref_loss" : loss,
         "ref_logits" : logit_tensor,
         "ref_targets" : targets
     }
-        
-    phase = "train" if pl_module.training else "val"
-    loss = getattr(pl_module, f"{phase}_ref_loss")(ret["ref_loss"])
-    acc = getattr(pl_module, f"{phase}_ref_accuracy")(
-        ret["ref_logits"], ret["ref_targets"]
-    )
-    pl_module.log(f"ref/{phase}/loss", loss, batch_size=pl_module.hparams.config["batch_size"], sync_dist=True)
-    pl_module.log(f"ref/{phase}/accuracy", acc, batch_size=pl_module.hparams.config["batch_size"], sync_dist=True)
-    # pl_module.log(f"ref/{phase}/score", score)
+    
+    task = 'ref'
+    metric_list = ['loss', 'accuracy']
+    log_metrics(pl_module, ret, metric_list, task)
+    # phase = "train" if pl_module.training else "val"
+    # loss = getattr(pl_module, f"{phase}_ref_loss")(ret["ref_loss"])
+    # acc = getattr(pl_module, f"{phase}_ref_accuracy")(
+    #     ret["ref_logits"], ret["ref_targets"]
+    # )
+    # pl_module.log(f"ref/{phase}/loss", loss, batch_size=pl_module.hparams.config["batch_size"], sync_dist=True)
+    # pl_module.log(f"ref/{phase}/accuracy", acc, batch_size=pl_module.hparams.config["batch_size"], sync_dist=True)
     
     return ret
   
@@ -130,48 +166,82 @@ def compute_snli(pl_module, batch):
     snli_labels = batch["labels"]
     snli_labels = torch.tensor(snli_labels).to(pl_module.device).long()
     snli_loss = F.cross_entropy(snli_logits, snli_labels.view(-1))
+    
+    
 
     ret = {
-        "snli_loss": snli_loss,
-        "snli_logits": snli_logits,
-        "snli_labels": snli_labels,
+        "train_snli_loss": snli_loss,
+        "train_snli_logits": snli_logits,
+        "train_snli_labels": snli_labels,
     }
+                
+    task = 'snli'
+    metric_list = ['loss', 'accuracy']
+    # log_metrics(pl_module, ret, metric_list, task)
 
     phase = "train" if pl_module.training else "val"
 
     if phase == "train":
-        loss = getattr(pl_module, f"{phase}_snli_loss")(ret["snli_loss"])
-        acc = getattr(pl_module, f"{phase}_snli_accuracy")(
-            ret["snli_logits"], ret["snli_labels"]
-        )
-        pl_module.log(f"snli/{phase}/loss", loss)
-        pl_module.log(f"snli/{phase}/accuracy", acc)
+        # task = 'snli'
+        # metric_list = ['loss', 'accuracy']
+        log_metrics(pl_module, ret, metric_list, task, phase=phase)
+
+        # phase = "train" if pl_module.training else "val"
+        # loss = getattr(pl_module, f"{phase}_snli_loss")(ret["snli_loss"])
+        # acc = getattr(pl_module, f"{phase}_snli_accuracy")(
+        #     ret["snli_logits"], ret["snli_labels"]
+        # )
+        # pl_module.log(f"snli/{phase}/loss", loss)
+        # pl_module.log(f"snli/{phase}/accuracy", acc)
     else:
+        # phase =
         dev_batches = [i for i, n in enumerate(batch["table_name"]) if "dev" in n]
         test_batches = [i for i, n in enumerate(batch["table_name"]) if "test" in n]
 
         if dev_batches:
-            dev_loss = getattr(pl_module, f"dev_snli_loss")(
-                F.cross_entropy(
-                    ret["snli_logits"][dev_batches], ret["snli_labels"][dev_batches]
-                )
-            )
-            dev_acc = getattr(pl_module, f"dev_snli_accuracy")(
-                ret["snli_logits"][dev_batches], ret["snli_labels"][dev_batches]
-            )
-            pl_module.log(f"snli/dev/loss", dev_loss)
-            pl_module.log(f"snli/dev/accuracy", dev_acc)
+            phase = 'dev'
+            dev_snli_logits = ret["snli_logits"][dev_batches]
+            dev_snli_labels = ret["snli_labels"][dev_batches]
+            dev_snli_loss = F.cross_entropy(dev_snli_logits, dev_snli_labels)
+            ret.update({
+                f'{phase}_{task}_logits' : dev_snli_logits,
+                f'{phase}_{task}_labels' : dev_snli_labels,
+                f'{phase}_{task}_loss' : dev_snli_loss
+            })
+            log_metrics(pl_module, ret, metric_list, task, phase=phase)
+            # task = 'dev_snli'
+            # dev_loss = getattr(pl_module, f"dev_snli_loss")(
+            #     F.cross_entropy(
+            #         ret["snli_logits"][dev_batches], ret["snli_labels"][dev_batches]
+            #     )
+            # )
+            # dev_acc = getattr(pl_module, f"dev_snli_accuracy")(
+            #     ret["snli_logits"][dev_batches], ret["snli_labels"][dev_batches]
+            # )
+            # pl_module.log(f"snli/dev/loss", dev_loss)
+            # pl_module.log(f"snli/dev/accuracy", dev_acc)
         if test_batches:
-            test_loss = getattr(pl_module, f"test_snli_loss")(
-                F.cross_entropy(
-                    ret["snli_logits"][test_batches], ret["snli_labels"][test_batches]
-                )
-            )
-            test_acc = getattr(pl_module, f"test_snli_accuracy")(
-                ret["snli_logits"][test_batches], ret["snli_labels"][test_batches]
-            )
-            pl_module.log(f"snli/test/loss", test_loss)
-            pl_module.log(f"snli/test/accuracy", test_acc)
+            phase = 'test'
+            test_snli_logits = ret["snli_logits"][test_batches]
+            test_snli_labels = ret["snli_labels"][test_batches]
+            test_snli_loss = F.cross_entropy(test_snli_logits, test_snli_labels)
+            ret.update({
+                f'{phase}_{task}_logits' : test_snli_logits,
+                f'{phase}_{task}_labels' : test_snli_labels,
+                f'{phase}_{task}_loss' : test_snli_loss
+            })
+            log_metrics(pl_module, ret, metric_list, task, phase=phase)
+            # test_loss = getattr(pl_module, f"dev_snli_loss")(
+            #     F.cross_entropy(
+            #         ret["snli_logits"][test_batches], 
+            #         ret["snli_labels"][test_batches]
+            #     )
+            # )
+            # test_acc = getattr(pl_module, f"test_snli_accuracy")(
+            #     ret["snli_logits"][test_batches], ret["snli_labels"][test_batches]
+            # )
+            # pl_module.log(f"snli/test/loss", test_loss)
+            # pl_module.log(f"snli/test/accuracy", test_acc)
 
     return ret
 
@@ -201,14 +271,18 @@ def compute_vqa(pl_module, batch):
         "vqa_labels": vqa_labels,
         "vqa_scores": vqa_scores,
     }
-
-    phase = "train" if pl_module.training else "val"
-    loss = getattr(pl_module, f"{phase}_vqa_loss")(ret["vqa_loss"])
-    score = getattr(pl_module, f"{phase}_vqa_score")(
-        ret["vqa_logits"], ret["vqa_targets"]
-    )
-    pl_module.log(f"vqa/{phase}/loss", loss)
-    pl_module.log(f"vqa/{phase}/score", score)
+    
+    task = 'mlm'
+    metric_list = ['loss', 'score']
+    log_metrics(pl_module, ret, metric_list, task)
+    
+    # phase = "train" if pl_module.training else "val"
+    # loss = getattr(pl_module, f"{phase}_vqa_loss")(ret["vqa_loss"])
+    # score = getattr(pl_module, f"{phase}_vqa_score")(
+    #     ret["vqa_logits"], ret["vqa_targets"]
+    # )
+    # pl_module.log(f"vqa/{phase}/loss", loss)
+    # pl_module.log(f"vqa/{phase}/score", score)
 
     return ret
 
@@ -229,49 +303,250 @@ def compute_nlvr2(pl_module, batch):
     nlvr2_loss = F.cross_entropy(nlvr2_logits, nlvr2_labels.view(-1))
 
     ret = {
-        "nlvr2_loss": nlvr2_loss,
-        "nlvr2_logits": nlvr2_logits,
-        "nlvr2_labels": nlvr2_labels,
+        "train_nlvr2_loss": nlvr2_loss,
+        "train_nlvr2_logits": nlvr2_logits,
+        "train_nlvr2_labels": nlvr2_labels,
     }
+    
+    task = 'nlvr2'
+    metric_list = ['loss', 'accuracy']
+    log_metrics(pl_module, ret, metric_list, task)
 
     phase = "train" if pl_module.training else "val"
 
     if phase == "train":
-        loss = getattr(pl_module, f"{phase}_nlvr2_loss")(ret["nlvr2_loss"])
-        acc = getattr(pl_module, f"{phase}_nlvr2_accuracy")(
-            ret["nlvr2_logits"], ret["nlvr2_labels"]
-        )
-        pl_module.log(f"nlvr2/{phase}/loss", loss)
-        pl_module.log(f"nlvr2/{phase}/accuracy", acc)
-    else:
+        log_metrics(pl_module, ret, metric_list, task, phase=phase)
+    #     loss = getattr(pl_module, f"{phase}_nlvr2_loss")(ret["nlvr2_loss"])
+    #     acc = getattr(pl_module, f"{phase}_nlvr2_accuracy")(
+    #         ret["nlvr2_logits"], ret["nlvr2_labels"]
+    #     )
+    #     pl_module.log(f"nlvr2/{phase}/loss", loss)
+    #     pl_module.log(f"nlvr2/{phase}/accuracy", acc)
+    # else:
         dev_batches = [i for i, n in enumerate(batch["table_name"]) if "dev" in n]
         test_batches = [i for i, n in enumerate(batch["table_name"]) if "test" in n]
 
         if dev_batches:
-            dev_loss = getattr(pl_module, f"dev_nlvr2_loss")(
-                F.cross_entropy(
-                    ret["nlvr2_logits"][dev_batches], ret["nlvr2_labels"][dev_batches]
-                )
-            )
-            dev_acc = getattr(pl_module, f"dev_nlvr2_accuracy")(
-                ret["nlvr2_logits"][dev_batches], ret["nlvr2_labels"][dev_batches]
-            )
-            pl_module.log(f"nlvr2/dev/loss", dev_loss)
-            pl_module.log(f"nlvr2/dev/accuracy", dev_acc)
+            phase = 'dev'
+            dev_nlvr2_logits = ret["snli_logits"][dev_batches]
+            dev_nlvr2_labels = ret["snli_labels"][dev_batches]
+            dev_nlvr2_loss = F.cross_entropy(dev_nlvr2_logits, dev_nlvr2_labels)
+            ret.update({
+                f'{phase}_{task}_logits' : dev_nlvr2_logits,
+                f'{phase}_{task}_labels' : dev_nlvr2_labels,
+                f'{phase}_{task}_loss' : dev_nlvr2_loss
+            })
+            log_metrics(pl_module, ret, metric_list, task, phase=phase)
+            # dev_loss = getattr(pl_module, f"dev_nlvr2_loss")(
+            #     F.cross_entropy(
+            #         ret["nlvr2_logits"][dev_batches], ret["nlvr2_labels"][dev_batches]
+            #     )
+            # )
+            # dev_acc = getattr(pl_module, f"dev_nlvr2_accuracy")(
+            #     ret["nlvr2_logits"][dev_batches], ret["nlvr2_labels"][dev_batches]
+            # )
+            # pl_module.log(f"nlvr2/dev/loss", dev_loss)
+            # pl_module.log(f"nlvr2/dev/accuracy", dev_acc)
         if test_batches:
-            test_loss = getattr(pl_module, f"test_nlvr2_loss")(
-                F.cross_entropy(
-                    ret["nlvr2_logits"][test_batches], ret["nlvr2_labels"][test_batches]
-                )
-            )
-            test_acc = getattr(pl_module, f"test_nlvr2_accuracy")(
-                ret["nlvr2_logits"][test_batches], ret["nlvr2_labels"][test_batches]
-            )
-            pl_module.log(f"nlvr2/test/loss", test_loss)
-            pl_module.log(f"nlvr2/test/accuracy", test_acc)
+            phase = 'test'
+            test_nlvr2_logits = ret["snli_logits"][test_batches]
+            test_nlvr2_labels = ret["snli_labels"][test_batches]
+            test_nlvr2_loss = F.cross_entropy(test_nlvr2_logits, test_nlvr2_labels)
+            ret.update({
+                f'{phase}_{task}_logits' : test_nlvr2_logits,
+                f'{phase}_{task}_labels' : test_nlvr2_labels,
+                f'{phase}_{task}_loss' : test_nlvr2_loss
+            })
+            log_metrics(pl_module, ret, metric_list, task, phase=phase)
+            # test_loss = getattr(pl_module, f"test_nlvr2_loss")(
+            #     F.cross_entropy(
+            #         ret["nlvr2_logits"][test_batches], ret["nlvr2_labels"][test_batches]
+            #     )
+            # )
+            # test_acc = getattr(pl_module, f"test_nlvr2_accuracy")(
+            #     ret["nlvr2_logits"][test_batches], ret["nlvr2_labels"][test_batches]
+            # )
+            # pl_module.log(f"nlvr2/test/loss", test_loss)
+            # pl_module.log(f"nlvr2/test/accuracy", test_acc)
 
     return ret
 
+
+
+
+# ======================= Text Only ======================= #
+
+# add glue_task function to handle these cases
+# consider text general text classifcation head
+
+
+def compute_mrpc(pl_module, batch):
+    mrpc_labels = batch.pop('label', None)
+    hidden_state = pl_module.infer_text_only(batch)
+    mrpc_logits = pl_module.mrpc_classifier(hidden_state)
+    mrpc_loss = F.cross_entropy(mrpc_logits, mrpc_labels)
+    
+    ret = {
+        'mrpc_logits' : mrpc_logits,
+        'mrpc_targets' : mrpc_labels,
+        'mrpc_loss' : mrpc_loss
+    }
+    
+    task = 'mrpc'
+    metric_list = ['loss', 'accuracy','f1']
+    log_metrics(pl_module, ret, metric_list, task)
+    
+    return ret
+
+def compute_rte(pl_module, batch):
+    rte_labels = batch.pop('label', None)
+    cls_feat = pl_module.infer_text_only(batch)
+    rte_logits = pl_module.rte_classifier(cls_feat)
+    rte_loss = F.cross_entropy(rte_logits, rte_labels)
+    
+    ret = {
+        'rte_logits' : rte_logits,
+        'rte_targets' : rte_labels,
+        'rte_loss' : rte_loss
+    }
+    
+    task = 'rte'
+    metric_list = ['loss', 'accuracy']
+    log_metrics(pl_module, ret, metric_list, task)
+    
+    return ret
+
+def compute_wnli(pl_module, batch):
+    wnli_labels = batch.pop('label', None)
+    cls_feat = pl_module.infer_text_only(batch)
+    wnli_logits = pl_module.wnli_classifier(cls_feat)
+    wnli_loss = F.cross_entropy(wnli_logits, wnli_labels)
+    
+    ret = {
+        'wnli_logits' : wnli_logits,
+        'wnli_targets' : wnli_labels,
+        'wnli_loss' : wnli_loss
+    }
+    
+    task = 'wnli'
+    metric_list = ['loss', 'accuracy']
+    log_metrics(pl_module, ret, metric_list, task)
+    
+    return ret
+
+def compute_sst2(pl_module, batch):
+    sst2_labels = batch.pop('label', None)
+    cls_feat = pl_module.infer_text_only(batch)
+    sst2_logits = pl_module.sst2_classifier(cls_feat)
+    sst2_loss = F.cross_entropy(sst2_logits, sst2_labels)
+    
+    ret = {
+        'sst2_logits' : sst2_logits,
+        'sst2_targets' : sst2_labels,
+        'sst2_loss' : sst2_loss
+    }
+    
+    task = 'sst2'
+    metric_list = ['loss', 'accuracy']
+    log_metrics(pl_module, ret, metric_list, task)
+    
+    return ret
+
+def compute_qqp(pl_module, batch):
+    qqp_labels = batch.pop('label', None)
+    cls_feat = pl_module.infer_text_only(batch)
+    qqp_logits = pl_module.qqp_classifier(cls_feat)
+    qqp_loss = F.cross_entropy(qqp_logits, qqp_labels)
+    
+    ret = {
+        'qqp_logits' : qqp_logits,
+        'qqp_targets' : qqp_labels,
+        'qqp_loss' : qqp_loss
+    }
+    
+    task = 'qqp'
+    metric_list = ['loss', 'accuracy','f1']
+    log_metrics(pl_module, ret, metric_list, task)
+    
+    return ret
+
+def compute_qnli(pl_module, batch):
+    qnli_labels = batch.pop('label', None)
+    cls_feat = pl_module.infer_text_only(batch)
+    qnli_logits = pl_module.qnli_classifier(cls_feat)
+    qnli_loss = F.cross_entropy(qnli_logits, qnli_labels)
+    
+    ret = {
+        'qnli_logits' : qnli_logits,
+        'qnli_targets' : qnli_labels,
+        'qnli_loss' : qnli_loss
+    }
+    
+    task = 'qnli'
+    metric_list = ['loss', 'accuracy']
+    log_metrics(pl_module, ret, metric_list, task)
+    
+    return ret
+
+def compute_mnli(pl_module, batch):
+    mnli_labels = batch.pop('label', None)
+    cls_feat = pl_module.infer_text_only(batch)
+    mnli_logits = pl_module.mnli_classifier(cls_feat)
+    mnli_loss = F.cross_entropy(mnli_logits, mnli_labels)
+    
+    ret = {
+        'mnli_logits' : mnli_logits,
+        'mnli_targets' : mnli_labels,
+        'mnli_loss' : mnli_loss
+    }
+    
+    task = 'mnli'
+    metric_list = ['loss', 'accuracy']
+    log_metrics(pl_module, ret, metric_list, task)
+    
+    return ret
+
+def compute_cola(pl_module, batch):
+    cola_labels = batch.pop('label', None)
+    cls_feat = pl_module.infer_text_only(batch)
+    cola_logits = pl_module.cola_classifier(cls_feat)
+    cola_loss = F.cross_entropy(cola_logits, cola_labels)
+    
+    ret = {
+        'cola_logits' : cola_logits,
+        'cola_targets' : cola_labels,
+        'cola_loss' : cola_loss
+    }
+    
+    task = 'cola'
+    metric_list = ['loss', 'accuracy']
+    log_metrics(pl_module, ret, metric_list, task)
+    
+    return ret
+
+# Create image classification task
+def compute_cifar10(pl_module, batch):
+    image = batch['image']
+    hidden_state = pl_module.image_encoder(image).last_hidden_state#.squeeze()
+    cls_feat = pl_module.image_classification_pooler(hidden_state)
+    cifar10_logits = pl_module.cifar10_classifier(cls_feat)
+    cifar10_labels = batch['label']
+    cifar10_loss = F.cross_entropy(cifar10_logits, cifar10_labels)
+    
+    ret = {
+        'cifar10_logits' : cifar10_logits,
+        'cifar10_targets' : cifar10_labels,
+        'cifar10_loss' : cifar10_loss
+    }
+    
+    task = 'cifar10'
+    metric_list = ['loss', 'accuracy']
+    log_metrics(pl_module, ret, metric_list, task)
+    
+    return ret
+
+
+# ======================= Recall ======================= #
 
 def compute_irtr(pl_module, batch):
     is_training_phase = pl_module.training
@@ -432,219 +707,6 @@ def compute_irtr_recall(pl_module):
     ir_r1 = (tiids.unsqueeze(0) == topk1_iids).float().max(dim=0)[0].mean()
 
     return (ir_r1, ir_r5, ir_r10, tr_r1, tr_r5, tr_r10)
-
-# ======================= Text Only ======================= #
-
-# add glue_task function to handle these cases
-# consider text general text classifcation head
-
-
-def compute_mrpc(pl_module, batch):
-    mrpc_labels = batch.pop('label', None)
-    hidden_state = pl_module.infer_text_only(batch)
-    mrpc_logits = pl_module.mrpc_classifier(hidden_state)
-    mrpc_loss = F.cross_entropy(mrpc_logits, mrpc_labels)
-    
-    ret = {
-        'mrpc_logits' : mrpc_logits,
-        'mrpc_targets' : mrpc_labels,
-        'mrpc_loss' : mrpc_loss
-    }
-    
-    phase = "train" if pl_module.training else "val"
-    loss = getattr(pl_module, f"{phase}_mrpc_loss")(ret["mrpc_loss"])
-    acc = getattr(pl_module, f"{phase}_mrpc_accuracy")(
-        ret["mrpc_logits"], ret["mrpc_targets"]
-    )
-    preds = mrpc_logits.argmax(dim=-1)
-    f1 = getattr(pl_module, f"{phase}_mrpc_f1")(
-        preds, ret["mrpc_targets"]
-    )
-    pl_module.log(f"mrpc/{phase}/loss", loss)
-    pl_module.log(f"mrpc/{phase}/accuracy", acc)
-    pl_module.log(f"mrpc/{phase}/f1", f1)
-    
-    return ret
-
-def compute_rte(pl_module, batch):
-    rte_labels = batch.pop('label', None)
-    cls_feat = pl_module.infer_text_only(batch)
-    rte_logits = pl_module.rte_classifier(cls_feat)
-    rte_loss = F.cross_entropy(rte_logits, rte_labels)
-    
-    ret = {
-        'rte_logits' : rte_logits,
-        'rte_targets' : rte_labels,
-        'rte_loss' : rte_loss
-    }
-    
-    phase = "train" if pl_module.training else "val"
-    loss = getattr(pl_module, f"{phase}_rte_loss")(ret["rte_loss"])
-    acc = getattr(pl_module, f"{phase}_rte_accuracy")(
-        ret["rte_logits"], ret["rte_targets"]
-    )
-    pl_module.log(f"rte/{phase}/loss", loss)
-    pl_module.log(f"rte/{phase}/accuracy", acc)
-    
-    return ret
-
-def compute_wnli(pl_module, batch):
-    wnli_labels = batch.pop('label', None)
-    cls_feat = pl_module.infer_text_only(batch)
-    wnli_logits = pl_module.wnli_classifier(cls_feat)
-    wnli_loss = F.cross_entropy(wnli_logits, wnli_labels)
-    
-    ret = {
-        'wnli_logits' : wnli_logits,
-        'wnli_targets' : wnli_labels,
-        'wnli_loss' : wnli_loss
-    }
-    
-    phase = "train" if pl_module.training else "val"
-    loss = getattr(pl_module, f"{phase}_wnli_loss")(ret["wnli_loss"])
-    acc = getattr(pl_module, f"{phase}_wnli_accuracy")(
-        ret["wnli_logits"], ret["wnli_targets"]
-    )
-    pl_module.log(f"wnli/{phase}/loss", loss)
-    pl_module.log(f"wnli/{phase}/accuracy", acc)
-    
-    return ret
-
-def compute_sst2(pl_module, batch):
-    sst2_labels = batch.pop('label', None)
-    cls_feat = pl_module.infer_text_only(batch)
-    sst2_logits = pl_module.sst2_classifier(cls_feat)
-    sst2_loss = F.cross_entropy(sst2_logits, sst2_labels)
-    
-    ret = {
-        'sst2_logits' : sst2_logits,
-        'sst2_targets' : sst2_labels,
-        'sst2_loss' : sst2_loss
-    }
-    
-    phase = "train" if pl_module.training else "val"
-    loss = getattr(pl_module, f"{phase}_sst2_loss")(ret["sst2_loss"])
-    acc = getattr(pl_module, f"{phase}_sst2_accuracy")(
-        ret["sst2_logits"], ret["sst2_targets"]
-    )
-    pl_module.log(f"sst2/{phase}/loss", loss)
-    pl_module.log(f"sst2/{phase}/accuracy", acc)
-    
-    return ret
-
-def compute_qqp(pl_module, batch):
-    qqp_labels = batch.pop('label', None)
-    cls_feat = pl_module.infer_text_only(batch)
-    qqp_logits = pl_module.qqp_classifier(cls_feat)
-    qqp_loss = F.cross_entropy(qqp_logits, qqp_labels)
-    
-    ret = {
-        'qqp_logits' : qqp_logits,
-        'qqp_targets' : qqp_labels,
-        'qqp_loss' : qqp_loss
-    }
-    
-    phase = "train" if pl_module.training else "val"
-    loss = getattr(pl_module, f"{phase}_qqp_loss")(ret["qqp_loss"])
-    acc = getattr(pl_module, f"{phase}_qqp_accuracy")(
-        ret["qqp_logits"], ret["qqp_targets"]
-    )
-    pl_module.log(f"qqp/{phase}/loss", loss)
-    pl_module.log(f"qqp/{phase}/accuracy", acc)
-    
-    return ret
-
-def compute_qnli(pl_module, batch):
-    qnli_labels = batch.pop('label', None)
-    cls_feat = pl_module.infer_text_only(batch)
-    qnli_logits = pl_module.qnli_classifier(cls_feat)
-    qnli_loss = F.cross_entropy(qnli_logits, qnli_labels)
-    
-    ret = {
-        'qnli_logits' : qnli_logits,
-        'qnli_targets' : qnli_labels,
-        'qnli_loss' : qnli_loss
-    }
-    
-    phase = "train" if pl_module.training else "val"
-    loss = getattr(pl_module, f"{phase}_qnli_loss")(ret["qnli_loss"])
-    acc = getattr(pl_module, f"{phase}_qnli_accuracy")(
-        ret["qnli_logits"], ret["qnli_targets"]
-    )
-    pl_module.log(f"qnli/{phase}/loss", loss)
-    pl_module.log(f"qnli/{phase}/accuracy", acc)
-    
-    return ret
-
-def compute_mnli(pl_module, batch):
-    mnli_labels = batch.pop('label', None)
-    cls_feat = pl_module.infer_text_only(batch)
-    mnli_logits = pl_module.mnli_classifier(cls_feat)
-    mnli_loss = F.cross_entropy(mnli_logits, mnli_labels)
-    
-    ret = {
-        'mnli_logits' : mnli_logits,
-        'mnli_targets' : mnli_labels,
-        'mnli_loss' : mnli_loss
-    }
-    
-    phase = "train" if pl_module.training else "val"
-    loss = getattr(pl_module, f"{phase}_mnli_loss")(ret["mnli_loss"])
-    acc = getattr(pl_module, f"{phase}_mnli_accuracy")(
-        ret["mnli_logits"], ret["mnli_targets"]
-    )
-    pl_module.log(f"mnli/{phase}/loss", loss)
-    pl_module.log(f"mnli/{phase}/accuracy", acc)
-    
-    return ret
-
-def compute_cola(pl_module, batch):
-    cola_labels = batch.pop('label', None)
-    cls_feat = pl_module.infer_text_only(batch)
-    cola_logits = pl_module.cola_classifier(cls_feat)
-    cola_loss = F.cross_entropy(cola_logits, cola_labels)
-    
-    ret = {
-        'cola_logits' : cola_logits,
-        'cola_targets' : cola_labels,
-        'cola_loss' : cola_loss
-    }
-    
-    phase = "train" if pl_module.training else "val"
-    loss = getattr(pl_module, f"{phase}_cola_loss")(ret["cola_loss"])
-    preds = cola_logits.argmax(dim=-1)
-    mcc = getattr(pl_module, f"{phase}_cola_mcc")(
-        preds, ret["cola_targets"]
-    )
-    pl_module.log(f"cola/{phase}/loss", loss)
-    pl_module.log(f"cola/{phase}/mcc", mcc)
-    
-    return ret
-
-# Create image classification task
-def compute_cifar10(pl_module, batch):
-    image = batch['image']
-    hidden_state = pl_module.image_encoder(image).last_hidden_state#.squeeze()
-    cls_feat = pl_module.image_classification_pooler(hidden_state)
-    cifar10_logits = pl_module.cifar10_classifier(cls_feat)
-    cifar10_labels = batch['label']
-    cifar10_loss = F.cross_entropy(cifar10_logits, cifar10_labels)
-    
-    ret = {
-        'cifar10_logits' : cifar10_logits,
-        'cifar10_targets' : cifar10_labels,
-        'cifar10_loss' : cifar10_loss
-    }
-    
-    phase = "train" if pl_module.training else "val"
-    loss = getattr(pl_module, f"{phase}_cifar10_loss")(ret["cifar10_loss"])
-    acc = getattr(pl_module, f"{phase}_cifar10_accuracy")(
-        ret["cifar10_logits"], ret["cifar10_targets"]
-    )
-    pl_module.log(f"cifar10/{phase}/loss", loss)
-    pl_module.log(f"cifar10/{phase}/accuracy", acc)
-    
-    return ret
     
 
 def init_weights(module):

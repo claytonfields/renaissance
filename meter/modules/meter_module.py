@@ -1,3 +1,4 @@
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -16,19 +17,25 @@ class METERTransformerSS(pl.LightningModule):
     def __init__(self, config):
         super().__init__()
         self.save_hyperparameters()
+        self.model_type = config['model_type']
+        
         # ===================== BaseArchitecture ===================== #
-        self.is_electra = ('electra' in config['text_encoder']) # used on 283
+        # self.is_electra = ('electra' in config['text_encoder']) # used on 283
         # Adjust dimensions for fine-tuning
         self.fine_tune = (self.hparams.config["load_path"] != ""
             and not self.hparams.config["test_only"])
         self.test_only = (self.hparams.config["load_path"] != "" 
             and self.hparams.config["test_only"])
         
+        
         if self.fine_tune or self.test_only:
             ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
             state_dict = ckpt["state_dict"]
+            self.old_max_text_len = ckpt['hyper_parameters']['config']['max_text_len']
+            self.new_max_text_len = config['max_text_len']
+            self.old_image_size = ckpt['hyper_parameters']['config']['image_size']
+            self.new_image_size = config['image_size']
 
-        self.model_type = config['model_type']
         
         
         if self.model_type == 'one-tower':
@@ -67,8 +74,15 @@ class METERTransformerSS(pl.LightningModule):
                     self.text_embedding_projection = nn.Linear(self.embedding_size, self.hidden_size)
                     self.image_embedding_projection = nn.Linear(self.embedding_size, self.hidden_size)
                 
+                if self.fine_tune:
+                    image_size = self.old_image_size
+                    max_text_len = self.old_max_text_len
+                else:
+                    image_size = config['image_size']
+                    max_text_len = config['max_text_len']
+            
                 image_config = ViTConfig(
-                    image_size=config["image_size"],
+                    image_size=image_size,
                     patch_size=config['patch_size'],
                     hidden_size=self.embedding_size,
                     hidden_dropout_prob=config["drop_rate"],
@@ -79,41 +93,10 @@ class METERTransformerSS(pl.LightningModule):
                     vocab_size=config["vocab_size"],
                     hidden_size=self.hidden_size,
                     embedding_size=self.embedding_size,
-                    max_position_embeddings=config["max_text_len"],
+                    max_position_embeddings=max_text_len,
                     hidden_dropout_prob=config["drop_rate"],
                     attention_probs_dropout_prob=config["drop_rate"],
                 )
-                    
-                # if self.encoder_type == 'image':
-                #     # image_config = self.encoder.config
-            
-                    
-                #     self.hs = image_config.hidden_size
-                #     text_config = bert_config = BertConfig(
-                #         vocab_size=config["vocab_size"],
-                #         hidden_size=self.hs,
-                #         # num_hidden_layers=self.encoder.config.num_layers,
-                #         # num_attention_heads=self.encoder.config.num_heads,
-                #         # intermediate_size=self.encoder.config.hidden_size * self.encoder.config.mlp_ratio,
-                #         max_position_embeddings=config["max_text_len"],
-                #         hidden_dropout_prob=config["drop_rate"],
-                #         attention_probs_dropout_prob=config["drop_rate"],
-                #     )
-                # elif self.encoder_type == 'text':
-                #     self.encoder = AutoModel.from_pretrained(config['encoder'])
-                #     text_config = bert_config = self.encoder.config
-                #     self.hs = text_config.hidden_size
-                #     image_config = ViTConfig(
-                #         image_size=config["image_size"],
-                #         patch_size=config['patch_size'],
-                #         hidden_size=self.hs,
-                #         # num_hidden_layers=self.encoder.config.num_layers,
-                #         # num_attention_heads=self.encoder.config.num_heads,
-                #         # intermediate_size=self.encoder.config.hidden_size *self.encoder.config.mlp_ratio,
-                #         max_position_embeddings=config["max_text_len"],
-                #         hidden_dropout_prob=config["drop_rate"],
-                #         attention_probs_dropout_prob=config["drop_rate"],
-                #     )
                     
             # self.text_embeddings = BertEmbeddings(text_config)
             # self.text_embeddings.apply(objectives.init_weights)
@@ -167,6 +150,7 @@ class METERTransformerSS(pl.LightningModule):
             self.cross_modal_image_transform = nn.Linear(config['image_encoder_hidden_size'], config['cross_layer_hidden_size'])
             self.cross_modal_image_transform.apply(objectives.init_weights)
             
+            # Original Cross Modal Layer Setup From METER
             # self.cross_modal_image_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_cross_layers'])])
             # self.cross_modal_image_layers.apply(objectives.init_weights)
             # self.cross_modal_text_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_cross_layers'])])
@@ -180,9 +164,11 @@ class METERTransformerSS(pl.LightningModule):
             # if config['freeze_cross_modal_layers']:
             #     self._freeze_cross_modal_layers()
             
+            # Cross-Modal Module with BERT Layers
             # self.fusion_encoder = BertCrossModalEncoder(config)
-            self.fusion_encoder = LxmertCrossModalEncoder(config)
             
+            # Cross-Modal Module with LXMERT Layers
+            self.fusion_encoder = LxmertCrossModalEncoder(config)
             self.fusion_encoder.apply(objectives.init_weights)
             
             
@@ -269,9 +255,27 @@ class METERTransformerSS(pl.LightningModule):
 
         # Load Previously Trained Modules
         if self.fine_tune:
-            ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
-            state_dict = ckpt["state_dict"]
+            # ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
+            # state_dict = ckpt["state_dict"]
             self.load_state_dict(state_dict, strict=False)
+            if self.model_type == 'one_tower' and self.old_max_text_len != self.new_max_text_len:
+                old_text_position_embeddings = old_text_position_embeddings = ckpt['state_dict']['text_embeddings.position_embeddings.weight']
+                new_num_tokens = self.new_max_text_len
+                new_text_position_embeddings = self._adjust_text_position_embeddings(old_text_position_embeddings, new_num_tokens) 
+                self.text_embeddings.position_embeddings = new_text_position_embeddings
+            if self.model_type == 'one_tower' and self.old_image_size != self.new_image_size:
+                old_image_position_embeddings = state_dict['image_embeddings.position_embeddings']
+                patch_size = config['patch_size']
+                embeding_dim = self.embedding_size
+                new_image_size = self.new_image_size
+                new_image_position_embeddings = self._interpolate_pos_encoding(
+                    old_image_position_embeddings, 
+                    patch_size, 
+                    embeding_dim, 
+                    new_image_size, 
+                    new_image_size
+                )
+                self.image_embeddings.position_embeddings = nn.Parameter(data=new_image_position_embeddings)
 
         # Initialize NLVR2 Classifier
         # May cause error in two-tower model!
@@ -666,10 +670,45 @@ class METERTransformerSS(pl.LightningModule):
         
         return hidden_state
     
-    # Possiply geek for test case
-    def load_text_classifier(self):
-        # self.text_transformer.save_pretrained('temp')
-        self.text_transformer = AutoModelForSequenceClassification.from_pretrained('google/electra-small-discriminator')
+    def _adjust_text_position_embeddings(self, old_text_position_embeddings: torch.Tensor, new_num_tokens: int) -> torch.nn.modules.sparse.Embedding:
+        old_text_position_embeddings = nn.Embedding.from_pretrained(old_text_position_embeddings)
+        new_text_position_embeddings = self.encoder._get_resized_embeddings(old_text_position_embeddings,new_num_tokens=new_num_tokens)
+        return new_text_position_embeddings
+    
+    def _interpolate_pos_encoding(self, position_embeddings: torch.Tensor, patch_size: int, dim: int, height: int, width: int) -> torch.Tensor:
+        """
+        This method allows to interpolate the pre-trained position encodings, to be able to use the model on higher
+        resolution images.
+    
+        Source:
+        https://github.com/facebookresearch/dino/blob/de9ee3df6cf39fac952ab558447af1fa1365362a/vision_transformer.py#L174
+        """
+    
+        # num_patches = embeddings.shape[1] - 1
+        num_patches = int((height*width)/patch_size**2)
+        num_positions = position_embeddings.shape[1] - 1
+        if num_patches == num_positions and height == width:
+            return position_embeddings
+        class_pos_embed = position_embeddings[:, 0]
+        patch_pos_embed = position_embeddings[:, 1:]
+        # dim = embeddings.shape[-1]
+        h0 = height // patch_size
+        w0 = width // patch_size
+        # we add a small number to avoid floating point error in the interpolation
+        # see discussion at https://github.com/facebookresearch/dino/issues/8
+        h0, w0 = h0 + 0.1, w0 + 0.1
+        patch_pos_embed = patch_pos_embed.reshape(1, int(math.sqrt(num_positions)), int(math.sqrt(num_positions)), dim)
+        patch_pos_embed = patch_pos_embed.permute(0, 3, 1, 2)
+        patch_pos_embed = nn.functional.interpolate(
+            patch_pos_embed,
+            scale_factor=(h0 / math.sqrt(num_positions), w0 / math.sqrt(num_positions)),
+            mode="bicubic",
+            align_corners=False,
+        )
+        assert int(h0) == patch_pos_embed.shape[-2] and int(w0) == patch_pos_embed.shape[-1]
+        patch_pos_embed = patch_pos_embed.permute(0, 2, 3, 1).view(1, -1, dim)
+        return torch.cat((class_pos_embed.unsqueeze(0), patch_pos_embed), dim=1)
+
      
 
     # This is ugly. Try to generalize
