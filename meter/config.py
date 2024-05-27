@@ -43,16 +43,16 @@ def config():
 
     # Text Setting
     text_encoder = "google/electra-small-discriminator"
-    text_encoder_hidden_size = 256
+    text_encoder_hidden_size = 768
     max_text_len = 40
-    vocab_size = 30522
+    vocab_size = 50265
     whole_word_masking = False # note that whole_word_masking does not work for RoBERTa
     mlm_prob = 0.15
     draw_false_text = 0
     vqav2_label_size = 3129
     
     # Cross Layer Settings
-    cross_layer_hidden_size = 256
+    cross_layer_hidden_size = 768
     num_cross_layers = 6
     num_cross_layer_heads = 4
     # num_layers = 6
@@ -286,7 +286,7 @@ def task_finetune_vqa_clip_bert():
     val_check_interval = 0.1
     lr_mult_head = 50
     lr_mult_cross_modal = 5
-    text_encoder = "bert-base-uncased"
+    text_encoder = 'FacebookAI/roberta-base'
     max_text_len = 50
     text_encoder_hidden_size = 768
     image_encoder = 'ViT-B/32'

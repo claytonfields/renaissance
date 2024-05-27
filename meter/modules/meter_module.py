@@ -12,7 +12,7 @@ from .clip_model import build_model, adapt_position_encoding
 from .swin_helpers import swin_adapt_position_encoding
 from transformers import RobertaConfig, RobertaModel
 from transformers import ElectraConfig, ElectraModel
-from transformers import AutoConfig, AutoModel
+from transformers.models.auto import AutoConfig, AutoModel
 
 class METERTransformerSS(pl.LightningModule):
     def __init__(self, config):
