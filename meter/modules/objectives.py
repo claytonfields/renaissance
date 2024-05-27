@@ -19,7 +19,8 @@ from .dist_utils import all_gather
 # Find a way to generalize logging fucntions
 def log_metrics(pl_module: LightningModule, ret: Dict, metric_list: List, task: str, phase: str = None):
     
-    if phase != None:
+    batch_size = pl_module.hparams.config['per_gpu_batchsize']
+    if phase == None:
         phase = "train" if pl_module.training else "val"
         
     for metric in metric_list:
@@ -28,7 +29,7 @@ def log_metrics(pl_module: LightningModule, ret: Dict, metric_list: List, task: 
         elif metric in  ['accuracy','score']:
             if task in ['snli', 'nlvr2']:
                 value = getattr(pl_module, f'{phase}_{task}_{metric}')(
-                    ret[f"{phase}_{task}_logits"], ret[f'{phase}_{task}_labels']    
+                    ret[f"{phase}_{task}_logits"], ret[f'{phase}_{task}_labels']
                 )
             else:
                 value = getattr(pl_module, f"{phase}_{task}_{metric}")(
@@ -39,7 +40,7 @@ def log_metrics(pl_module: LightningModule, ret: Dict, metric_list: List, task: 
             value = getattr(pl_module, f"{phase}_{task}_f1")(
                 preds, ret["{task}_targets"]
             )
-        pl_module.log(f"{task}/{phase}/{metric}", value)
+        pl_module.log(f"{task}/{phase}/{metric}", value, batch_size=batch_size)
         # pl_module.log(f"mlm/{phase}/accuracy", acc)
         
 # ======================= VL-Understanding Tasks ======================= #
@@ -170,7 +171,7 @@ def compute_snli(pl_module, batch):
     
 
     ret = {
-        "train_snli_loss": snli_loss,
+        "snli_loss": snli_loss,
         "train_snli_logits": snli_logits,
         "train_snli_labels": snli_labels,
     }
@@ -200,8 +201,8 @@ def compute_snli(pl_module, batch):
 
         if dev_batches:
             phase = 'dev'
-            dev_snli_logits = ret["snli_logits"][dev_batches]
-            dev_snli_labels = ret["snli_labels"][dev_batches]
+            dev_snli_logits = ret["train_snli_logits"][dev_batches]
+            dev_snli_labels = ret["train_snli_labels"][dev_batches]
             dev_snli_loss = F.cross_entropy(dev_snli_logits, dev_snli_labels)
             ret.update({
                 f'{phase}_{task}_logits' : dev_snli_logits,
@@ -222,8 +223,8 @@ def compute_snli(pl_module, batch):
             # pl_module.log(f"snli/dev/accuracy", dev_acc)
         if test_batches:
             phase = 'test'
-            test_snli_logits = ret["snli_logits"][test_batches]
-            test_snli_labels = ret["snli_labels"][test_batches]
+            test_snli_logits = ret["train_snli_logits"][test_batches]
+            test_snli_labels = ret["train_snli_labels"][test_batches]
             test_snli_loss = F.cross_entropy(test_snli_logits, test_snli_labels)
             ret.update({
                 f'{phase}_{task}_logits' : test_snli_logits,
@@ -708,6 +709,7 @@ def compute_irtr_recall(pl_module):
 
     return (ir_r1, ir_r5, ir_r10, tr_r1, tr_r5, tr_r10)
     
+# ======================= Utility Functions ======================= #
 
 def init_weights(module):
     if isinstance(module, (nn.Linear, nn.Embedding)):

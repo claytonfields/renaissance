@@ -662,20 +662,21 @@ def task_finetune_vqa_clip_bert():
     loss_names = _loss_names({"vqa": 1})
     batch_size = 512
     max_epoch = 10
-    max_steps = None
+    max_steps = 1e6
     warmup_steps = 0.1
     draw_false_image = 0
     learning_rate = 5e-6
     val_check_interval = 0.1
     lr_mult_head = 50
     lr_mult_cross_modal = 5
-    text_encoder = "bert-base-uncased"
+    text_encoder = "FacebookAI/roberta-base"
     max_text_len = 50
     text_encoder_hidden_size = 768
-    image_encoder = 'ViT-B/32'
+    image_encoder = 'openai/clip-vit-base-patch32'
     train_transform_keys = ["clip"]
     val_transform_keys = ["clip"]
     image_encoder_hidden_size = 768
+    cross_layer_hidden_size = 768
     image_size = 576
 
 @ex.named_config

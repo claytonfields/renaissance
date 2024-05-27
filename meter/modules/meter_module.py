@@ -31,10 +31,11 @@ class METERTransformerSS(pl.LightningModule):
         if self.fine_tune or self.test_only:
             ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
             state_dict = ckpt["state_dict"]
-            self.old_max_text_len = ckpt['hyper_parameters']['config']['max_text_len']
-            self.new_max_text_len = config['max_text_len']
-            self.old_image_size = ckpt['hyper_parameters']['config']['image_size']
-            self.new_image_size = config['image_size']
+            # UNCOMMENT BELOW WHEN DONE TESTING VQA!!!!!!!
+            # self.old_max_text_len = ckpt['hyper_parameters']['config']['max_text_len']
+            # self.new_max_text_len = config['max_text_len']
+            # self.old_image_size = ckpt['hyper_parameters']['config']['image_size']
+            # self.new_image_size = config['image_size']
 
         
         
@@ -194,6 +195,9 @@ class METERTransformerSS(pl.LightningModule):
             # Vision Encoder
             if not self.random_init_vision_encoder:
                 self.image_encoder = AutoModel.from_pretrained(config['image_encoder'])
+                if 'clip' in (config['image_encoder']):
+                    self.image_encoder = self.image_encoder.vision_model
+                    
             else:
                 visual_kwargs = None
                 visual_config = AutoConfig.from_pretrained(config['image_encoder'], kwargs=visual_kwargs)

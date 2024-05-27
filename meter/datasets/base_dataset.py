@@ -61,6 +61,7 @@ class BaseDataset(torch.utils.data.Dataset):
         
         self.image_size = image_size
         self.tokenizer = tokenizer
+        self.tokenizer.deprecation_warnings["Asking-to-pad-a-fast-tokenizer"] = True
         self.processor = processor
         
         self.hugging_face = hugging_face
