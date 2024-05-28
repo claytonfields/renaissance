@@ -273,17 +273,18 @@ def compute_vqa(pl_module, batch):
         "vqa_scores": vqa_scores,
     }
     
-    task = 'mlm'
-    metric_list = ['loss', 'score']
-    log_metrics(pl_module, ret, metric_list, task)
+    # Commenting out to test, restor new code below when done!!!
+    # task = 'vqa'
+    # metric_list = ['loss', 'score']
+    # log_metrics(pl_module, ret, metric_list, task)
     
-    # phase = "train" if pl_module.training else "val"
-    # loss = getattr(pl_module, f"{phase}_vqa_loss")(ret["vqa_loss"])
-    # score = getattr(pl_module, f"{phase}_vqa_score")(
-    #     ret["vqa_logits"], ret["vqa_targets"]
-    # )
-    # pl_module.log(f"vqa/{phase}/loss", loss)
-    # pl_module.log(f"vqa/{phase}/score", score)
+    phase = "train" if pl_module.training else "val"
+    loss = getattr(pl_module, f"{phase}_vqa_loss")(ret["vqa_loss"])
+    score = getattr(pl_module, f"{phase}_vqa_score")(
+        ret["vqa_logits"], ret["vqa_targets"]
+    )
+    pl_module.log(f"vqa/{phase}/loss", loss)
+    pl_module.log(f"vqa/{phase}/score", score)
 
     return ret
 

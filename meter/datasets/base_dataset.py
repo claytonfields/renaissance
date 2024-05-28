@@ -61,6 +61,8 @@ class BaseDataset(torch.utils.data.Dataset):
         
         self.image_size = image_size
         self.tokenizer = tokenizer
+        # Suppresses a warning associated with the tokenizer
+        # from https://github.com/huggingface/transformers/issues/22638
         self.tokenizer.deprecation_warnings["Asking-to-pad-a-fast-tokenizer"] = True
         self.processor = processor
         

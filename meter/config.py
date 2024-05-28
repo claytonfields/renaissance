@@ -656,6 +656,35 @@ def task_finetune_nlvr2_deit_electra():
     cross_layer_drop_rate = 0.1
 
 @ex.named_config
+def task_finetune_vqa_deit_electra():
+    exp_name = "finetune_vqa"
+    datasets = ["vqa"]
+    loss_names = _loss_names({"vqa": 1})
+    batch_size = 512
+    max_epoch = 10
+    max_steps = 1e6
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 5e-6
+    val_check_interval = 0.1
+    lr_mult_head = 50
+    lr_mult_cross_modal = 5
+    # Text Settings
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    # Image Settins
+    image_encoder = "facebook/deit-tiny-patch16-224"
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    image_size = 576
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+
+@ex.named_config
 def task_finetune_vqa_clip_bert():
     exp_name = "finetune_vqa"
     datasets = ["vqa"]

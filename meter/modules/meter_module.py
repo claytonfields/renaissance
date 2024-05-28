@@ -32,10 +32,10 @@ class METERTransformerSS(pl.LightningModule):
             ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
             state_dict = ckpt["state_dict"]
             # UNCOMMENT BELOW WHEN DONE TESTING VQA!!!!!!!
-            # self.old_max_text_len = ckpt['hyper_parameters']['config']['max_text_len']
-            # self.new_max_text_len = config['max_text_len']
-            # self.old_image_size = ckpt['hyper_parameters']['config']['image_size']
-            # self.new_image_size = config['image_size']
+            self.old_max_text_len = ckpt['hyper_parameters']['config']['max_text_len']
+            self.new_max_text_len = config['max_text_len']
+            self.old_image_size = ckpt['hyper_parameters']['config']['image_size']
+            self.new_image_size = config['image_size']
 
         
         
@@ -546,7 +546,7 @@ class METERTransformerSS(pl.LightningModule):
         text_embeds = self.cross_modal_text_transform(text_embeds)
         
         # Process Image Input to Image Embeddings
-        if self.fine_tune:
+        if self.fine_tune or self.test_only:
             try:
                 image_embeds = self.image_encoder(img, interpolate_pos_encoding = True)
             except:
