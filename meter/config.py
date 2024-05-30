@@ -821,7 +821,7 @@ def task_finetune_snli_onetower_electra():
     datasets = ["snli"]
     loss_names = _loss_names({"snli": 1})
     batch_size = 64
-    per_gpu_batchsize = 64
+    per_gpu_batchsize = 16
     max_epoch = 5
     max_steps = 10e6
     warmup_steps = 0.1

@@ -5,6 +5,8 @@ import torch.nn.functional as F
 from transformers.models.bert.configuration_bert import BertConfig
 from transformers.models.bert.modeling_bert import BertPredictionHeadTransform
 
+from typing import List, Optional, Tuple, Union
+
 
 class Pooler(nn.Module):
     def __init__(self, hidden_size):
@@ -81,5 +83,5 @@ class TextClassificationHead(nn.Module):
         # x = self.dropout(x)
         x = self.out_proj(x)
         return x
-        
+    
         
