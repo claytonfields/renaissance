@@ -96,8 +96,7 @@ def config():
     text_encoder = "google/electra-small-discriminator"
     max_text_len = 40
     vocab_size = 30522
-    
-    # glue_task = ''
+
     
     # Cross Layer Settings
     cross_layer_hidden_size = 256

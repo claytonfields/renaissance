@@ -1,9 +1,7 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-Created on Wed Jan 24 10:52:44 2024
-
-@author: claytonfields
+Fusion encoder modules using cross-attention for two-tower vision language 
+encoder models. Fusion encoder modules are used in 
+meter/modules/meter_module.py.
 """
 
 import torch
