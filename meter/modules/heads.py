@@ -1,3 +1,8 @@
+"""
+Classification heads for vision language 
+encoder models. Classification modules are used in 
+meter/modules/meter_module.py.
+"""
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

@@ -1,3 +1,9 @@
+"""
+Embedding modules for one-tower vision language 
+encoder models. Embedding modules are used in 
+meter/modules/meter_module.py.
+"""
+
 import math
 import collections
 import torch

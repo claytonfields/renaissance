@@ -5,7 +5,7 @@ import os
 # os.environ["NCCL_DEBUG"] = "INFO"
 
 from meter.config import ex
-from meter.modules import METERTransformerSS
+from meter.modules import RenaissanceTransformer
 from meter.datamodules.multitask_datamodule import MTDataModule
 
 import warnings
@@ -26,7 +26,7 @@ def main(_config):
     # print(_config)
     dm = MTDataModule(_config, dist=False)
 
-    model = METERTransformerSS(_config)
+    model = RenaissanceTransformer(_config)
     exp_name = f'{_config["exp_name"]}'
 
     os.makedirs(_config["log_dir"], exist_ok=True)

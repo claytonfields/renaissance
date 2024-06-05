@@ -12,16 +12,15 @@ from .embeddings import ElectraEmbeddings
 # from .bert_model import BertCrossLayer
 from . import heads, objectives, meter_utils
 from transformers import AutoConfig, AutoModel#, AutoModelForSequenceClassification
-from .fusion_encoder import BertCrossModalEncoder, LxmertCrossModalEncoder
+from .fusion_encoder import LxmertCrossModalEncoder
 
-class METERTransformerSS(pl.LightningModule):
+class RenaissanceTransformer(pl.LightningModule):
     def __init__(self, config):
         super().__init__()
         self.save_hyperparameters()
         self.model_type = config['model_type']
         
         # ===================== BaseArchitecture ===================== #
-        # self.is_electra = ('electra' in config['text_encoder']) # used on 283
         # Adjust dimensions for fine-tuning
         self.fine_tune = (self.hparams.config["load_path"] != ""
             and not self.hparams.config["test_only"])
@@ -104,11 +103,6 @@ class METERTransformerSS(pl.LightningModule):
             
             self.token_type_embeddings = nn.Embedding(2, self.embedding_size)
             self.token_type_embeddings.apply(objectives.init_weights)
-
-            # if self.hparams.config["load_path"] == "":
-            #     self.encoder = AutoModel.from_pretrained(config['encoder'])
-            # else:
-            #     self.encoder = AutoModel.from_config(hf_config)
                 
             if self.pooler_type == 'single':
                 self.pooler = heads.Pooler(self.hidden_size)
@@ -121,45 +115,14 @@ class METERTransformerSS(pl.LightningModule):
         
         elif self.model_type == 'two-tower':
             # ===================== BaseArchitecture ===================== #
-            # self.is_electra = ('electra' in config['text_encoder']) # used on 283
-            
-    
             self.random_init_vision_encoder = config['random_init_vision_encoder']
             self.random_init_text_encoder = config['random_init_text_encoder']
     
             # Cross Modal Layers
-            # bert_config = BertConfig(
-            #     vocab_size=config["vocab_size"],
-            #     hidden_size=config["cross_layer_hidden_size"],
-            #     num_attention_heads=config["num_cross_layer_heads"],
-            #     intermediate_size=config["cross_layer_hidden_size"] * config["cross_layer_mlp_ratio"],
-            #     max_position_embeddings=config["max_text_len"],
-            #     hidden_dropout_prob=config["cross_layer_drop_rate"],
-            #     attention_probs_dropout_prob=config["cross_layer_drop_rate"],
-            # )
-            # resolution_after=config['image_size']
-            
             self.cross_modal_text_transform = nn.Linear(config['text_encoder_hidden_size'], config['cross_layer_hidden_size'])
             self.cross_modal_text_transform.apply(objectives.init_weights)
             self.cross_modal_image_transform = nn.Linear(config['image_encoder_hidden_size'], config['cross_layer_hidden_size'])
             self.cross_modal_image_transform.apply(objectives.init_weights)
-            
-            # Original Cross Modal Layer Setup From METER
-            # self.cross_modal_image_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_cross_layers'])])
-            # self.cross_modal_image_layers.apply(objectives.init_weights)
-            # self.cross_modal_text_layers = nn.ModuleList([BertCrossLayer(bert_config) for _ in range(config['num_cross_layers'])])
-            # self.cross_modal_text_layers.apply(objectives.init_weights)
-    
-            # self.cross_modal_image_pooler = heads.Pooler(config["cross_layer_hidden_size"])
-            # self.cross_modal_image_pooler.apply(objectives.init_weights)
-            # self.cross_modal_text_pooler = heads.Pooler(config["cross_layer_hidden_size"])
-            # self.cross_modal_text_pooler.apply(objectives.init_weights)
-            
-            # if config['freeze_cross_modal_layers']:
-            #     self._freeze_cross_modal_layers()
-            
-            # Cross-Modal Module with BERT Layers
-            # self.fusion_encoder = BertCrossModalEncoder(config)
             
             # Cross-Modal Module with LXMERT Layers
             self.fusion_encoder = LxmertCrossModalEncoder(config)
@@ -497,16 +460,6 @@ class METERTransformerSS(pl.LightningModule):
         input_shape = text_masks.size()
         extend_text_masks = self.text_transformer.get_extended_attention_mask(text_masks, input_shape)#, device)
         
-        # Project Embeddings if Necessary
-        # if self.is_electra:
-        #     if self.text_transformer.config.embedding_size != self.text_transformer.config.hidden_size:
-        #         text_embeds = self.text_transformer.embeddings_project(text_embeds)
-        
-        # # # Process Text Embeddings
-        # for layer in self.text_transformer.encoder.layer:
-        #     text_embeds = layer(text_embeds, extend_text_masks)[0]
-        # text_embeds = self.cross_modal_text_transform(text_embeds)
-        
         text_embeds = self.text_transformer(inputs_embeds=text_embeds).last_hidden_state
         text_embeds = self.cross_modal_text_transform(text_embeds)
         
@@ -534,17 +487,6 @@ class METERTransformerSS(pl.LightningModule):
             ),
         )
         
-        # x, y = text_embeds, image_embeds
-        # for text_layer, image_layer in zip(self.cross_modal_text_layers, self.cross_modal_image_layers):
-        #     x1 = text_layer(x, y, extend_text_masks, extend_image_masks)
-        #     y1 = image_layer(y, x, extend_image_masks, extend_text_masks)
-        #     x, y = x1[0], y1[0]
-
-        # text_feats, image_feats = x, y
-        # cls_feats_text = self.cross_modal_text_pooler(x)
-        # cls_feats_image = self.cross_modal_image_pooler(y)
-        # cls_feats = torch.cat([cls_feats_text, cls_feats_image], dim=-1)
-        # cls_feats, text_feats, image_feats = self.fusion_encoder(text_embeds, image_embeds, extend_text_masks, extend_image_masks)
         cls_feats, text_feats, image_feats = self.fusion_encoder(text_embeds, extend_text_masks, image_embeds, extend_image_masks)
 
         ret = {
