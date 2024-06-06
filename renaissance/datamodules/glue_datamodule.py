@@ -6,8 +6,8 @@ Created on Mon Feb 26 13:37:50 2024
 @author: claytonfields
 """
 
-from meter.datamodules.datamodule_base import BaseDataModule
-from meter.datasets.glue_dataset import GlueDataset
+from renaissance.datamodules.datamodule_base import BaseDataModule
+from renaissance.datasets.glue_dataset import GlueDataset
 
 class GlueDataModule(BaseDataModule):
     def __init__(self, *args, **kwargs):

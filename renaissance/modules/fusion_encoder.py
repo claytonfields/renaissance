@@ -1,7 +1,7 @@
 """
 Fusion encoder modules using cross-attention for two-tower vision language 
 encoder models. Fusion encoder modules are used in 
-meter/modules/meter_module.py.
+renaissance/modules/renaissance_module.py.
 """
 
 import torch
@@ -11,7 +11,7 @@ from transformers.models.bert.modeling_bert import BertConfig
 from transformers.models.lxmert.modeling_lxmert import LxmertXLayer
 from transformers.models.lxmert.configuration_lxmert import LxmertConfig
 # from .bert_model import BertCrossLayer
-from . import heads, objectives, meter_utils
+from . import heads, objectives, renaissance_utils
 
 
 

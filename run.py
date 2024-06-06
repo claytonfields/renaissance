@@ -4,9 +4,9 @@ import pytorch_lightning as pl
 import os
 # os.environ["NCCL_DEBUG"] = "INFO"
 
-from meter.config import ex
-from meter.modules import RenaissanceTransformer
-from meter.datamodules.multitask_datamodule import MTDataModule
+from renaissance.config import ex
+from renaissance.modules import RenaissanceTransformer
+from renaissance.datamodules.multitask_datamodule import MTDataModule
 
 import warnings
 import torch

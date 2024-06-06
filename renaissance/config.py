@@ -1,6 +1,6 @@
 from sacred import Experiment
 
-ex = Experiment("METER")
+ex = Experiment("renaissance")
 
 
 def _loss_names(d):
@@ -32,43 +32,32 @@ def _loss_names(d):
 # ===================== Default Settings ===================== #
 @ex.config
 def config():
-    exp_name = "meter"
+    exp_name = "renaissance"
     seed = 0
     # datasets = ["coco", "vg", "sbu", "gcc"]
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
     batch_size = 256  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
     per_gpu_batchsize = 0  # you should define this manually with per_gpu_batch_size=#
+    eval_batch_size = 32
     
     # Path to .ckpt file for fine-tuning or testing
     load_path = ""
-    resume_from = None
     # Path to .ckpt file for resuming training from previous checkpoint
-    eval_batch_size = 32
+    resume_from = None
 
     # Model Type Setting
-    # model_type = "one-tower"
-    model_type = "two-tower"
-    encoder_type = 'text'
-    pooler_type = 'double' # 'double' or 'single'
-    # encoder = "google/electra-small-discriminator"
-    # encoder = "bert-base-uncased"
+    model_type = "two-tower" # Supports ['one-tower', 'two-tower]
+    # encoder_type = 'text'
+    pooler_type = 'double' # Supports ['single', 'double']
     encoder = "google/electra-small-discriminator"
     random_init_encoder = False
-    drop_rate = 0.1
-    # two_tower = True
-    # multi_model_encoder = 'dandelin/vilt-b32-mlm'
+
     
     ### One Tower Settings ###
-    
+    # one-tower settings will be ignored if unless model_type = "one-tower"
     # Text Setting
-    vqav2_label_size = 3129
-    max_text_len = 40
     tokenizer = "bert-base-uncased"
-    vocab_size = 30522
-    whole_word_masking = False
-    mlm_prob = 0.15
-    draw_false_text = 0
 
     # Transformer Setting
     encoder = "google/electra-small-discriminator"

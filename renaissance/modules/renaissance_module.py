@@ -10,7 +10,7 @@ from transformers.models.electra.modeling_electra import  ElectraConfig#,Electra
 from .embeddings import ElectraEmbeddings
 # from transformers.model.vit import 
 # from .bert_model import BertCrossLayer
-from . import heads, objectives, meter_utils
+from . import heads, objectives, renaissance_utils
 from transformers import AutoConfig, AutoModel#, AutoModelForSequenceClassification
 from .fusion_encoder import LxmertCrossModalEncoder
 
@@ -41,7 +41,7 @@ class RenaissanceTransformer(pl.LightningModule):
         
         if self.model_type == 'one-tower':
             
-            self.encoder_type = config['encoder_type']
+            # self.encoder_type = config['encoder_type']
             self.random_init_encoder = config['random_init_encoder']
             self.pooler_type = config['pooler_type']
             
@@ -384,7 +384,7 @@ class RenaissanceTransformer(pl.LightningModule):
             self.image_classification_pooler.apply(objectives.init_weights)
             
         
-        meter_utils.set_metrics(self)
+        renaissance_utils.set_metrics(self)
         self.current_tasks = list()
 
         # Load Downstream (test_only = True)
@@ -658,24 +658,24 @@ class RenaissanceTransformer(pl.LightningModule):
         return ret
 
     def training_step(self, batch, batch_idx):
-        meter_utils.set_task(self)
+        renaissance_utils.set_task(self)
         output = self(batch)
         total_loss = sum([v for k, v in output.items() if "loss" in k])
 
         return total_loss
 
     def on_train_epoch_end(self):
-        meter_utils.epoch_wrapup(self)
+        renaissance_utils.epoch_wrapup(self)
 
     def validation_step(self, batch, batch_idx):
-        meter_utils.set_task(self)
+        renaissance_utils.set_task(self)
         output = self(batch)
 
     def on_validation_epoch_end(self):
-        meter_utils.epoch_wrapup(self)
+        renaissance_utils.epoch_wrapup(self)
 
     def test_step(self, batch, batch_idx):
-        meter_utils.set_task(self)
+        renaissance_utils.set_task(self)
         output = self(batch)
         ret = dict()
 
@@ -688,7 +688,7 @@ class RenaissanceTransformer(pl.LightningModule):
         model_name = self.hparams.config["load_path"].split("/")[-1][:-5]
         # if self.hparams.config["loss_names"]["vqa"] > 0:
         #     objectives.vqa_test_wrapup(outs, model_name)
-        meter_utils.epoch_wrapup(self)
+        renaissance_utils.epoch_wrapup(self)
 
     def configure_optimizers(self):
-        return meter_utils.set_schedule(self)
+        return renaissance_utils.set_schedule(self)

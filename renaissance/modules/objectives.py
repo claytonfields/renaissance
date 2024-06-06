@@ -1,7 +1,7 @@
 """
 Task implementations for vision language 
 encoder models. Methods in objectives.py are used in 
-meter/modules/meter_module.py.
+renaissance/modules/renaissance_module.py.
 """
 import torch
 import torch.nn as nn
