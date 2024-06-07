@@ -32,12 +32,18 @@ class RenaissanceTransformer(pl.LightningModule):
             ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
             state_dict = ckpt["state_dict"]
             # UNCOMMENT BELOW WHEN DONE TESTING VQA!!!!!!!
-            self.old_max_text_len = ckpt['hyper_parameters']['config']['max_text_len']
+            self.original_max_text_len = ckpt['hyper_parameters']['config']['max_text_len']
             self.new_max_text_len = config['max_text_len']
-            self.old_image_size = ckpt['hyper_parameters']['config']['image_size']
+            self.original_image_size = ckpt['hyper_parameters']['config']['original_image_size']
             self.new_image_size = config['image_size']
-
+            
+        # else:
+        #     self.hparams.config['original_max_text_len'] = config['max_text_len']
+        #     # self.new_max_text_len = config['max_text_len']
+        #     self.hparams.config['original_image_size'] = config['image_size']
+        #     # self.new_image_size = config['image_size']
         
+        # self.save_hyperparameters()
         
         if self.model_type == 'one-tower':
             
@@ -59,7 +65,8 @@ class RenaissanceTransformer(pl.LightningModule):
                 self.encoder = AutoModel.from_config(hf_config)
             else:
                 # Download Encoder - Get Dimensions
-                self.encoder = AutoModel.from_pretrained(config['encoder'])
+                model = AutoModel.from_pretrained(config['encoder'])
+                self.encoder = model.encoder
                 self.hidden_size = self.encoder.config.hidden_size
                 try:
                     self.embedding_size = self.encoder.config.embedding_size
@@ -70,9 +77,9 @@ class RenaissanceTransformer(pl.LightningModule):
                     self.text_embedding_projection = nn.Linear(self.embedding_size, self.hidden_size)
                     self.image_embedding_projection = nn.Linear(self.embedding_size, self.hidden_size)
                 
-                if self.fine_tune:
-                    image_size = self.old_image_size
-                    max_text_len = self.old_max_text_len
+                if self.fine_tune or self.test_only:
+                    image_size = self.original_image_size
+                    max_text_len = self.original_max_text_len
                 else:
                     image_size = config['image_size']
                     max_text_len = config['max_text_len']
@@ -216,7 +223,7 @@ class RenaissanceTransformer(pl.LightningModule):
         # Load Previously Trained Modules
         if self.fine_tune:
             self.load_state_dict(state_dict, strict=False)
-            if (self.model_type == 'one-tower') and (self.old_max_text_len != self.new_max_text_len):
+            if (self.model_type == 'one-tower') and (self.original_max_text_len != self.new_max_text_len):
                 self.text_embeddings._adjust_position_embeddings(self.new_max_text_len)
             
 
@@ -389,8 +396,8 @@ class RenaissanceTransformer(pl.LightningModule):
 
         # Load Downstream (test_only = True)
         if self.test_only:
-            ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
-            state_dict = ckpt["state_dict"]
+            # ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
+            # state_dict = ckpt["state_dict"]
             self.load_state_dict(state_dict, strict=False)
             
     def _freeze_cross_modal_layers(self):
@@ -549,7 +556,7 @@ class RenaissanceTransformer(pl.LightningModule):
         try:
             x = self.encoder(inputs_embeds=x)[0]
         except:
-            x = self.encoder.encoder(x)[0]
+            x = self.encoder(x)[0]
         
         text_feats, image_feats = (
             x[:, : text_embeds.shape[1]],

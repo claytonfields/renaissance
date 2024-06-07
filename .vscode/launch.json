@@ -4,13 +4,16 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
+
         {
             "name": "Python Debugger: Current File with Arguments",
             "type": "debugpy",
+            // "type": "python",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["with", "task_finetune_snli_onetower_electra", "num_gpus=1", "load_path=result/mlm_itm_onetower_electra_bs44_pgbs44/checkpoints/last.ckpt"]
+            "args": ["with", "task_finetune_snli_onetower_electra", "num_gpus=1", "load_path=result/snli_mlm_itm_onetower_electra_bs44_pgbs44/checkpoints/epoch=4-step=41370.ckpt","test_only=True"]
         }
     ]
 }

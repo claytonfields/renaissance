@@ -27,8 +27,44 @@ def main(_config):
     dm = MTDataModule(_config, dist=False)
 
     model = RenaissanceTransformer(_config)
+    
+    # Create name for directory to log results
+    load_path = _config['load_path']
     exp_name = f'{_config["exp_name"]}'
-
+    seed = _config['seed']
+    
+    def parse_load_path(load_path):
+        drive, path_and_file = os.path.splitdrive(load_path)
+        path, file = os.path.split(path_and_file)
+        folders = []
+        while True:
+            path, folder = os.path.split(path)
+        
+            if folder != "":
+                folders.append(folder)
+            else:
+                if path != "":
+                    folders.append(path)
+                break
+        folders.reverse()
+        result_dir = folders[-3]
+        checkpoint_name = file.split("/")[-1][:-5]
+        parsed_string = f"{result_dir}_{checkpoint_name}"
+        return parsed_string
+        
+        
+    if not load_path:
+        image_size = _config['image_size']
+        patch_size = _config['patch_size']
+        batch_size = _config['batch_size']
+        per_gpu_batchsize = _config['per_gpu_batchsize']
+        train_steps = _config['max_steps']
+        train_epoch = _config['max_epoch']
+        result_dir = f"{exp_name}_seed{seed}_is{image_size}_ps{patch_size}_bs{batch_size}_pgbs{per_gpu_batchsize}_te{train_epoch}_ts{train_steps}"
+    else:
+        loaded_model = parse_load_path(load_path)
+        result_dir = f"{exp_name}_seed{seed}_from_{loaded_model}"
+    
     os.makedirs(_config["log_dir"], exist_ok=True)
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
         save_top_k=1,
@@ -39,7 +75,7 @@ def main(_config):
     )
     logger = pl.loggers.TensorBoardLogger(
         _config["log_dir"],
-        name=f'{exp_name}_seed{_config["seed"]}_from_{_config["load_path"].split("/")[-1][:-5]}',
+        name=result_dir
     )
 
     lr_callback = pl.callbacks.LearningRateMonitor(logging_interval="step")
@@ -65,24 +101,21 @@ def main(_config):
         precision=_config["precision"],
         accelerator = 'gpu',
         # strategy = 'ddp_notebook',
-        # benchmark=True,
         deterministic='warn',
-        max_epochs=_config["max_epoch"] if max_steps is None else 1000,
+        max_epochs=_config["max_epoch"], #if max_steps is None else 1000,
         max_steps=max_steps,
         callbacks=callbacks,
         logger=logger,
-        #prepare_data_per_node=False,
-        #replace_sampler_ddp=False,
         accumulate_grad_batches=grad_steps,
         log_every_n_steps=10,
-        # flush_logs_every_n_steps=10,
-        # resume_from_checkpoint=_config["resume_from"],
-        # weights_summary="top",
         fast_dev_run=_config["fast_dev_run"],
         val_check_interval=_config["val_check_interval"],
     )
 
     if not _config["test_only"]:
-        trainer.fit(model, datamodule=dm)
+        if _config["resume_from"]:
+            trainer.fit(model, datamodule=dm, ckpt_path=_config["resume_from"])
+        else:
+            trainer.fit(model, datamodule=dm)
     else:
         trainer.test(model, datamodule=dm)
