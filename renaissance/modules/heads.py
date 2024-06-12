@@ -36,12 +36,14 @@ class ITMHead(nn.Module):
         return x
 
 
+# this needs fixing to accomodate one or tow tower model
 class MLMHead(nn.Module):
-    def __init__(self, config, weight=None):
+    def __init__(self, config, hidden_size=None, weight=None):
+        
         
         bert_config = BertConfig(
             vocab_size=config["vocab_size"],
-            hidden_size=config["cross_layer_hidden_size"],
+            hidden_size=hidden_size,
             num_attention_heads=config["num_cross_layer_heads"],
             intermediate_size=config["cross_layer_hidden_size"] * config["cross_layer_mlp_ratio"],
             max_position_embeddings=config["max_text_len"],

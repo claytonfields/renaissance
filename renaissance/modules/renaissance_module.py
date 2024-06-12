@@ -124,7 +124,8 @@ class RenaissanceTransformer(pl.LightningModule):
             # ===================== BaseArchitecture ===================== #
             self.random_init_vision_encoder = config['random_init_vision_encoder']
             self.random_init_text_encoder = config['random_init_text_encoder']
-    
+            
+            self.hidden_size = config['cross_layer_hidden_size']
             # Cross Modal Layers
             self.cross_modal_text_transform = nn.Linear(config['text_encoder_hidden_size'], config['cross_layer_hidden_size'])
             self.cross_modal_text_transform.apply(objectives.init_weights)
@@ -198,7 +199,7 @@ class RenaissanceTransformer(pl.LightningModule):
         
         # Masked Language Modeling
         if self.hparams.config["loss_names"]["mlm"] > 0:
-            self.mlm_score = heads.MLMHead(config)
+            self.mlm_score = heads.MLMHead(config, hidden_size=self.hidden_size)
             self.mlm_score.apply(objectives.init_weights)
         
         # Image Text Matching
