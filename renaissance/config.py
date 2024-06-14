@@ -66,7 +66,6 @@ def config():
     mlp_ratio = 4
     drop_rate = 0.1
 
-
     ### Two Tower Settings ###
     # Image settings
     image_encoder = "facebook/deit-tiny-patch16-224"
@@ -153,246 +152,7 @@ def config():
     precision = 32
     
 
-@ex.named_config
-def test_one_tower_mlm_itm_case_a():
-    exp_name = "test_one_tower_mlm_itm_case_a"
-    seed = 0
-    datasets = ["coco", "vg"]
-    loss_names = _loss_names({"itm": 1, "mlm": 1})
-    batch_size = 42  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
-    # per_gpu_batchsize = 12
-    
-    test_only=False
-    data_root = 'data/arrow/' 
-    num_gpus=1 
-    num_nodes=1 
-    per_gpu_batchsize=2
-    resume_from = None
-    
-    # Transformer Setting
-    # encoder = "facebook/deit-tiny-patch16-224"
-    # encoder = "FacebookAI/roberta-base"
-    model_type = "one-tower"
-    encoder = "google/electra-small-discriminator"
-    hidden_size = 192
-    num_heads = 4
-    num_layers = 12
-    mlp_ratio = 4
-    drop_rate = 0.1
-    
-    # Image setting
-    train_transform_keys = ["pixelbert"]
-    val_transform_keys = ["pixelbert"]
-    image_size = 224
-    # max_image_len = -1
-    patch_size = 16
-    draw_false_image = 1
-    image_only = False
-    
-    # Text Setting
-    vqav2_label_size = 3129
-    max_text_len = 40
-    tokenizer = "bert-base-uncased"
-    vocab_size = 30522
-    whole_word_masking = False
-    mlm_prob = 0.15
-    draw_false_text = 0
-    
-    max_steps = 1
 
-@ex.named_config
-def test_case_one_tower_finetune_snli_a():
-    # Settings
-    test_only=False
-    data_root = 'data/arrow/' 
-    num_gpus=1 
-    num_nodes=1 
-    per_gpu_batchsize=32 
-    # batch_size=16
-    load_path = '/home/claytonfields/nlp/code/meter/result/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints/epoch=5-step=96215.ckpt'
-    # SNLI-VE
-    exp_name = "test_case_finetune_snli"
-    datasets = ["snli"]
-    loss_names = _loss_names({"snli": 1})
-    # Training Time
-    max_epoch = 1
-    max_steps = 10
-    # Transformer Setting
-    # encoder = "facebook/deit-tiny-patch16-224"
-    # encoder = "FacebookAI/roberta-base"
-    model_type = "one-tower"
-    encoder = "google/electra-small-discriminator"
-    # hidden_size = 192
-    # num_heads = 4
-    # num_layers = 12
-    # mlp_ratio = 4
-    # drop_rate = 0.1
-    
-    # Image setting
-    train_transform_keys = ["pixelbert"]
-    val_transform_keys = ["pixelbert"]
-    image_size = 384
-    original_image_size = 224
-    # max_image_len = -1
-    patch_size = 16
-    draw_false_image = 1
-    image_only = False
-    
-    # Text Setting
-    vqav2_label_size = 3129
-    max_text_len = 50
-    tokenizer = "bert-base-uncased"
-    vocab_size = 30522
-    whole_word_masking = False
-    mlm_prob = 0.15
-    draw_false_text = 0
-
-@ex.named_config
-def test_case_one_tower_eval_snli_a():
-    # Settings
-    test_only=True
-    data_root = 'data/arrow/' 
-    num_gpus=1 
-    num_nodes=1 
-    per_gpu_batchsize=64 
-    # load_path = 'result/finetune_snli_mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/version_0/checkpoints/epoch\=4-step\=20684.ckpt deit_tiny_patch16_224'
-    load_path = '/home/claytonfields/nlp/code/meter/result/finetune_snli_seed0_from_epoch=43-step=898039/version_1/checkpoints/epoch=4-step=20684.ckpt'
-    # load_path = '/home/claytonfields/nlp/code/meter/result/finetune_snli_mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/version_0/checkpoints/epoch=4-step=20684.ckpt'
-    # SNLI-VE
-    exp_name = "test_case_finetune_snli"
-    datasets = ["snli"]
-    loss_names = _loss_names({"snli": 1})
-    # Training Time
-    max_epoch = 1
-    max_steps = 1000
-    # Text Encoder
-    text_encoder = "google/electra-small-discriminator"
-    vocab_size = 30522
-    text_encoder_hidden_size = 256
-    # Cross Layer Settings
-    cross_layer_hidden_size = 256
-    num_cross_layers = 6
-    num_cross_layer_heads = 4
-    # num_layers = 6
-    cross_layer_mlp_ratio = 4
-    cross_layer_drop_rate = 0.1
-    # Image Encoder Settings
-    image_encoder = "facebook/deit-tiny-patch16-224"
-    image_encoder_hidden_size = 192
-    image_size = 224
-    resolution_before = 224
-    patch_size = 16
-    train_transform_keys = ["imagenet"]
-    val_transform_keys = ["imagenet"]
-    # Training Settings
-    batch_size = 64
-    warmup_steps = 0.1
-    draw_false_image = 0
-    learning_rate = 2e-6
-    lr_mult_head = 10
-    lr_mult_cross_modal = 5
-    max_text_len = 50
-    # Freeze or UnFreeze Encoders
-    freeze_image_encoder = False
-    freeze_text_encoder = False
-
-
-@ex.named_config
-def test_case_finetune_mrpc_b():
-    # Settings
-    test_only=False
-    data_root = 'data/arrow/' 
-    num_gpus=1 
-    num_nodes=1 
-    per_gpu_batchsize=32 
-    load_path = '/home/claytonfields/nlp/code/meter/result/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints/epoch=5-step=96215.ckpt'
-    # SNLI-VE
-    exp_name = "test_case_finetune_mrpc_a"
-    datasets = ["glue"]
-    # glue_task = 'mrpc'
-    loss_names = _loss_names({"mrpc": 1})
-    # Training Time
-    max_epoch = 1
-    max_steps = 10e6
-    # Text Encoder
-    text_encoder = "google/electra-small-discriminator"
-    vocab_size = 30522
-    text_encoder_hidden_size = 256
-    # Cross Layer Settings
-    cross_layer_hidden_size = 256
-    num_cross_layers = 6
-    num_cross_layer_heads = 4
-    # num_layers = 6
-    cross_layer_mlp_ratio = 4
-    cross_layer_drop_rate = 0.1
-    # Image Encoder Settings
-    image_encoder = "facebook/deit-tiny-patch16-224"
-    image_encoder_hidden_size = 192
-    image_size = 224
-    resolution_before = 224
-    patch_size = 16
-    train_transform_keys = ["imagenet"]
-    val_transform_keys = ["imagenet"]
-    # Training Settings
-    batch_size = 32
-    warmup_steps = 0
-    draw_false_image = 0
-    learning_rate = 2e-6
-    lr_mult_head = 10
-    lr_mult_cross_modal = 5
-    max_text_len = 50
-    # Freeze or UnFreeze Encoders
-    freeze_image_encoder = True
-    freeze_text_encoder = False
-    freeze_cross_modal_layers = True
-
-@ex.named_config
-def test_case_finetune_ref_a():
-    # Settings
-    test_only=False
-    data_root = 'data/arrow/' 
-    num_gpus=1 
-    num_nodes=1 
-    per_gpu_batchsize=6 
-    model_type = 'two-tower'
-    load_path = '/home/claytonfields/nlp/code/meter/result/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints/epoch=5-step=96215.ckpt'
-    # load_path = "/home/claytonfields/nlp/code/meter/result/test_one_tower_mlm_itm_case_a_seed0_from_/version_29/checkpoints/last.ckpt"
-    # SNLI-VE
-    exp_name = "test_case_finetune_ref"
-    datasets = ["refcoco"]
-    loss_names = _loss_names({"ref": 1})
-    # Training Time
-    max_epoch = 1
-    max_steps = 40
-    # Text Encoder
-    text_encoder = "google/electra-small-discriminator"
-    vocab_size = 30522
-    text_encoder_hidden_size = 256
-    # Cross Layer Settings
-    cross_layer_hidden_size = 256
-    num_cross_layers = 6
-    num_cross_layer_heads = 4
-    # num_layers = 6
-    cross_layer_mlp_ratio = 4
-    cross_layer_drop_rate = 0.1
-    # Image Encoder Settings
-    image_encoder = "facebook/deit-tiny-patch16-224"
-    image_encoder_hidden_size = 192
-    image_size = 32
-    patch_size = 8
-    train_transform_keys = ["imagenet"]
-    val_transform_keys = ["imagenet"]
-    # Training Settings
-    batch_size = 6
-    warmup_steps = 0
-    draw_false_image = 0
-    learning_rate = 2e-6
-    lr_mult_head = 10
-    lr_mult_cross_modal = 5
-    max_text_len = 50
-    # Freeze or UnFreeze Encoders
-    freeze_image_encoder = False
-    freeze_text_encoder = False
 
 # ===================== Task Settings ===================== #
 @ex.named_config
@@ -524,10 +284,7 @@ def task_mlm_itm_onetower_dinos16():
     resume_from = None
     
     # Transformer Setting
-    # encoder = "facebook/deit-tiny-patch16-224"
-    # encoder = "FacebookAI/roberta-base"
     model_type = "one-tower"
-    # encoder = "facebook/deit-base-distilled-patch16-384"
     encoder = "facebook/dino-vits16"
     
     # Image setting
@@ -866,7 +623,7 @@ def task_finetune_snli():
     
 @ex.named_config
 def task_finetune_snli_onetower():
-    exp_name = "finetune_snli_onetower"
+    exp_name = "snli_onetower"
     datasets = ["snli"]
     loss_names = _loss_names({"snli": 1})
     batch_size = 64
@@ -1015,16 +772,6 @@ def swin32_large384():
     image_encoder_hidden_size = 1536
     resolution_before = 384
     
-# @ex.named_config
-# def swin_tiny_patch224():
-#     image_encoder = "swin_tiny_patch4_window7_224"
-#     patch_size = 4
-#     image_size = 224
-#     train_transform_keys = ["imagenet"]
-#     val_transform_keys = ["imagenet"]
-#     image_encoder_hidden_size = 768
-#     resolution_before = 224
-    
 @ex.named_config
 def swin_tiny_patch4_window7_224():
     image_encoder = "microsoft/swin-tiny-patch4-window7-224"
@@ -1056,38 +803,6 @@ def deit_tiny_patch16_224():
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]
     
-@ex.named_config
-def vit_deit_tiny_patch16_224():    
-    image_encoder = "vit_deit_tiny_patch16_224"
-    cross_layer_hidden_size = 192
-    image_encoder_hidden_size = 192
-    resolution_before = 224
-    patch_size = 16
-    num_cross_layer_heads = 3
-    # num_layers = 12
-    cross_layer_mlp_ratio = 4
-    cross_layer_drop_rate = 0.1
-    train_transform_keys = ["imagenet"]
-    val_transform_keys = ["imagenet"]
-
-@ex.named_config
-def clip16():
-    image_encoder = 'ViT-B/16'
-    image_size = 224
-    patch_size = 16
-    train_transform_keys = ["clip"]
-    val_transform_keys = ["clip"]
-    image_encoder_hidden_size = 768
-
-@ex.named_config
-def clip32():
-    image_encoder = 'ViT-B/32'
-    image_size = 224
-    patch_size = 32
-    train_transform_keys = ["clip"]
-    val_transform_keys = ["clip"]
-    image_encoder_hidden_size = 768
-
 # ===================== Text Encoders ===================== #
 @ex.named_config
 def text_roberta():
@@ -1116,6 +831,17 @@ def text_electra_base():
     tokenizer = "google/electra-base-discriminator"
     vocab_size = 30522
     text_encoder_hidden_size = 768
+
+
+# ===================== One-Tower Encoders ===================== #
+@ex.named_config
+def onetower_encoder_dino16():
+    model_type = "one-tower"
+    encoder = "facebook/dino-vits16"
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    image_size = 224
+    patch_size = 16
     
 # ===================== Random Augmentations ===================== #
 @ex.named_config
@@ -1588,5 +1314,246 @@ def test_case_finetune_refcoco_a():
 
     # Downstream Setting
     get_recall_metric = False
+    
+@ex.named_config
+def test_one_tower_mlm_itm_case_a():
+    exp_name = "test_one_tower_mlm_itm_case_a"
+    seed = 0
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 42  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
+    # per_gpu_batchsize = 12
+    
+    test_only=False
+    data_root = 'data/arrow/' 
+    num_gpus=1 
+    num_nodes=1 
+    per_gpu_batchsize=2
+    resume_from = None
+    
+    # Transformer Setting
+    # encoder = "facebook/deit-tiny-patch16-224"
+    # encoder = "FacebookAI/roberta-base"
+    model_type = "one-tower"
+    encoder = "google/electra-small-discriminator"
+    hidden_size = 192
+    num_heads = 4
+    num_layers = 12
+    mlp_ratio = 4
+    drop_rate = 0.1
+    
+    # Image setting
+    train_transform_keys = ["pixelbert"]
+    val_transform_keys = ["pixelbert"]
+    image_size = 224
+    # max_image_len = -1
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    
+    # Text Setting
+    vqav2_label_size = 3129
+    max_text_len = 40
+    tokenizer = "bert-base-uncased"
+    vocab_size = 30522
+    whole_word_masking = False
+    mlm_prob = 0.15
+    draw_false_text = 0
+    
+    max_steps = 1
+
+@ex.named_config
+def test_case_one_tower_finetune_snli_a():
+    # Settings
+    test_only=False
+    data_root = 'data/arrow/' 
+    num_gpus=1 
+    num_nodes=1 
+    per_gpu_batchsize=32 
+    # batch_size=16
+    load_path = '/home/claytonfields/nlp/code/meter/result/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints/epoch=5-step=96215.ckpt'
+    # SNLI-VE
+    exp_name = "test_case_finetune_snli"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    # Training Time
+    max_epoch = 1
+    max_steps = 10
+    # Transformer Setting
+    # encoder = "facebook/deit-tiny-patch16-224"
+    # encoder = "FacebookAI/roberta-base"
+    model_type = "one-tower"
+    encoder = "google/electra-small-discriminator"
+    # hidden_size = 192
+    # num_heads = 4
+    # num_layers = 12
+    # mlp_ratio = 4
+    # drop_rate = 0.1
+    
+    # Image setting
+    train_transform_keys = ["pixelbert"]
+    val_transform_keys = ["pixelbert"]
+    image_size = 384
+    original_image_size = 224
+    # max_image_len = -1
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    
+    # Text Setting
+    vqav2_label_size = 3129
+    max_text_len = 50
+    tokenizer = "bert-base-uncased"
+    vocab_size = 30522
+    whole_word_masking = False
+    mlm_prob = 0.15
+    draw_false_text = 0
+
+@ex.named_config
+def test_case_one_tower_eval_snli_a():
+    # Settings
+    test_only=True
+    data_root = 'data/arrow/' 
+    num_gpus=1 
+    num_nodes=1 
+    per_gpu_batchsize=64 
+    # load_path = 'result/finetune_snli_mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/version_0/checkpoints/epoch\=4-step\=20684.ckpt deit_tiny_patch16_224'
+    load_path = '/home/claytonfields/nlp/code/meter/result/finetune_snli_seed0_from_epoch=43-step=898039/version_1/checkpoints/epoch=4-step=20684.ckpt'
+    # load_path = '/home/claytonfields/nlp/code/meter/result/finetune_snli_mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/version_0/checkpoints/epoch=4-step=20684.ckpt'
+    # SNLI-VE
+    exp_name = "test_case_finetune_snli"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    # Training Time
+    max_epoch = 1
+    max_steps = 1000
+    # Text Encoder
+    text_encoder = "google/electra-small-discriminator"
+    vocab_size = 30522
+    text_encoder_hidden_size = 256
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    # num_layers = 6
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Image Encoder Settings
+    image_encoder = "facebook/deit-tiny-patch16-224"
+    image_encoder_hidden_size = 192
+    image_size = 224
+    resolution_before = 224
+    patch_size = 16
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    # Training Settings
+    batch_size = 64
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 2e-6
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    # Freeze or UnFreeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+
+
+@ex.named_config
+def test_case_finetune_mrpc_b():
+    # Settings
+    test_only=False
+    data_root = 'data/arrow/' 
+    num_gpus=1 
+    num_nodes=1 
+    per_gpu_batchsize=32 
+    load_path = '/home/claytonfields/nlp/code/meter/result/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints/epoch=5-step=96215.ckpt'
+    # SNLI-VE
+    exp_name = "test_case_finetune_mrpc_a"
+    datasets = ["glue"]
+    # glue_task = 'mrpc'
+    loss_names = _loss_names({"mrpc": 1})
+    # Training Time
+    max_epoch = 1
+    max_steps = 10e6
+    # Text Encoder
+    text_encoder = "google/electra-small-discriminator"
+    vocab_size = 30522
+    text_encoder_hidden_size = 256
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    # num_layers = 6
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Image Encoder Settings
+    image_encoder = "facebook/deit-tiny-patch16-224"
+    image_encoder_hidden_size = 192
+    image_size = 224
+    resolution_before = 224
+    patch_size = 16
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    # Training Settings
+    batch_size = 32
+    warmup_steps = 0
+    draw_false_image = 0
+    learning_rate = 2e-6
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    # Freeze or UnFreeze Encoders
+    freeze_image_encoder = True
+    freeze_text_encoder = False
+    freeze_cross_modal_layers = True
+
+@ex.named_config
+def test_case_finetune_ref_a():
+    # Settings
+    test_only=False
+    data_root = 'data/arrow/' 
+    num_gpus=1 
+    num_nodes=1 
+    per_gpu_batchsize=6 
+    model_type = 'two-tower'
+    load_path = '/home/claytonfields/nlp/code/meter/result/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints/epoch=5-step=96215.ckpt'
+    # load_path = "/home/claytonfields/nlp/code/meter/result/test_one_tower_mlm_itm_case_a_seed0_from_/version_29/checkpoints/last.ckpt"
+    # SNLI-VE
+    exp_name = "test_case_finetune_ref"
+    datasets = ["refcoco"]
+    loss_names = _loss_names({"ref": 1})
+    # Training Time
+    max_epoch = 1
+    max_steps = 40
+    # Text Encoder
+    text_encoder = "google/electra-small-discriminator"
+    vocab_size = 30522
+    text_encoder_hidden_size = 256
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    # num_layers = 6
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Image Encoder Settings
+    image_encoder = "facebook/deit-tiny-patch16-224"
+    image_encoder_hidden_size = 192
+    image_size = 32
+    patch_size = 8
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    # Training Settings
+    batch_size = 6
+    warmup_steps = 0
+    draw_false_image = 0
+    learning_rate = 2e-6
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    # Freeze or UnFreeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
 
 
