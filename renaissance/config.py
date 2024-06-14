@@ -154,7 +154,7 @@ def config():
 
 
 
-# ===================== Task Settings ===================== #
+# ===================== Pretraining Tasks===================== #
 @ex.named_config
 def task_mlm_itm():
     exp_name = "mlm_itm"
@@ -431,28 +431,7 @@ def task_mlm_itm_deit_fr_electra_fr():
     lr_mult_cross_modal = 5
     num_cross_layers = 6
 
-@ex.named_config
-def task_finetune_nlvr2_clip_bert():
-    exp_name = "finetune_nlvr2"
-    datasets = ["nlvr2"]
-    loss_names = _loss_names({"nlvr2": 1})
-    batch_size = 256
-    max_epoch = 10
-    max_steps = None
-    warmup_steps = 0.1
-    draw_false_image = 0
-    learning_rate = 1e-5
-    lr_mult_head = 10
-    lr_mult_cross_modal = 5
-    text_encoder = "bert-base-uncased"
-    max_text_len = 50
-    text_encoder_hidden_size = 768
-    image_encoder = 'ViT-B/32'
-    train_transform_keys = ["clip"]
-    val_transform_keys = ["clip"]
-    image_encoder_hidden_size = 768
-    image_size = 288
-
+# ===================== Finetuning Tasks===================== #
 @ex.named_config
 def task_finetune_nlvr2_deit_electra():
     exp_name = "finetune_nlvr2_deit_electra"
@@ -512,95 +491,7 @@ def task_finetune_vqa_deit_electra():
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
 
-@ex.named_config
-def task_finetune_vqa_clip_bert():
-    exp_name = "finetune_vqa"
-    datasets = ["vqa"]
-    loss_names = _loss_names({"vqa": 1})
-    batch_size = 512
-    max_epoch = 10
-    max_steps = 1e6
-    warmup_steps = 0.1
-    draw_false_image = 0
-    learning_rate = 5e-6
-    val_check_interval = 0.1
-    lr_mult_head = 50
-    lr_mult_cross_modal = 5
-    text_encoder = "FacebookAI/roberta-base"
-    max_text_len = 50
-    text_encoder_hidden_size = 768
-    image_encoder = 'openai/clip-vit-base-patch32'
-    train_transform_keys = ["clip"]
-    val_transform_keys = ["clip"]
-    image_encoder_hidden_size = 768
-    cross_layer_hidden_size = 768
-    image_size = 576
 
-@ex.named_config
-def task_finetune_irtr_coco_clip_bert():
-    exp_name = "finetune_irtr_coco"
-    datasets = ["coco"]
-    loss_names = _loss_names({"itm": 0.5, "irtr": 1})
-    batch_size = 512
-    max_epoch = 10
-    max_steps = None
-    warmup_steps = 0.1
-    get_recall_metric = True
-    draw_false_text = 15
-    learning_rate = 5e-6
-    lr_mult_head = 5
-    lr_mult_cross_modal = 5
-    text_encoder = "bert-base-uncased"
-    text_encoder_hidden_size = 768
-    image_encoder = 'ViT-B/32'
-    train_transform_keys = ["clip"]
-    val_transform_keys = ["clip"]
-    image_encoder_hidden_size = 768
-    image_size = 384
-
-@ex.named_config
-def task_finetune_irtr_f30k_clip_bert():
-    exp_name = "finetune_irtr_f30k"
-    datasets = ["f30k"]
-    loss_names = _loss_names({"itm": 0.5, "irtr": 1})
-    batch_size = 512
-    max_epoch = 10
-    max_steps = None
-    warmup_steps = 0.1
-    get_recall_metric = True
-    draw_false_text = 15
-    learning_rate = 5e-6
-    lr_mult_head = 5
-    lr_mult_cross_modal = 5
-    text_encoder = "bert-base-uncased"
-    text_encoder_hidden_size = 768
-    image_encoder = 'ViT-B/32'
-    train_transform_keys = ["clip"]
-    val_transform_keys = ["clip"]
-    image_encoder_hidden_size = 768
-    image_size = 384
-
-@ex.named_config
-def task_finetune_snli_clip_bert():
-    exp_name = "finetune_snli"
-    datasets = ["snli"]
-    loss_names = _loss_names({"snli": 1})
-    batch_size = 64
-    max_epoch = 5
-    max_steps = None
-    warmup_steps = 0.1
-    draw_false_image = 0
-    learning_rate = 2e-6
-    lr_mult_head = 10
-    lr_mult_cross_modal = 5
-    text_encoder = "bert-base-uncased"
-    max_text_len = 50
-    text_encoder_hidden_size = 768
-    image_encoder = 'ViT-B/32'
-    train_transform_keys = ["clip"]
-    val_transform_keys = ["clip"]
-    image_encoder_hidden_size = 768
-    image_size = 384
 
 @ex.named_config
 def task_finetune_snli():
@@ -711,8 +602,6 @@ def task_finetune_snli_vision_fr_text_fr():
     freeze_image_encoder = True
     freeze_text_encoder = True
 
-
-
 @ex.named_config
 def task_finetune_ref():
     exp_name = "finetune_ref"
@@ -735,43 +624,51 @@ def task_finetune_ref():
     image_encoder_hidden_size = 192
     image_size = 224
 
-
-
-
-
-
-
-# ===================== Vision Encoders ===================== #
 @ex.named_config
-def swin32_base224():
-    image_encoder = "swin_base_patch4_window7_224_in22k"
-    patch_size = 32
-    image_size = 224
-    train_transform_keys = ["imagenet"]
-    val_transform_keys = ["imagenet"]
-    image_encoder_hidden_size = 1024
-    resolution_before = 224
-
-@ex.named_config
-def swin32_base384():
-    image_encoder = "swin_base_patch4_window12_384_in22k"
-    patch_size = 32
+def task_finetune_irtr_coco_clip_bert():
+    exp_name = "finetune_irtr_coco"
+    datasets = ["coco"]
+    loss_names = _loss_names({"itm": 0.5, "irtr": 1})
+    batch_size = 512
+    max_epoch = 10
+    max_steps = None
+    warmup_steps = 0.1
+    get_recall_metric = True
+    draw_false_text = 15
+    learning_rate = 5e-6
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    text_encoder = "bert-base-uncased"
+    text_encoder_hidden_size = 768
+    image_encoder = 'ViT-B/32'
+    train_transform_keys = ["clip"]
+    val_transform_keys = ["clip"]
+    image_encoder_hidden_size = 768
     image_size = 384
-    train_transform_keys = ["imagenet"]
-    val_transform_keys = ["imagenet"]
-    image_encoder_hidden_size = 1024
-    resolution_before = 384
 
 @ex.named_config
-def swin32_large384():
-    image_encoder = "swin_large_patch4_window12_384_in22k"
-    patch_size = 32
+def task_finetune_irtr_f30k_clip_bert():
+    exp_name = "finetune_irtr_f30k"
+    datasets = ["f30k"]
+    loss_names = _loss_names({"itm": 0.5, "irtr": 1})
+    batch_size = 512
+    max_epoch = 10
+    max_steps = None
+    warmup_steps = 0.1
+    get_recall_metric = True
+    draw_false_text = 15
+    learning_rate = 5e-6
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    text_encoder = "bert-base-uncased"
+    text_encoder_hidden_size = 768
+    image_encoder = 'ViT-B/32'
+    train_transform_keys = ["clip"]
+    val_transform_keys = ["clip"]
+    image_encoder_hidden_size = 768
     image_size = 384
-    train_transform_keys = ["imagenet"]
-    val_transform_keys = ["imagenet"]
-    image_encoder_hidden_size = 1536
-    resolution_before = 384
     
+# ===================== Vision Encoders ===================== #
 @ex.named_config
 def swin_tiny_patch4_window7_224():
     image_encoder = "microsoft/swin-tiny-patch4-window7-224"
@@ -781,17 +678,6 @@ def swin_tiny_patch4_window7_224():
     val_transform_keys = ["imagenet"]
     image_encoder_hidden_size = 768
     resolution_before = 224
-    
-@ex.named_config
-def deit_small_distilled_patch16_224():    
-    image_encoder = "vit_deit_small_distilled_patch16_224"
-    cross_layer_hidden_size = 384
-    num_cross_layer_heads = 6
-    # num_layers = 12
-    cross_layer_mlp_ratio = 4
-    cross_layer_drop_rate = 0.1
-    train_transform_keys = ["imagenet"]
-    val_transform_keys = ["imagenet"]
     
 @ex.named_config
 def deit_tiny_patch16_224():    
@@ -805,19 +691,14 @@ def deit_tiny_patch16_224():
     
 # ===================== Text Encoders ===================== #
 @ex.named_config
-def text_roberta():
-    text_encoder = "roberta-base"
+def twotower_text_roberta():
+    text_encoder = "FacebookAI/roberta-base"
     vocab_size = 50265
     text_encoder_hidden_size = 768
 
-@ex.named_config
-def text_roberta_large():
-    text_encoder = "roberta-large"
-    vocab_size = 50265
-    text_encoder_hidden_size = 1024
 
 @ex.named_config
-def text_electra_small():
+def twotower_text_electra_small():
     text_encoder = "google/electra-small-discriminator"
     vocab_size = 30522
     text_encoder_hidden_size = 256
@@ -827,13 +708,22 @@ def text_electra_small():
     cross_layer_hidden_size = 256
     
 @ex.named_config
-def text_electra_base():
+def twotower_text_electra_base():
     tokenizer = "google/electra-base-discriminator"
     vocab_size = 30522
     text_encoder_hidden_size = 768
 
 
 # ===================== One-Tower Encoders ===================== #
+@ex.named_config
+def onetower_encoder_electra_small():
+    model_type = "one-tower"
+    encoder = "google/electra-small-discriminator"
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    image_size = 224
+    patch_size = 16
+
 @ex.named_config
 def onetower_encoder_dino16():
     model_type = "one-tower"
