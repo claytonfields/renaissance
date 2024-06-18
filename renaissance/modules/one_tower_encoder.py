@@ -269,11 +269,33 @@ class ViTPatchEmbeddings(nn.Module):
         return embeddings
         
 class OneTowerEncoder(nn.Module):
-    def __init__(self, config):
+    def __init__(
+            self, 
+            config,
+            image_size,
+            max_text_len,
+            fine_tune,
+            test_only
+    ):
         super().__init__()
-
-        self.random_init_encoder = config['random_init_encoder']
-        if self.random_init_encoder:
+        
+        # self.fine_tune = (config["load_path"] != ""
+        #     and not config["test_only"])
+        # self.test_only = (config["load_path"] != "" 
+        #     and config["test_only"])
+        # self.random_init_encoder = config['random_init_encoder']
+        
+        # if fine_tune or self.test_only:
+        #     ckpt = torch.load(config["load_path"], map_location="cpu")
+        #     state_dict = ckpt["state_dict"]
+        #     self.original_max_text_len = ckpt['hyper_parameters']['config']['max_text_len']
+        #     self.new_max_text_len = config['max_text_len']
+        #     self.original_image_size = ckpt['hyper_parameters']['config']['original_image_size']
+        #     self.new_image_size = config['image_size']
+        #     del state_dict
+        #     del ckpt
+        
+        if config['random_init_encoder']:
             # Manually Configure Encoder Dimensions
             if config['encoder_manual_configuration']:
                 encoder_kwargs = {
@@ -308,12 +330,12 @@ class OneTowerEncoder(nn.Module):
             except:
                 self.embedding_size = self.hidden_size
             
-            if self.fine_tune or self.test_only:
-                image_size = self.original_image_size
-                max_text_len = self.original_max_text_len
-            else:
-                image_size = config['image_size']
-                max_text_len = config['max_text_len']
+            # if self.fine_tune or self.test_only:
+            #     image_size = self.original_image_size
+            #     max_text_len = self.original_max_text_len
+            # else:
+            #     image_size = config['image_size']
+            #     max_text_len = config['max_text_len']
         
         if self.embedding_size != self.hidden_size:
             self.text_embedding_projection = nn.Linear(self.embedding_size, self.hidden_size)
@@ -357,7 +379,7 @@ class OneTowerEncoder(nn.Module):
             self.image_pooler.apply(init_weights)
 
     # Implement infer method for one_tower models
-    def infer_one_tower(
+    def forward(
         self,
         batch,
         mask_text=False,
@@ -423,3 +445,9 @@ class OneTowerEncoder(nn.Module):
         }
 
         return ret
+    
+    def get_hidden_size(self):
+        return self.hidden_size
+    
+    def get_embedding_size(self):
+        return self.embedding_size

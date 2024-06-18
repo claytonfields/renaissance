@@ -1369,9 +1369,9 @@ def test_case_one_tower_finetune_snli_a():
     data_root = 'data/arrow/' 
     num_gpus=1 
     num_nodes=1 
-    per_gpu_batchsize=32 
+    per_gpu_batchsize=2
     # batch_size=16
-    load_path = '/home/claytonfields/nlp/code/meter/result/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints/epoch=5-step=96215.ckpt'
+    # load_path = '/home/claytonfields/nlp/code/meter/result/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints/epoch=5-step=96215.ckpt'
     # SNLI-VE
     exp_name = "test_case_finetune_snli"
     datasets = ["snli"]

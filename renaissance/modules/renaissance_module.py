@@ -13,6 +13,7 @@ from .embeddings import ElectraEmbeddings
 from . import heads, objectives, renaissance_utils
 from transformers import AutoConfig, AutoModel#, AutoModelForSequenceClassification
 from .fusion_encoder import LxmertCrossModalEncoder
+from .one_tower_encoder import OneTowerEncoder
 
 class RenaissanceTransformer(pl.LightningModule):
     def __init__(self, config):
@@ -37,91 +38,106 @@ class RenaissanceTransformer(pl.LightningModule):
             self.new_image_size = config['image_size']
         
         if self.model_type == 'one-tower':
-            
+            self.pooler_type = config['pooler_type']
             # Randomly Initialize Encoder Weights
-            self.random_init_encoder = config['random_init_encoder']
-            if self.random_init_encoder:
-                # Manually Configure Encoder Dimensions
-                if config['encoder_manual_configuration']:
-                    encoder_kwargs = {
-                        'vocab_size' : config["vocab_size"],
-                        'hidden_size' : config["hidden_size"],
-                        'num_hidden_layers' : config["num_layers"],
-                        'num_attention_heads' : config["num_heads"],
-                        'intermediate_size' : config["hidden_size"] * config["mlp_ratio"],
-                        'max_position_embeddings' : config["max_text_len"],
-                        'hidden_dropout_prob' : config["drop_rate"],
-                        'attention_probs_dropout_prob' : config["drop_rate"],
-                    }
-                    hf_config = AutoConfig.from_pretrained(config['encoder'], **encoder_kwargs)
-                # Use Default Encoder Dimensions with Random Weights
-                elif not config['manual_configuration']:
-                    hf_config = AutoConfig.from_pretrained(config['encoder'])
-                model = AutoModel.from_config(hf_config)
-                self.encoder = model.encoder
+            # self.random_init_encoder = config['random_init_encoder']
+            # if self.random_init_encoder:
+            #     # Manually Configure Encoder Dimensions
+            #     if config['encoder_manual_configuration']:
+            #         encoder_kwargs = {
+            #             'vocab_size' : config["vocab_size"],
+            #             'hidden_size' : config["hidden_size"],
+            #             'num_hidden_layers' : config["num_layers"],
+            #             'num_attention_heads' : config["num_heads"],
+            #             'intermediate_size' : config["hidden_size"] * config["mlp_ratio"],
+            #             'max_position_embeddings' : config["max_text_len"],
+            #             'hidden_dropout_prob' : config["drop_rate"],
+            #             'attention_probs_dropout_prob' : config["drop_rate"],
+            #         }
+            #         hf_config = AutoConfig.from_pretrained(config['encoder'], **encoder_kwargs)
+            #     # Use Default Encoder Dimensions with Random Weights
+            #     elif not config['manual_configuration']:
+            #         hf_config = AutoConfig.from_pretrained(config['encoder'])
+            #     model = AutoModel.from_config(hf_config)
+            #     self.encoder = model.encoder
                 
+            #     image_size = config['image_size']
+            #     max_text_len = config['max_text_len']
+            #     self.hidden_size = config['hidden_size']
+            #     self.embedding_size = config['embedding_size']
+            # # Use Pretrained Encoder Weights from Huggingface Hub
+            # else:
+            #     # Download Encoder - Get Dimensions
+            #     model = AutoModel.from_pretrained(config['encoder'])
+            #     self.encoder = model.encoder
+            #     self.hidden_size = self.encoder.config.hidden_size
+            #     try:
+            #         self.embedding_size = self.encoder.config.embedding_size
+            #     except:
+            #         self.embedding_size = self.hidden_size
+                
+            #     if self.fine_tune or self.test_only:
+            #         image_size = self.original_image_size
+            #         max_text_len = self.original_max_text_len
+            #     else:
+            #         image_size = config['image_size']
+            #         max_text_len = config['max_text_len']
+            
+            # if self.embedding_size != self.hidden_size:
+            #     self.text_embedding_projection = nn.Linear(self.embedding_size, self.hidden_size)
+            #     self.image_embedding_projection = nn.Linear(self.embedding_size, self.hidden_size)
+            
+            # image_config = ViTConfig(
+            #     image_size=image_size,
+            #     patch_size=config['patch_size'],
+            #     hidden_size=self.embedding_size,
+            #     hidden_dropout_prob=config["drop_rate"],
+            #     attention_probs_dropout_prob=config["drop_rate"],
+            # )
+            
+            # text_config = ElectraConfig(
+            #     vocab_size=config["vocab_size"],
+            #     hidden_size=self.hidden_size,
+            #     embedding_size=self.embedding_size,
+            #     max_position_embeddings=max_text_len,
+            #     hidden_dropout_prob=config["drop_rate"],
+            #     attention_probs_dropout_prob=config["drop_rate"],
+            # )
+            
+            # # Add ability to adjust embedding size for down stream changes
+            # self.text_embeddings = ElectraEmbeddings(text_config)
+            # self.text_embeddings.apply(objectives.init_weights)
+            
+            # self.image_embeddings = ViTEmbeddings(image_config)
+            # self.image_embeddings.apply(objectives.init_weights)
+            
+            # self.token_type_embeddings = nn.Embedding(2, self.embedding_size)
+            # self.token_type_embeddings.apply(objectives.init_weights)
+            
+            # self.pooler_type = config['pooler_type']
+            # if self.pooler_type == 'single':
+            #     self.pooler = heads.Pooler(self.hidden_size)
+            #     self.pooler.apply(objectives.init_weights)
+            # elif self.pooler_type =='double':
+            #     self.text_pooler = heads.Pooler(self.hidden_size)
+            #     self.text_pooler.apply(objectives.init_weights)
+            #     self.image_pooler = heads.Pooler(self.hidden_size)
+            #     self.image_pooler.apply(objectives.init_weights)
+            if self.fine_tune or self.test_only:
+                image_size = self.original_image_size
+                max_text_len = self.original_max_text_len
+            else:
                 image_size = config['image_size']
                 max_text_len = config['max_text_len']
-                self.hidden_size = config['hidden_size']
-                self.embedding_size = config['embedding_size']
-            # Use Pretrained Encoder Weights from Huggingface Hub
-            else:
-                # Download Encoder - Get Dimensions
-                model = AutoModel.from_pretrained(config['encoder'])
-                self.encoder = model.encoder
-                self.hidden_size = self.encoder.config.hidden_size
-                try:
-                    self.embedding_size = self.encoder.config.embedding_size
-                except:
-                    self.embedding_size = self.hidden_size
-                
-                if self.fine_tune or self.test_only:
-                    image_size = self.original_image_size
-                    max_text_len = self.original_max_text_len
-                else:
-                    image_size = config['image_size']
-                    max_text_len = config['max_text_len']
-            
-            if self.embedding_size != self.hidden_size:
-                self.text_embedding_projection = nn.Linear(self.embedding_size, self.hidden_size)
-                self.image_embedding_projection = nn.Linear(self.embedding_size, self.hidden_size)
-            
-            image_config = ViTConfig(
-                image_size=image_size,
-                patch_size=config['patch_size'],
-                hidden_size=self.embedding_size,
-                hidden_dropout_prob=config["drop_rate"],
-                attention_probs_dropout_prob=config["drop_rate"],
+            self.encoder = OneTowerEncoder(
+                config,
+                image_size,
+                max_text_len,
+                self.fine_tune,
+                self.test_only
             )
-            
-            text_config = ElectraConfig(
-                vocab_size=config["vocab_size"],
-                hidden_size=self.hidden_size,
-                embedding_size=self.embedding_size,
-                max_position_embeddings=max_text_len,
-                hidden_dropout_prob=config["drop_rate"],
-                attention_probs_dropout_prob=config["drop_rate"],
-            )
-            
-            # Add ability to adjust embedding size for down stream changes
-            self.text_embeddings = ElectraEmbeddings(text_config)
-            self.text_embeddings.apply(objectives.init_weights)
-            
-            self.image_embeddings = ViTEmbeddings(image_config)
-            self.image_embeddings.apply(objectives.init_weights)
-            
-            self.token_type_embeddings = nn.Embedding(2, self.embedding_size)
-            self.token_type_embeddings.apply(objectives.init_weights)
-            
-            self.pooler_type = config['pooler_type']
-            if self.pooler_type == 'single':
-                self.pooler = heads.Pooler(self.hidden_size)
-                self.pooler.apply(objectives.init_weights)
-            elif self.pooler_type =='double':
-                self.text_pooler = heads.Pooler(self.hidden_size)
-                self.text_pooler.apply(objectives.init_weights)
-                self.image_pooler = heads.Pooler(self.hidden_size)
-                self.image_pooler.apply(objectives.init_weights)
+            self.hidden_size = self.encoder.get_hidden_size()
+            self.embedding_size = self.encoder.get_embedding_size()
         
         elif self.model_type == 'two-tower':
             # ===================== BaseArchitecture ===================== #
@@ -255,7 +271,7 @@ class RenaissanceTransformer(pl.LightningModule):
         if self.fine_tune:
             self.load_state_dict(state_dict, strict=False)
             if (self.model_type == 'one-tower') and (self.original_max_text_len != self.new_max_text_len):
-                self.text_embeddings._adjust_position_embeddings(self.new_max_text_len)
+                self.encoder.text_embeddings._adjust_position_embeddings(self.new_max_text_len)
             
 
         # Initialize NLVR2 Classifier
@@ -546,69 +562,76 @@ class RenaissanceTransformer(pl.LightningModule):
         image_embeds=None,
         image_masks=None,
     ):
-        if f"image_{image_token_type_idx - 1}" in batch:
-            imgkey = f"image_{image_token_type_idx - 1}"
-        else:
-            imgkey = "image"
+        # if f"image_{image_token_type_idx - 1}" in batch:
+        #     imgkey = f"image_{image_token_type_idx - 1}"
+        # else:
+        #     imgkey = "image"
 
-        do_mlm = "_mlm" if mask_text else ""
-        text_ids = batch[f"text_ids{do_mlm}"]
-        text_labels = batch[f"text_labels{do_mlm}"]
-        text_masks = batch[f"text_masks"]
+        # do_mlm = "_mlm" if mask_text else ""
+        # text_ids = batch[f"text_ids{do_mlm}"]
+        # text_labels = batch[f"text_labels{do_mlm}"]
+        # text_masks = batch[f"text_masks"]
     
-        text_embeds = self.text_embeddings(text_ids)
+        # text_embeds = self.text_embeddings(text_ids)
         
-        image_embeds = self.image_embeddings(batch['image'][0], interpolate_pos_encoding=True)
-        image_masks = torch.ones_like(image_embeds[:,:,0], dtype=torch.long)
+        # image_embeds = self.image_embeddings(batch['image'][0], interpolate_pos_encoding=True)
+        # image_masks = torch.ones_like(image_embeds[:,:,0], dtype=torch.long)
 
-        text_embeds, image_embeds = (
-            text_embeds + self.token_type_embeddings(torch.zeros_like(text_masks)),
-            image_embeds
-            + self.token_type_embeddings(
+        # text_embeds, image_embeds = (
+        #     text_embeds + self.token_type_embeddings(torch.zeros_like(text_masks)),
+        #     image_embeds
+        #     + self.token_type_embeddings(
                 
-                torch.full_like(image_masks, image_token_type_idx))
-        )
+        #         torch.full_like(image_masks, image_token_type_idx))
+        # )
         
-        if self.embedding_size != self.hidden_size:
-            text_embeds = self.text_embedding_projection(text_embeds)
-            image_embeds = self.image_embedding_projection(image_embeds)
+        # if self.embedding_size != self.hidden_size:
+        #     text_embeds = self.text_embedding_projection(text_embeds)
+        #     image_embeds = self.image_embedding_projection(image_embeds)
         
-        # ERROR: Causes shape error with one-tower model.
-        co_embeds = torch.cat([text_embeds, image_embeds], dim=1)
-        co_masks = torch.cat([text_masks, image_masks], dim=1)
+        # # ERROR: Causes shape error with one-tower model.
+        # co_embeds = torch.cat([text_embeds, image_embeds], dim=1)
+        # co_masks = torch.cat([text_masks, image_masks], dim=1)
 
-        x = co_embeds
+        # x = co_embeds
 
-        # for i, blk in enumerate(self.encoder.blocks):
-        #     x, _attn = blk(x, mask=co_masks)
+        # # for i, blk in enumerate(self.encoder.blocks):
+        # #     x, _attn = blk(x, mask=co_masks)
 
-        # x = self.transformer.norm(x)
-        # try:
-        #     x = self.encoder(inputs_embeds=x)[0]
-        # except:
-        x = self.encoder(x)[0]
+        # # x = self.transformer.norm(x)
+        # # try:
+        # #     x = self.encoder(inputs_embeds=x)[0]
+        # # except:
+        # x = self.encoder(x)[0]
         
-        text_feats, image_feats = (
-            x[:, : text_embeds.shape[1]],
-            x[:, text_embeds.shape[1] :],
-        )
+        # text_feats, image_feats = (
+        #     x[:, : text_embeds.shape[1]],
+        #     x[:, text_embeds.shape[1] :],
+        # )
         
-        if self.pooler_type == 'single':
-            cls_feats = self.pooler(x)
-        else:
-            cls_feats_text = self.text_pooler(text_feats)
-            cls_feats_image = self.image_pooler(image_feats)
-            cls_feats = torch.cat([cls_feats_text, cls_feats_image], dim=-1)
+        # if self.pooler_type == 'single':
+        #     cls_feats = self.pooler(x)
+        # else:
+        #     cls_feats_text = self.text_pooler(text_feats)
+        #     cls_feats_image = self.image_pooler(image_feats)
+        #     cls_feats = torch.cat([cls_feats_text, cls_feats_image], dim=-1)
             
 
-        ret = {
-            "text_feats": text_feats,
-            "image_feats": image_feats,
-            "cls_feats": cls_feats,
-            'text_labels' : text_labels,
-            'text_ids' : text_ids
-        }
-
+        # ret = {
+        #     "text_feats": text_feats,
+        #     "image_feats": image_feats,
+        #     "cls_feats": cls_feats,
+        #     'text_labels' : text_labels,
+        #     'text_ids' : text_ids
+        # }
+        ret = self.encoder(
+            batch,
+            mask_text=mask_text,
+            mask_image=mask_image,
+            image_token_type_idx=image_token_type_idx,
+            image_embeds=image_embeds,
+            image_masks=image_masks,
+        )
         return ret
     
     # Review and if update, if needed for one-tower
