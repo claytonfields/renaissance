@@ -60,7 +60,7 @@ def main(_config):
         per_gpu_batchsize = _config['per_gpu_batchsize']
         train_steps = _config['max_steps']
         train_epoch = _config['max_epoch']
-        result_dir = f"{exp_name}_seed{seed}_is{image_size}_ps{patch_size}_bs{batch_size}_pgbs{per_gpu_batchsize}_te{train_epoch}_ts{train_steps}"
+        result_dir = f"{exp_name}_seed{seed}_is{image_size}_ps{patch_size}_bs{batch_size}_pgbs{per_gpu_batchsize}_ts{train_steps}"
     else:
         loaded_model = parse_load_path(load_path)
         result_dir = f"{exp_name}_seed{seed}_from_{loaded_model}"

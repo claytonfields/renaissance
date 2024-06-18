@@ -50,38 +50,61 @@ def config():
     model_type = "two-tower" # Supports ['one-tower', 'two-tower]
     pooler_type = 'double' # Supports ['single', 'double']
     encoder = "google/electra-small-discriminator"
-    random_init_encoder = False
 
     
-    ### One Tower Settings ###
+    #### One Tower Settings ####
     # one-tower settings will be ignored if unless model_type = "one-tower"
     # Text Setting
     tokenizer = "bert-base-uncased"
 
     # Transformer Setting
     encoder = "google/electra-small-discriminator"
+    # Train encoder model from scratch
+    random_init_encoder = False
+    ## Manual Configuration
+    encoder_manual_configuration = False
     hidden_size = 192
     num_heads = 4
     num_layers = 12
     mlp_ratio = 4
     drop_rate = 0.1
+    embedding_size = 96
 
-    ### Two Tower Settings ###
-    # Image settings
+    #### Two Tower Settings ####
+    ### Image Encoder settings
     image_encoder = "facebook/deit-tiny-patch16-224"
-    # Train encoder model from scratch
+    ## Train encoder model from scratch
     random_init_vision_encoder = False
+    ## Manual Configure Image Encoder
+    image_encoder_manual_configuration = False
+    ## Manual Configuration
     image_encoder_hidden_size = 192
-    train_transform_keys = ["imagenet"]
-    val_transform_keys = ["imagenet"]
-
+    image_encoder_num_heads = 4
+    image_encoder_num_layers = 12
+    image_encoder_mlp_ratio = 4
+    image_encoder_drop_rate = 0.1
+    image_encoder_embedding_size = 128
     image_size = 224
     original_image_size = 224 # Image size model is pretrained with, used in fine-tuning and testing
+    patch_size = 16
+    image_only = False
+    # Image Transform Keys
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]
+
     
     # Text Setting
     text_encoder = "google/electra-small-discriminator"
+    # Train Text Encoder from Sratch if True
+    random_init_text_encoder = False
+    # Manual Text Settings - Ignored unless random_init_text_encoder = True 
+    text_encoder_manual_configuration = False
+    text_encoder_hidden_size = 192
+    text_encoder_num_heads = 4
+    text_encoder_num_layers = 12
+    text_encoder_mlp_ratio = 4
+    text_encoder_drop_rate = 0.1
+    text_encoder_embedding_size = 64
     max_text_len = 40
     vocab_size = 30522
 
@@ -96,20 +119,7 @@ def config():
     # Freeze Module Parameter Settings
     freeze_image_encoder = False
     freeze_text_encoder = False
-    freeze_cross_modal_layers = False
-    
-    
-    # Train Image Encoder from Sratch if True
-    random_init_vision_encoder = False
-    # Manual Image/Text Settings
-    image_encoder_hidden_size = 192
-    patch_size = 16
-    image_only = False
-    
-    # Train Text Encoder from Sratch if True
-    random_init_text_encoder = False
-    # Manual Text Settings - Ignored unless random_init_text_encoder = True 
-    text_encoder_hidden_size = 256
+    freeze_cross_modal_layers = False   
     
     # Pretraining Settings
     # Masked Language Mmodeling
@@ -152,7 +162,113 @@ def config():
     precision = 32
     
 
-
+# ===================== Current Test Cases ===================== #
+@ex.named_config
+def test_one_tower_mlm_itm_manual_config_case_a():
+    exp_name = "test_one_tower_mlm_itm_manual_config_case_a"
+    seed = 0
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 10  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
+    # per_gpu_batchsize = 12
+    
+    test_only=False
+    data_root = 'data/arrow/' 
+    num_gpus=1 
+    num_nodes=1 
+    per_gpu_batchsize=2
+    resume_from = None
+    
+    # Transformer Setting
+    model_type = "one-tower"
+    encoder = "google/electra-small-discriminator"
+    # Train encoder model from scratch
+    random_init_encoder = True
+    ## Manual Configuration
+    encoder_manual_configuration = True
+    hidden_size = 192
+    num_heads = 4
+    num_layers = 12
+    mlp_ratio = 4
+    drop_rate = 0.1
+    embedding_size = 96
+    
+    # Image setting
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    
+    # Text Setting
+    max_text_len = 40
+    tokenizer = "bert-base-uncased"
+    vocab_size = 30522
+    whole_word_masking = False
+    mlm_prob = 0.15
+    draw_false_text = 0
+    
+    max_steps = 10
+    
+@ex.named_config
+def test_two_tower_mlm_itm_manual_config_case_a():
+    exp_name = "test_one_tower_mlm_itm_manual_config_case_a"
+    seed = 0
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 10  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
+    # per_gpu_batchsize = 12
+    
+    test_only=False
+    data_root = 'data/arrow/' 
+    num_gpus=1 
+    num_nodes=1 
+    per_gpu_batchsize=2
+    resume_from = None
+    
+    ## Model-Type
+    model_type = "two-tower"
+    
+    # Image Encoder Setting
+    image_encoder = "facebook/deit-tiny-patch16-224"
+    # Train Image Encoder from Sratch if True
+    random_init_vision_encoder = True
+    ## Manual Configuration
+    image_encoder_manual_configuration = True
+    image_encoder_hidden_size = 512
+    image_encoder_num_heads = 4
+    image_encoder_num_layers = 12
+    image_encoder_mlp_ratio = 4
+    image_encoder_drop_rate = 0.1
+    image_encoder_embedding_size = 128
+    
+    # Image setting
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    
+    # Text Setting
+    text_encoder = "google/electra-small-discriminator"
+    random_init_text_encoder = True
+    # Manual Text Settings - Ignored unless random_init_text_encoder = True 
+    text_encoder_manual_configuration = True
+    text_encoder_hidden_size = 192
+    text_encoder_num_heads = 4
+    text_encoder_num_layers = 12
+    text_encoder_mlp_ratio = 4
+    text_encoder_drop_rate = 0.1
+    text_encoder_embedding_size = 64
+    max_text_len = 40
+    vocab_size = 30522
+    
+    # MLM/ITM Settings
+    whole_word_masking = False
+    mlm_prob = 0.15
+    draw_false_text = 0
+    
+    max_steps = 10
 
 # ===================== Pretraining Tasks===================== #
 @ex.named_config
@@ -756,11 +872,6 @@ def freeze_text():
 # task_finetune_snli text_electra_small imagenet_randaug
     
 # ===================== Test Cases ===================== #
-
-   
-    
-    
-   
 @ex.named_config
 def test_case_mlm_itm_a():
     # Settings
@@ -776,7 +887,7 @@ def test_case_mlm_itm_a():
     loss_names = _loss_names({"itm": 1, "mlm": 1})
     # Training Time
     max_epoch = 1
-    max_steps = 20
+    max_steps = 5
     # Text Encoder
     text_encoder = "google/electra-small-discriminator"
     vocab_size = 30522
@@ -792,7 +903,6 @@ def test_case_mlm_itm_a():
     image_encoder = "facebook/deit-tiny-patch16-224"
     image_encoder_hidden_size = 192
     image_size = 224
-    resolution_before = 224
     patch_size = 16
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]

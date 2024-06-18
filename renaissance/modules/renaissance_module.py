@@ -20,7 +20,7 @@ class RenaissanceTransformer(pl.LightningModule):
         self.save_hyperparameters()
         self.model_type = config['model_type']
         
-        # ===================== BaseArchitecture ===================== #
+        # ===================== Base Architecture ===================== #
         # Adjust dimensions for fine-tuning
         self.fine_tune = (self.hparams.config["load_path"] != ""
             and not self.hparams.config["test_only"])
@@ -31,38 +31,40 @@ class RenaissanceTransformer(pl.LightningModule):
         if self.fine_tune or self.test_only:
             ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
             state_dict = ckpt["state_dict"]
-            # UNCOMMENT BELOW WHEN DONE TESTING VQA!!!!!!!
             self.original_max_text_len = ckpt['hyper_parameters']['config']['max_text_len']
             self.new_max_text_len = config['max_text_len']
             self.original_image_size = ckpt['hyper_parameters']['config']['original_image_size']
             self.new_image_size = config['image_size']
-            
-        # else:
-        #     self.hparams.config['original_max_text_len'] = config['max_text_len']
-        #     # self.new_max_text_len = config['max_text_len']
-        #     self.hparams.config['original_image_size'] = config['image_size']
-        #     # self.new_image_size = config['image_size']
-        
-        # self.save_hyperparameters()
         
         if self.model_type == 'one-tower':
             
-            # self.encoder_type = config['encoder_type']
+            # Randomly Initialize Encoder Weights
             self.random_init_encoder = config['random_init_encoder']
-            self.pooler_type = config['pooler_type']
-            
             if self.random_init_encoder:
-                hf_config = BertConfig(
-                    vocab_size=config["vocab_size"],
-                    hidden_size=config["hidden_size"],
-                    num_hidden_layers=config["num_layers"],
-                    num_attention_heads=config["num_heads"],
-                    intermediate_size=config["hidden_size"] * config["mlp_ratio"],
-                    max_position_embeddings=config["max_text_len"],
-                    hidden_dropout_prob=config["drop_rate"],
-                    attention_probs_dropout_prob=config["drop_rate"],
-                )
-                self.encoder = AutoModel.from_config(hf_config)
+                # Manually Configure Encoder Dimensions
+                if config['encoder_manual_configuration']:
+                    encoder_kwargs = {
+                        'vocab_size' : config["vocab_size"],
+                        'hidden_size' : config["hidden_size"],
+                        'num_hidden_layers' : config["num_layers"],
+                        'num_attention_heads' : config["num_heads"],
+                        'intermediate_size' : config["hidden_size"] * config["mlp_ratio"],
+                        'max_position_embeddings' : config["max_text_len"],
+                        'hidden_dropout_prob' : config["drop_rate"],
+                        'attention_probs_dropout_prob' : config["drop_rate"],
+                    }
+                    hf_config = AutoConfig.from_pretrained(config['encoder'], **encoder_kwargs)
+                # Use Default Encoder Dimensions with Random Weights
+                elif not config['manual_configuration']:
+                    hf_config = AutoConfig.from_pretrained(config['encoder'])
+                model = AutoModel.from_config(hf_config)
+                self.encoder = model.encoder
+                
+                image_size = config['image_size']
+                max_text_len = config['max_text_len']
+                self.hidden_size = config['hidden_size']
+                self.embedding_size = config['embedding_size']
+            # Use Pretrained Encoder Weights from Huggingface Hub
             else:
                 # Download Encoder - Get Dimensions
                 model = AutoModel.from_pretrained(config['encoder'])
@@ -73,10 +75,6 @@ class RenaissanceTransformer(pl.LightningModule):
                 except:
                     self.embedding_size = self.hidden_size
                 
-                if self.embedding_size != self.hidden_size:
-                    self.text_embedding_projection = nn.Linear(self.embedding_size, self.hidden_size)
-                    self.image_embedding_projection = nn.Linear(self.embedding_size, self.hidden_size)
-                
                 if self.fine_tune or self.test_only:
                     image_size = self.original_image_size
                     max_text_len = self.original_max_text_len
@@ -84,22 +82,26 @@ class RenaissanceTransformer(pl.LightningModule):
                     image_size = config['image_size']
                     max_text_len = config['max_text_len']
             
-                image_config = ViTConfig(
-                    image_size=image_size,
-                    patch_size=config['patch_size'],
-                    hidden_size=self.embedding_size,
-                    hidden_dropout_prob=config["drop_rate"],
-                    attention_probs_dropout_prob=config["drop_rate"],
-                )
-                
-                text_config = ElectraConfig(
-                    vocab_size=config["vocab_size"],
-                    hidden_size=self.hidden_size,
-                    embedding_size=self.embedding_size,
-                    max_position_embeddings=max_text_len,
-                    hidden_dropout_prob=config["drop_rate"],
-                    attention_probs_dropout_prob=config["drop_rate"],
-                )
+            if self.embedding_size != self.hidden_size:
+                self.text_embedding_projection = nn.Linear(self.embedding_size, self.hidden_size)
+                self.image_embedding_projection = nn.Linear(self.embedding_size, self.hidden_size)
+            
+            image_config = ViTConfig(
+                image_size=image_size,
+                patch_size=config['patch_size'],
+                hidden_size=self.embedding_size,
+                hidden_dropout_prob=config["drop_rate"],
+                attention_probs_dropout_prob=config["drop_rate"],
+            )
+            
+            text_config = ElectraConfig(
+                vocab_size=config["vocab_size"],
+                hidden_size=self.hidden_size,
+                embedding_size=self.embedding_size,
+                max_position_embeddings=max_text_len,
+                hidden_dropout_prob=config["drop_rate"],
+                attention_probs_dropout_prob=config["drop_rate"],
+            )
             
             # Add ability to adjust embedding size for down stream changes
             self.text_embeddings = ElectraEmbeddings(text_config)
@@ -110,7 +112,8 @@ class RenaissanceTransformer(pl.LightningModule):
             
             self.token_type_embeddings = nn.Embedding(2, self.embedding_size)
             self.token_type_embeddings.apply(objectives.init_weights)
-                
+            
+            self.pooler_type = config['pooler_type']
             if self.pooler_type == 'single':
                 self.pooler = heads.Pooler(self.hidden_size)
                 self.pooler.apply(objectives.init_weights)
@@ -125,24 +128,78 @@ class RenaissanceTransformer(pl.LightningModule):
             self.random_init_vision_encoder = config['random_init_vision_encoder']
             self.random_init_text_encoder = config['random_init_text_encoder']
             
+            # Vision Encoder
+            if self.random_init_vision_encoder:
+                if config['image_encoder_manual_configuration']:
+                    image_encoder_kwargs = {
+                        'hidden_size' : config["image_encoder_hidden_size"],
+                        'num_hidden_layers' : config["image_encoder_num_layers"],
+                        'num_attention_heads' : config["image_encoder_num_heads"],
+                        'intermediate_size' : config["image_encoder_hidden_size"] * config["image_encoder_mlp_ratio"],
+                        'hidden_dropout_prob' : config["image_encoder_drop_rate"],
+                        'attention_probs_dropout_prob' : config["image_encoder_drop_rate"],
+                    }
+                    hf_image_config = AutoConfig.from_pretrained(config['image_encoder'], **image_encoder_kwargs)
+                # elif not config['image_encoder_manual_configuration']:
+                else:
+                    hf_image_config = AutoConfig.from_pretrained(config['image_encoder'])
+                self.image_encoder = AutoModel.from_config(hf_image_config)
+                # if 'clip' in (config['image_encoder']):
+                #     self.image_encoder = self.image_encoder.vision_model
+            
+            else:
+                # hf_image_config = AutoConfig.from_pretrained(config['image_encoder'])
+                self.image_encoder = AutoModel.from_pretrained(config['image_encoder'])
+                
+            # Freeze Parameters for self.image_encoder
+            if config['freeze_image_encoder']:
+                for param in self.image_encoder.parameters(self):
+                    param.requires_grad = False
+            
+            # Initialize text_encoder
+            # Randomly Initialize Encoder Weights
+            if self.random_init_text_encoder:
+                if config['text_encoder_manual_configuration']:
+                    text_encoder_kwargs = {
+                        'hidden_size' : config["text_encoder_hidden_size"],
+                        'num_hidden_layers' : config["text_encoder_num_layers"],
+                        'num_attention_heads' : config["text_encoder_num_heads"],
+                        'intermediate_size' : config["text_encoder_hidden_size"] * config["text_encoder_mlp_ratio"],
+                        'hidden_dropout_prob' : config["text_encoder_drop_rate"],
+                        'attention_probs_dropout_prob' : config["text_encoder_drop_rate"],
+                    }
+                    hf_text_config = AutoConfig.from_pretrained(config['text_encoder'], **text_encoder_kwargs)
+                # elif not config['text_encoder_manual_configuration']:
+                else:
+                    hf_text_config = AutoConfig.from_pretrained(config['text_encoder'])
+                self.text_transformer = AutoModel.from_config(hf_text_config)
+            else:
+                # hf_text_config = AutoConfig.from_pretrained(config['text_encoder'])
+                self.text_transformer = AutoModel.from_pretrained(config['text_encoder'])
+            
+            # Freeze Parameters for self.text_transformer
+            if config['freeze_text_encoder']:
+                for param in self.text_transformer.parameters():
+                    param.requires_grad = False
+            
+            
+            self.image_encoder_hidden_size = self.image_encoder.config.hidden_size
+            self.text_transformer_hidden_size = self.text_transformer.config.hidden_size
             self.hidden_size = config['cross_layer_hidden_size']
             # Cross Modal Layers
-            self.cross_modal_text_transform = nn.Linear(config['text_encoder_hidden_size'], config['cross_layer_hidden_size'])
+            self.cross_modal_text_transform = nn.Linear(self.text_transformer_hidden_size, self.hidden_size)
             self.cross_modal_text_transform.apply(objectives.init_weights)
-            self.cross_modal_image_transform = nn.Linear(config['image_encoder_hidden_size'], config['cross_layer_hidden_size'])
+            self.cross_modal_image_transform = nn.Linear(self.image_encoder_hidden_size, self.hidden_size)
             self.cross_modal_image_transform.apply(objectives.init_weights)
             
             # Cross-Modal Module with LXMERT Layers
             self.fusion_encoder = LxmertCrossModalEncoder(config)
             self.fusion_encoder.apply(objectives.init_weights)
             
-            
-            
             if config['freeze_cross_modal_layers']:
                 for param in self.fusion_encoder.parameters(self):
                     param.requires_grad = False
             
-    
             # Token Type Embeddings
             self.token_type_embeddings = nn.Embedding(2, config["cross_layer_hidden_size"])
             self.token_type_embeddings.apply(objectives.init_weights)
@@ -156,34 +213,7 @@ class RenaissanceTransformer(pl.LightningModule):
                     AutoModel.from_pretrained(config['text_encoder'])
                 torch.distributed.barrier()
                 
-            # Vision Encoder
-            if not self.random_init_vision_encoder:
-                self.image_encoder = AutoModel.from_pretrained(config['image_encoder'])
-                if 'clip' in (config['image_encoder']):
-                    self.image_encoder = self.image_encoder.vision_model
-                    
-            else:
-                visual_kwargs = None
-                visual_config = AutoConfig.from_pretrained(config['image_encoder'], kwargs=visual_kwargs)
-                self.image_encoder = AutoModel.from_config(visual_config)
-                
-            # Freeze Parameters for self.image_encoder
-            if config['freeze_image_encoder']:
-                for param in self.image_encoder.parameters(self):
-                    param.requires_grad = False
             
-            # Initialize text_encoder
-            if not self.random_init_text_encoder:
-                self.text_transformer = AutoModel.from_pretrained(config['text_encoder'])
-            else:
-                text_kwargs = None
-                text_config = AutoConfig.from_pretrained(config['text_encoder'], kwargs=text_kwargs)
-                self.text_transformer = AutoModel.from_config(text_config)
-            
-            # Freeze Parameters for self.text_transformer
-            if config['freeze_text_encoder']:
-                for param in self.text_transformer.parameters():
-                    param.requires_grad = False
         else:
             raise TypeError('Model Type not supported.')
         
@@ -229,7 +259,6 @@ class RenaissanceTransformer(pl.LightningModule):
             
 
         # Initialize NLVR2 Classifier
-        # May cause error in two-tower model!
         if self.hparams.config["loss_names"]["nlvr2"] > 0:
             self.nlvr2_classifier = nn.Sequential(
                 nn.Linear(hs * 2, hs),
@@ -554,10 +583,10 @@ class RenaissanceTransformer(pl.LightningModule):
         #     x, _attn = blk(x, mask=co_masks)
 
         # x = self.transformer.norm(x)
-        try:
-            x = self.encoder(inputs_embeds=x)[0]
-        except:
-            x = self.encoder(x)[0]
+        # try:
+        #     x = self.encoder(inputs_embeds=x)[0]
+        # except:
+        x = self.encoder(x)[0]
         
         text_feats, image_feats = (
             x[:, : text_embeds.shape[1]],
