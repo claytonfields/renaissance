@@ -49,7 +49,7 @@ def main(_config):
         folders.reverse()
         result_dir = folders[-3]
         checkpoint_name = file.split("/")[-1][:-5]
-        parsed_string = f"{result_dir}_{checkpoint_name}"
+        parsed_string = f"{result_dir}"#"_{checkpoint_name}"
         return parsed_string
         
         
