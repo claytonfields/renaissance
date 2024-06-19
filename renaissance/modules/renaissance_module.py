@@ -31,9 +31,13 @@ class RenaissanceTransformer(pl.LightningModule):
         if self.fine_tune or self.test_only:
             ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
             state_dict = ckpt["state_dict"]
+            # self.original_max_text_len = ckpt['hyper_parameters']['config']['max_text_len']
+            # self.new_max_text_len = config['max_text_len']
+            # self.original_image_size = ckpt['hyper_parameters']['config']['original_image_size']
+            # self.new_image_size = config['image_size']
             self.original_max_text_len = ckpt['hyper_parameters']['config']['max_text_len']
             self.new_max_text_len = config['max_text_len']
-            self.original_image_size = ckpt['hyper_parameters']['config']['original_image_size']
+            self.original_image_size = config['original_image_size']
             self.new_image_size = config['image_size']
         
         if self.model_type == 'one-tower':
