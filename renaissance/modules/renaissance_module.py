@@ -14,14 +14,15 @@ from . import heads, objectives, renaissance_utils
 from transformers import AutoConfig, AutoModel#, AutoModelForSequenceClassification
 from .fusion_encoder import LxmertCrossModalEncoder
 from .one_tower_encoder import OneTowerEncoder
+from .two_tower_encoder import TwoTowerEncoder
 
 class RenaissanceTransformer(pl.LightningModule):
     def __init__(self, config):
         super().__init__()
         self.save_hyperparameters()
-        self.model_type = config['model_type']
         
         # ===================== Base Architecture ===================== #
+        self.model_type = config['model_type']
         # Adjust dimensions for fine-tuning
         self.fine_tune = (self.hparams.config["load_path"] != ""
             and not self.hparams.config["test_only"])
@@ -39,90 +40,7 @@ class RenaissanceTransformer(pl.LightningModule):
         
         if self.model_type == 'one-tower':
             self.pooler_type = config['pooler_type']
-            # Randomly Initialize Encoder Weights
-            # self.random_init_encoder = config['random_init_encoder']
-            # if self.random_init_encoder:
-            #     # Manually Configure Encoder Dimensions
-            #     if config['encoder_manual_configuration']:
-            #         encoder_kwargs = {
-            #             'vocab_size' : config["vocab_size"],
-            #             'hidden_size' : config["hidden_size"],
-            #             'num_hidden_layers' : config["num_layers"],
-            #             'num_attention_heads' : config["num_heads"],
-            #             'intermediate_size' : config["hidden_size"] * config["mlp_ratio"],
-            #             'max_position_embeddings' : config["max_text_len"],
-            #             'hidden_dropout_prob' : config["drop_rate"],
-            #             'attention_probs_dropout_prob' : config["drop_rate"],
-            #         }
-            #         hf_config = AutoConfig.from_pretrained(config['encoder'], **encoder_kwargs)
-            #     # Use Default Encoder Dimensions with Random Weights
-            #     elif not config['manual_configuration']:
-            #         hf_config = AutoConfig.from_pretrained(config['encoder'])
-            #     model = AutoModel.from_config(hf_config)
-            #     self.encoder = model.encoder
-                
-            #     image_size = config['image_size']
-            #     max_text_len = config['max_text_len']
-            #     self.hidden_size = config['hidden_size']
-            #     self.embedding_size = config['embedding_size']
-            # # Use Pretrained Encoder Weights from Huggingface Hub
-            # else:
-            #     # Download Encoder - Get Dimensions
-            #     model = AutoModel.from_pretrained(config['encoder'])
-            #     self.encoder = model.encoder
-            #     self.hidden_size = self.encoder.config.hidden_size
-            #     try:
-            #         self.embedding_size = self.encoder.config.embedding_size
-            #     except:
-            #         self.embedding_size = self.hidden_size
-                
-            #     if self.fine_tune or self.test_only:
-            #         image_size = self.original_image_size
-            #         max_text_len = self.original_max_text_len
-            #     else:
-            #         image_size = config['image_size']
-            #         max_text_len = config['max_text_len']
             
-            # if self.embedding_size != self.hidden_size:
-            #     self.text_embedding_projection = nn.Linear(self.embedding_size, self.hidden_size)
-            #     self.image_embedding_projection = nn.Linear(self.embedding_size, self.hidden_size)
-            
-            # image_config = ViTConfig(
-            #     image_size=image_size,
-            #     patch_size=config['patch_size'],
-            #     hidden_size=self.embedding_size,
-            #     hidden_dropout_prob=config["drop_rate"],
-            #     attention_probs_dropout_prob=config["drop_rate"],
-            # )
-            
-            # text_config = ElectraConfig(
-            #     vocab_size=config["vocab_size"],
-            #     hidden_size=self.hidden_size,
-            #     embedding_size=self.embedding_size,
-            #     max_position_embeddings=max_text_len,
-            #     hidden_dropout_prob=config["drop_rate"],
-            #     attention_probs_dropout_prob=config["drop_rate"],
-            # )
-            
-            # # Add ability to adjust embedding size for down stream changes
-            # self.text_embeddings = ElectraEmbeddings(text_config)
-            # self.text_embeddings.apply(objectives.init_weights)
-            
-            # self.image_embeddings = ViTEmbeddings(image_config)
-            # self.image_embeddings.apply(objectives.init_weights)
-            
-            # self.token_type_embeddings = nn.Embedding(2, self.embedding_size)
-            # self.token_type_embeddings.apply(objectives.init_weights)
-            
-            # self.pooler_type = config['pooler_type']
-            # if self.pooler_type == 'single':
-            #     self.pooler = heads.Pooler(self.hidden_size)
-            #     self.pooler.apply(objectives.init_weights)
-            # elif self.pooler_type =='double':
-            #     self.text_pooler = heads.Pooler(self.hidden_size)
-            #     self.text_pooler.apply(objectives.init_weights)
-            #     self.image_pooler = heads.Pooler(self.hidden_size)
-            #     self.image_pooler.apply(objectives.init_weights)
             if self.fine_tune or self.test_only:
                 image_size = self.original_image_size
                 max_text_len = self.original_max_text_len
@@ -140,95 +58,19 @@ class RenaissanceTransformer(pl.LightningModule):
             self.embedding_size = self.encoder.get_embedding_size()
         
         elif self.model_type == 'two-tower':
-            # ===================== BaseArchitecture ===================== #
-            self.random_init_vision_encoder = config['random_init_vision_encoder']
-            self.random_init_text_encoder = config['random_init_text_encoder']
-            
-            # Vision Encoder
-            if self.random_init_vision_encoder:
-                if config['image_encoder_manual_configuration']:
-                    image_encoder_kwargs = {
-                        'hidden_size' : config["image_encoder_hidden_size"],
-                        'num_hidden_layers' : config["image_encoder_num_layers"],
-                        'num_attention_heads' : config["image_encoder_num_heads"],
-                        'intermediate_size' : config["image_encoder_hidden_size"] * config["image_encoder_mlp_ratio"],
-                        'hidden_dropout_prob' : config["image_encoder_drop_rate"],
-                        'attention_probs_dropout_prob' : config["image_encoder_drop_rate"],
-                    }
-                    hf_image_config = AutoConfig.from_pretrained(config['image_encoder'], **image_encoder_kwargs)
-                # elif not config['image_encoder_manual_configuration']:
-                else:
-                    hf_image_config = AutoConfig.from_pretrained(config['image_encoder'])
-                self.image_encoder = AutoModel.from_config(hf_image_config)
-                # if 'clip' in (config['image_encoder']):
-                #     self.image_encoder = self.image_encoder.vision_model
-            
-            else:
-                # hf_image_config = AutoConfig.from_pretrained(config['image_encoder'])
-                self.image_encoder = AutoModel.from_pretrained(config['image_encoder'])
-                
-            # Freeze Parameters for self.image_encoder
-            if config['freeze_image_encoder']:
-                for param in self.image_encoder.parameters(self):
-                    param.requires_grad = False
-            
-            # Initialize text_encoder
-            # Randomly Initialize Encoder Weights
-            if self.random_init_text_encoder:
-                if config['text_encoder_manual_configuration']:
-                    text_encoder_kwargs = {
-                        'hidden_size' : config["text_encoder_hidden_size"],
-                        'num_hidden_layers' : config["text_encoder_num_layers"],
-                        'num_attention_heads' : config["text_encoder_num_heads"],
-                        'intermediate_size' : config["text_encoder_hidden_size"] * config["text_encoder_mlp_ratio"],
-                        'hidden_dropout_prob' : config["text_encoder_drop_rate"],
-                        'attention_probs_dropout_prob' : config["text_encoder_drop_rate"],
-                    }
-                    hf_text_config = AutoConfig.from_pretrained(config['text_encoder'], **text_encoder_kwargs)
-                # elif not config['text_encoder_manual_configuration']:
-                else:
-                    hf_text_config = AutoConfig.from_pretrained(config['text_encoder'])
-                self.text_transformer = AutoModel.from_config(hf_text_config)
-            else:
-                # hf_text_config = AutoConfig.from_pretrained(config['text_encoder'])
-                self.text_transformer = AutoModel.from_pretrained(config['text_encoder'])
-            
-            # Freeze Parameters for self.text_transformer
-            if config['freeze_text_encoder']:
-                for param in self.text_transformer.parameters():
-                    param.requires_grad = False
-            
-            
-            self.image_encoder_hidden_size = self.image_encoder.config.hidden_size
-            self.text_transformer_hidden_size = self.text_transformer.config.hidden_size
-            self.hidden_size = config['cross_layer_hidden_size']
-            # Cross Modal Layers
-            self.cross_modal_text_transform = nn.Linear(self.text_transformer_hidden_size, self.hidden_size)
-            self.cross_modal_text_transform.apply(objectives.init_weights)
-            self.cross_modal_image_transform = nn.Linear(self.image_encoder_hidden_size, self.hidden_size)
-            self.cross_modal_image_transform.apply(objectives.init_weights)
-            
-            # Cross-Modal Module with LXMERT Layers
-            self.fusion_encoder = LxmertCrossModalEncoder(config)
-            self.fusion_encoder.apply(objectives.init_weights)
-            
-            if config['freeze_cross_modal_layers']:
-                for param in self.fusion_encoder.parameters(self):
-                    param.requires_grad = False
-            
-            # Token Type Embeddings
-            self.token_type_embeddings = nn.Embedding(2, config["cross_layer_hidden_size"])
-            self.token_type_embeddings.apply(objectives.init_weights)
-            
-    
-            # Handle Distributed Case
-            # Test this on frege when time permits
-            if torch.distributed.is_initialized():
-                if torch.distributed.get_rank() == 0:
-                    AutoModel.from_pretrained(config['image_encoder'])
-                    AutoModel.from_pretrained(config['text_encoder'])
-                torch.distributed.barrier()
-                
+            # # Handle Distributed Case
+            # # Test this on frege when time permits
+            # if torch.distributed.is_initialized():
+            #     if torch.distributed.get_rank() == 0:
+            #         AutoModel.from_pretrained(config['image_encoder'])
+            #         AutoModel.from_pretrained(config['text_encoder'])
+            #     torch.distributed.barrier()
+            self.encoder = TwoTowerEncoder(
+                config,
+                self.fine_tune,
+                self.test_only
+            )
+            self.hidden_size = self.encoder.get_hidden_size()
             
         else:
             raise TypeError('Model Type not supported.')
@@ -446,19 +288,6 @@ class RenaissanceTransformer(pl.LightningModule):
             # state_dict = ckpt["state_dict"]
             self.load_state_dict(state_dict, strict=False)
             
-    def _freeze_cross_modal_layers(self):
-        self._freeze_layer(self.cross_modal_text_transform)
-        self._freeze_layer(self.cross_modal_image_transform)
-        self._freeze_layer(self.cross_modal_image_layers)
-        self._freeze_layer(self.cross_modal_text_layers)
-        self._freeze_layer(self.cross_modal_image_pooler )
-        self._freeze_layer(self.cross_modal_text_pooler)
-        
-    def _freeze_layer(self, layer):
-        for param in layer.parameters():
-            param.requires_grad = False
-            # return self
-            
     def infer(self,
         batch,
         mask_text=False,
@@ -495,61 +324,14 @@ class RenaissanceTransformer(pl.LightningModule):
         image_token_type_idx=1,
         img=None,
     ):
-        if img is None:
-            if f"image_{image_token_type_idx - 1}" in batch:
-                imgkey = f"image_{image_token_type_idx - 1}"
-            else:
-                imgkey = "image"
-            img = batch[imgkey][0]
-        
-        # Process Text Input to Text Embeddings
-        do_mlm = "_mlm" if mask_text else ""
-        text_ids = batch[f"text_ids{do_mlm}"]
-        text_labels = batch[f"text_labels{do_mlm}"]
-        text_masks = batch["text_masks"]
-
-        text_embeds = self.text_transformer.embeddings(input_ids=text_ids)
-        device = text_embeds.device
-        input_shape = text_masks.size()
-        extend_text_masks = self.text_transformer.get_extended_attention_mask(text_masks, input_shape)#, device)
-        
-        text_embeds = self.text_transformer(inputs_embeds=text_embeds).last_hidden_state
-        text_embeds = self.cross_modal_text_transform(text_embeds)
-        
-        # Process Image Input to Image Embeddings
-        if self.fine_tune or self.test_only:
-            try:
-                image_embeds = self.image_encoder(img, interpolate_pos_encoding = True)
-            except:
-                image_embeds = self.image_encoder(img)
-        else:
-            image_embeds = self.image_encoder(img)
-            
-        # if self.is_huggingface:
-        image_embeds = image_embeds.last_hidden_state
-        image_embeds = self.cross_modal_image_transform(image_embeds)
-        image_masks = torch.ones((image_embeds.size(0), image_embeds.size(1)), dtype=torch.long, device=device)
-        extend_image_masks = self.text_transformer.get_extended_attention_mask(image_masks, image_masks.size())#, device)
-
-        # Cross-Modal Processing
-        text_embeds, image_embeds = (
-            text_embeds + self.token_type_embeddings(torch.zeros_like(text_masks)),
-            image_embeds
-            + self.token_type_embeddings(
-                torch.full_like(image_masks, image_token_type_idx)
-            ),
+    
+        ret = self.encoder(
+            batch,
+            mask_text=mask_text,
+            mask_image=mask_image,
+            image_token_type_idx=image_token_type_idx,
+            img=img,
         )
-        
-        cls_feats, text_feats, image_feats = self.fusion_encoder(text_embeds, extend_text_masks, image_embeds, extend_image_masks)
-
-        ret = {
-            "text_feats": text_feats,
-            "image_feats": image_feats,
-            "cls_feats": cls_feats,
-            "text_labels": text_labels,
-            "text_ids": text_ids,
-            "text_masks": text_masks,
-        }
         return ret
     
     # Implement infer method for one_tower models
@@ -562,68 +344,7 @@ class RenaissanceTransformer(pl.LightningModule):
         image_embeds=None,
         image_masks=None,
     ):
-        # if f"image_{image_token_type_idx - 1}" in batch:
-        #     imgkey = f"image_{image_token_type_idx - 1}"
-        # else:
-        #     imgkey = "image"
-
-        # do_mlm = "_mlm" if mask_text else ""
-        # text_ids = batch[f"text_ids{do_mlm}"]
-        # text_labels = batch[f"text_labels{do_mlm}"]
-        # text_masks = batch[f"text_masks"]
-    
-        # text_embeds = self.text_embeddings(text_ids)
         
-        # image_embeds = self.image_embeddings(batch['image'][0], interpolate_pos_encoding=True)
-        # image_masks = torch.ones_like(image_embeds[:,:,0], dtype=torch.long)
-
-        # text_embeds, image_embeds = (
-        #     text_embeds + self.token_type_embeddings(torch.zeros_like(text_masks)),
-        #     image_embeds
-        #     + self.token_type_embeddings(
-                
-        #         torch.full_like(image_masks, image_token_type_idx))
-        # )
-        
-        # if self.embedding_size != self.hidden_size:
-        #     text_embeds = self.text_embedding_projection(text_embeds)
-        #     image_embeds = self.image_embedding_projection(image_embeds)
-        
-        # # ERROR: Causes shape error with one-tower model.
-        # co_embeds = torch.cat([text_embeds, image_embeds], dim=1)
-        # co_masks = torch.cat([text_masks, image_masks], dim=1)
-
-        # x = co_embeds
-
-        # # for i, blk in enumerate(self.encoder.blocks):
-        # #     x, _attn = blk(x, mask=co_masks)
-
-        # # x = self.transformer.norm(x)
-        # # try:
-        # #     x = self.encoder(inputs_embeds=x)[0]
-        # # except:
-        # x = self.encoder(x)[0]
-        
-        # text_feats, image_feats = (
-        #     x[:, : text_embeds.shape[1]],
-        #     x[:, text_embeds.shape[1] :],
-        # )
-        
-        # if self.pooler_type == 'single':
-        #     cls_feats = self.pooler(x)
-        # else:
-        #     cls_feats_text = self.text_pooler(text_feats)
-        #     cls_feats_image = self.image_pooler(image_feats)
-        #     cls_feats = torch.cat([cls_feats_text, cls_feats_image], dim=-1)
-            
-
-        # ret = {
-        #     "text_feats": text_feats,
-        #     "image_feats": image_feats,
-        #     "cls_feats": cls_feats,
-        #     'text_labels' : text_labels,
-        #     'text_ids' : text_ids
-        # }
         ret = self.encoder(
             batch,
             mask_text=mask_text,
@@ -636,9 +357,7 @@ class RenaissanceTransformer(pl.LightningModule):
     
     # Review and if update, if needed for one-tower
     def infer_text_only(self, batch):
-        hidden_state = self.text_transformer(**batch).last_hidden_state#.squeeze()
-        # cls_feat
-        # cls_feat = self.text_classification_pooler(hidden_state)
+        hidden_state = self.text_transformer(**batch).last_hidden_state
         
         return hidden_state
 

@@ -1056,7 +1056,7 @@ def test_case_finetune_snli_a():
     image_encoder = "facebook/deit-tiny-patch16-224"
     image_encoder_hidden_size = 192
     image_size = 224
-    resolution_before = 224
+    original_image_size = 224
     patch_size = 16
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]

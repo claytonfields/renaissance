@@ -279,22 +279,6 @@ class OneTowerEncoder(nn.Module):
     ):
         super().__init__()
         
-        # self.fine_tune = (config["load_path"] != ""
-        #     and not config["test_only"])
-        # self.test_only = (config["load_path"] != "" 
-        #     and config["test_only"])
-        # self.random_init_encoder = config['random_init_encoder']
-        
-        # if fine_tune or self.test_only:
-        #     ckpt = torch.load(config["load_path"], map_location="cpu")
-        #     state_dict = ckpt["state_dict"]
-        #     self.original_max_text_len = ckpt['hyper_parameters']['config']['max_text_len']
-        #     self.new_max_text_len = config['max_text_len']
-        #     self.original_image_size = ckpt['hyper_parameters']['config']['original_image_size']
-        #     self.new_image_size = config['image_size']
-        #     del state_dict
-        #     del ckpt
-        
         if config['random_init_encoder']:
             # Manually Configure Encoder Dimensions
             if config['encoder_manual_configuration']:
@@ -330,12 +314,6 @@ class OneTowerEncoder(nn.Module):
             except:
                 self.embedding_size = self.hidden_size
             
-            # if self.fine_tune or self.test_only:
-            #     image_size = self.original_image_size
-            #     max_text_len = self.original_max_text_len
-            # else:
-            #     image_size = config['image_size']
-            #     max_text_len = config['max_text_len']
         
         if self.embedding_size != self.hidden_size:
             self.text_embedding_projection = nn.Linear(self.embedding_size, self.hidden_size)
