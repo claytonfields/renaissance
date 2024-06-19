@@ -162,6 +162,94 @@ def compute_ref(pl_module, batch):
     return ret
   
 
+# def compute_snli(pl_module, batch):
+#     infer = pl_module.infer(
+#         batch, mask_text=False, mask_image=False, 
+#     )
+#     snli_logits = pl_module.snli_classifier(infer["cls_feats"])
+
+#     snli_labels = batch["labels"]
+#     snli_labels = torch.tensor(snli_labels).to(pl_module.device).long()
+#     snli_loss = F.cross_entropy(snli_logits, snli_labels.view(-1))
+    
+    
+
+#     ret = {
+#         "snli_loss": snli_loss,
+#         "train_snli_logits": snli_logits,
+#         "train_snli_labels": snli_labels,
+#     }
+                
+#     task = 'snli'
+#     metric_list = ['loss', 'accuracy']
+#     # log_metrics(pl_module, ret, metric_list, task)
+
+#     phase = "train" if pl_module.training else "val"
+
+#     if phase == "train":
+#         # task = 'snli'
+#         # metric_list = ['loss', 'accuracy']
+#         log_metrics(pl_module, ret, metric_list, task, phase=phase)
+
+#         # phase = "train" if pl_module.training else "val"
+#         # loss = getattr(pl_module, f"{phase}_snli_loss")(ret["snli_loss"])
+#         # acc = getattr(pl_module, f"{phase}_snli_accuracy")(
+#         #     ret["snli_logits"], ret["snli_labels"]
+#         # )
+#         # pl_module.log(f"snli/{phase}/loss", loss)
+#         # pl_module.log(f"snli/{phase}/accuracy", acc)
+#     else:
+#         # phase =
+#         dev_batches = [i for i, n in enumerate(batch["table_name"]) if "dev" in n]
+#         test_batches = [i for i, n in enumerate(batch["table_name"]) if "test" in n]
+
+#         if dev_batches:
+#             phase = 'dev'
+#             dev_snli_logits = ret["train_snli_logits"][dev_batches]
+#             dev_snli_labels = ret["train_snli_labels"][dev_batches]
+#             dev_snli_loss = F.cross_entropy(dev_snli_logits, dev_snli_labels)
+#             ret.update({
+#                 f'{phase}_{task}_logits' : dev_snli_logits,
+#                 f'{phase}_{task}_labels' : dev_snli_labels,
+#                 f'{phase}_{task}_loss' : dev_snli_loss
+#             })
+#             log_metrics(pl_module, ret, metric_list, task, phase=phase)
+#             # task = 'dev_snli'
+#             # dev_loss = getattr(pl_module, f"dev_snli_loss")(
+#             #     F.cross_entropy(
+#             #         ret["snli_logits"][dev_batches], ret["snli_labels"][dev_batches]
+#             #     )
+#             # )
+#             # dev_acc = getattr(pl_module, f"dev_snli_accuracy")(
+#             #     ret["snli_logits"][dev_batches], ret["snli_labels"][dev_batches]
+#             # )
+#             # pl_module.log(f"snli/dev/loss", dev_loss)
+#             # pl_module.log(f"snli/dev/accuracy", dev_acc)
+#         if test_batches:
+#             phase = 'test'
+#             test_snli_logits = ret["train_snli_logits"][test_batches]
+#             test_snli_labels = ret["train_snli_labels"][test_batches]
+#             test_snli_loss = F.cross_entropy(test_snli_logits, test_snli_labels)
+#             ret.update({
+#                 f'{phase}_{task}_logits' : test_snli_logits,
+#                 f'{phase}_{task}_labels' : test_snli_labels,
+#                 f'{phase}_{task}_loss' : test_snli_loss
+#             })
+#             log_metrics(pl_module, ret, metric_list, task, phase=phase)
+#             # test_loss = getattr(pl_module, f"dev_snli_loss")(
+#             #     F.cross_entropy(
+#             #         ret["snli_logits"][test_batches], 
+#             #         ret["snli_labels"][test_batches]
+#             #     )
+#             # )
+#             # test_acc = getattr(pl_module, f"test_snli_accuracy")(
+#             #     ret["snli_logits"][test_batches], ret["snli_labels"][test_batches]
+#             # )
+#             # pl_module.log(f"snli/test/loss", test_loss)
+#             # pl_module.log(f"snli/test/accuracy", test_acc)
+
+#     return ret
+
 def compute_snli(pl_module, batch):
     infer = pl_module.infer(
         batch, mask_text=False, mask_image=False, 
@@ -171,82 +259,48 @@ def compute_snli(pl_module, batch):
     snli_labels = batch["labels"]
     snli_labels = torch.tensor(snli_labels).to(pl_module.device).long()
     snli_loss = F.cross_entropy(snli_logits, snli_labels.view(-1))
-    
-    
 
     ret = {
         "snli_loss": snli_loss,
-        "train_snli_logits": snli_logits,
-        "train_snli_labels": snli_labels,
+        "snli_logits": snli_logits,
+        "snli_labels": snli_labels,
     }
-                
-    task = 'snli'
-    metric_list = ['loss', 'accuracy']
-    # log_metrics(pl_module, ret, metric_list, task)
 
     phase = "train" if pl_module.training else "val"
 
     if phase == "train":
-        # task = 'snli'
-        # metric_list = ['loss', 'accuracy']
-        log_metrics(pl_module, ret, metric_list, task, phase=phase)
-
-        # phase = "train" if pl_module.training else "val"
-        # loss = getattr(pl_module, f"{phase}_snli_loss")(ret["snli_loss"])
-        # acc = getattr(pl_module, f"{phase}_snli_accuracy")(
-        #     ret["snli_logits"], ret["snli_labels"]
-        # )
-        # pl_module.log(f"snli/{phase}/loss", loss)
-        # pl_module.log(f"snli/{phase}/accuracy", acc)
+        loss = getattr(pl_module, f"{phase}_snli_loss")(ret["snli_loss"])
+        acc = getattr(pl_module, f"{phase}_snli_accuracy")(
+            ret["snli_logits"], ret["snli_labels"]
+        )
+        pl_module.log(f"snli/{phase}/loss", loss)
+        pl_module.log(f"snli/{phase}/accuracy", acc)
     else:
-        # phase =
         dev_batches = [i for i, n in enumerate(batch["table_name"]) if "dev" in n]
         test_batches = [i for i, n in enumerate(batch["table_name"]) if "test" in n]
 
         if dev_batches:
-            phase = 'dev'
-            dev_snli_logits = ret["train_snli_logits"][dev_batches]
-            dev_snli_labels = ret["train_snli_labels"][dev_batches]
-            dev_snli_loss = F.cross_entropy(dev_snli_logits, dev_snli_labels)
-            ret.update({
-                f'{phase}_{task}_logits' : dev_snli_logits,
-                f'{phase}_{task}_labels' : dev_snli_labels,
-                f'{phase}_{task}_loss' : dev_snli_loss
-            })
-            log_metrics(pl_module, ret, metric_list, task, phase=phase)
-            # task = 'dev_snli'
-            # dev_loss = getattr(pl_module, f"dev_snli_loss")(
-            #     F.cross_entropy(
-            #         ret["snli_logits"][dev_batches], ret["snli_labels"][dev_batches]
-            #     )
-            # )
-            # dev_acc = getattr(pl_module, f"dev_snli_accuracy")(
-            #     ret["snli_logits"][dev_batches], ret["snli_labels"][dev_batches]
-            # )
-            # pl_module.log(f"snli/dev/loss", dev_loss)
-            # pl_module.log(f"snli/dev/accuracy", dev_acc)
+            dev_loss = getattr(pl_module, f"dev_snli_loss")(
+                F.cross_entropy(
+                    ret["snli_logits"][dev_batches], ret["snli_labels"][dev_batches]
+                )
+            )
+            dev_acc = getattr(pl_module, f"dev_snli_accuracy")(
+                ret["snli_logits"][dev_batches], ret["snli_labels"][dev_batches]
+            )
+            pl_module.log(f"snli/dev/loss", dev_loss)
+            pl_module.log(f"snli/dev/accuracy", dev_acc)
         if test_batches:
-            phase = 'test'
-            test_snli_logits = ret["train_snli_logits"][test_batches]
-            test_snli_labels = ret["train_snli_labels"][test_batches]
-            test_snli_loss = F.cross_entropy(test_snli_logits, test_snli_labels)
-            ret.update({
-                f'{phase}_{task}_logits' : test_snli_logits,
-                f'{phase}_{task}_labels' : test_snli_labels,
-                f'{phase}_{task}_loss' : test_snli_loss
-            })
-            log_metrics(pl_module, ret, metric_list, task, phase=phase)
-            # test_loss = getattr(pl_module, f"dev_snli_loss")(
-            #     F.cross_entropy(
-            #         ret["snli_logits"][test_batches], 
-            #         ret["snli_labels"][test_batches]
-            #     )
-            # )
-            # test_acc = getattr(pl_module, f"test_snli_accuracy")(
-            #     ret["snli_logits"][test_batches], ret["snli_labels"][test_batches]
-            # )
-            # pl_module.log(f"snli/test/loss", test_loss)
-            # pl_module.log(f"snli/test/accuracy", test_acc)
+            test_loss = getattr(pl_module, f"test_snli_loss")(
+                F.cross_entropy(
+                    ret["snli_logits"][test_batches], ret["snli_labels"][test_batches]
+                )
+            )
+            test_acc = getattr(pl_module, f"test_snli_accuracy")(
+                ret["snli_logits"][test_batches], ret["snli_labels"][test_batches]
+            )
+            pl_module.log(f"snli/test/loss", test_loss)
+            pl_module.log(f"snli/test/accuracy", test_acc)
 
     return ret
 
