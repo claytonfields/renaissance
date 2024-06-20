@@ -12,7 +12,7 @@ from .embeddings import ElectraEmbeddings
 # from .bert_model import BertCrossLayer
 from . import heads, objectives, renaissance_utils
 from transformers import AutoConfig, AutoModel#, AutoModelForSequenceClassification
-from .fusion_encoder import LxmertCrossModalEncoder
+from .fusion_encoder import LxmertCrossModalEncoder, BertCrossModalEncoder
 
 class RenaissanceTransformer(pl.LightningModule):
     def __init__(self, config):
@@ -197,7 +197,8 @@ class RenaissanceTransformer(pl.LightningModule):
             self.cross_modal_image_transform.apply(objectives.init_weights)
             
             # Cross-Modal Module with LXMERT Layers
-            self.fusion_encoder = LxmertCrossModalEncoder(config)
+            self.fusion_encoder = BertCrossModalEncoder(config)
+            # self.fusion_encoder = LxmertCrossModalEncoder(config)
             self.fusion_encoder.apply(objectives.init_weights)
             
             if config['freeze_cross_modal_layers']:
@@ -528,7 +529,8 @@ class RenaissanceTransformer(pl.LightningModule):
             ),
         )
         
-        cls_feats, text_feats, image_feats = self.fusion_encoder(text_embeds, extend_text_masks, image_embeds, extend_image_masks)
+        cls_feats, text_feats, image_feats = self.fusion_encoder(text_embeds, image_embeds, extend_text_masks, extend_image_masks)
+        # cls_feats, text_feats, image_feats = self.fusion_encoder(text_embeds, extend_text_masks, image_embeds, extend_image_masks)
 
         ret = {
             "text_feats": text_feats,
