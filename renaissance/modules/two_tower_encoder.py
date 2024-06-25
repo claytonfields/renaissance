@@ -237,3 +237,11 @@ class TwoTowerEncoder(nn.Module):
         
     def get_hidden_size(self):
         return self.hidden_size
+    
+    def adjust_type_embeds_for_nlvr2(self):
+        emb_data = self.token_type_embeddings.weight.data
+        self.token_type_embeddings = nn.Embedding(3, self.hidden_size)
+        self.token_type_embeddings.apply(init_weights)
+        self.token_type_embeddings.weight.data[0, :] = emb_data[0, :]
+        self.token_type_embeddings.weight.data[1, :] = emb_data[1, :]
+        self.token_type_embeddings.weight.data[2, :] = emb_data[1, :]
