@@ -101,13 +101,6 @@ class RenaissanceTransformer(pl.LightningModule):
         # Initialize Visual Question Answering V2 Classifier
         if self.hparams.config["loss_names"]["vqa"] > 0:
             vs = self.hparams.config["vqav2_label_size"]
-            # self.vqa_classifier = nn.Sequential(
-            #     nn.Linear(hs, hs),
-            #     nn.LayerNorm(hs ),
-            #     nn.GELU(),
-            #     nn.Linear(hs, vs),
-            # )
-            # self.vqa_classifier.apply(objectives.init_weights)
             self.vqa_classifier = heads.MultiModalClassificationHead(
                 hidden_size=hs, 
                 num_labels=vs
@@ -123,40 +116,21 @@ class RenaissanceTransformer(pl.LightningModule):
 
         # Initialize NLVR2 Classifier
         if self.hparams.config["loss_names"]["nlvr2"] > 0:
-            # self.nlvr2_classifier = nn.Sequential(
-            #     nn.Linear(hs * 2, hs),
-            #     nn.LayerNorm(hs),
-            #     nn.GELU(),
-            #     nn.Linear(hs, 2),
-            # )
             self.nlvr2_classifier = heads.NLVR2ClassificationHead(
                 hidden_size=hs, 
                 num_labels=2
             )
             self.nlvr2_classifier.apply(objectives.init_weights)
-            # emb_data = self.token_type_embeddings.weight.data
-            # # Possible error with wrong hidden size below
-            # self.token_type_embeddings = nn.Embedding(3, hs)
-            # self.token_type_embeddings.apply(objectives.init_weights)
-            # self.token_type_embeddings.weight.data[0, :] = emb_data[0, :]
-            # self.token_type_embeddings.weight.data[1, :] = emb_data[1, :]
-            # self.token_type_embeddings.weight.data[2, :] = emb_data[1, :]
             self.encoder.adjust_type_embeds_for_nlvr2()
 
         # Initialize SNLI-VE Classifier
         if self.hparams.config["loss_names"]["snli"] > 0:
-            # self.snli_classifier = nn.Sequential(
-            #     nn.Linear(hs, hs),
-            #     nn.LayerNorm(hs),
-            #     nn.GELU(),
-            #     nn.Linear(hs, 3),
-            # )
-            # self.snli_classifier.apply(objectives.init_weights)
             self.snli_classifier = heads.MultiModalClassificationHead(
                 hidden_size=hs, 
                 num_labels=3
             )
             self.snli_classifier.apply(objectives.init_weights)
+            
         # Initialize Image-Text Recall Classifier
         # Possible error for two tower model below
         if self.hparams.config["loss_names"]["irtr"] > 0:
@@ -169,13 +143,6 @@ class RenaissanceTransformer(pl.LightningModule):
         
         # Initialize Reference Resolution Classifier
         if self.hparams.config["loss_names"]['ref'] > 0:
-            # self.ref_classifier = nn.Sequential(
-            #     nn.Linear(hs, hs),
-            #     nn.LayerNorm(hs),
-            #     nn.GELU(),
-            #     nn.Linear(hs, 1),
-            # )
-            # self.ref_classifier.apply(objectives.init_weights)
             self.ref_classifier = heads.MultiModalClassificationHead(
                 hidden_size=hs, 
                 num_labels=1
@@ -196,7 +163,7 @@ class RenaissanceTransformer(pl.LightningModule):
             # self.text_only = True
             # hidden_size = self.text_hs
             # num_labels = 2
-            self.mrpc_classifier = heads.MultiModalClassificationHead(
+            self.mrpc_classifier = heads.UniModalClassificationHead(
                 hidden_size=self.text_hs, 
                 num_labels=2
             )
@@ -284,13 +251,6 @@ class RenaissanceTransformer(pl.LightningModule):
         # CIFAR-10 Image Classifier
         if self.hparams.config["loss_names"]['cifar10'] > 0:
             self.image_only = True
-            # self.cifar10_classifier = nn.Sequential(
-            #     nn.Linear(self.image_hs, self.image_hs),
-            #     nn.LayerNorm(self.image_hs),
-            #     nn.GELU(),
-            #     nn.Linear(self.image_hs, 10)
-            # )
-            # self.cifar10_classifier.apply(objectives.init_weights)
             self.cifar10_classifier = heads.UniModalClassificationHead(
                 hidden_size=self.image_hs, 
                 num_labels=10
@@ -345,7 +305,10 @@ class RenaissanceTransformer(pl.LightningModule):
     
     # Review and if update, if needed for one-tower
     def infer_text_only(self, batch):
-        hidden_state = self.text_transformer(**batch).last_hidden_state
+        if self.model_type == 'two-tower':
+            hidden_state = self.encoder.text_transformer(**batch).last_hidden_state
+        elif self.model_type == 'one-tower':
+            hidden_state = self.encoder.forward_text(batch)
         
         return hidden_state
 

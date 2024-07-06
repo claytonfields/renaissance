@@ -15,6 +15,7 @@ from .dist_utils import all_gather
 
 
 def compute_mlm(pl_module, batch):
+    batch_size = pl_module.hparams.config['per_gpu_batchsize']
     infer = pl_module.infer(batch, mask_text=True, mask_image=False)
     mlm_logits = pl_module.mlm_score(infer["text_feats"])
     mlm_labels = infer["text_labels"]
@@ -37,12 +38,13 @@ def compute_mlm(pl_module, batch):
     acc = getattr(pl_module, f"{phase}_mlm_accuracy")(
         ret["mlm_logits"], ret["mlm_labels"]
     )
-    pl_module.log(f"mlm/{phase}/loss", loss)
-    pl_module.log(f"mlm/{phase}/accuracy", acc)
+    pl_module.log(f"mlm/{phase}/loss", loss, batch_size=batch_size, sync_dist=True)
+    pl_module.log(f"mlm/{phase}/accuracy", acc, batch_size=batch_size, sync_dist=True)
 
     return ret
 
 def compute_itm(pl_module, batch):
+    batch_size = pl_module.hparams.config['per_gpu_batchsize']
     pos_len = len(batch["text"]) // 2
     neg_len = len(batch["text"]) - pos_len
     itm_labels = torch.cat([torch.ones(pos_len), torch.zeros(neg_len)]).to(
@@ -79,8 +81,8 @@ def compute_itm(pl_module, batch):
     acc = getattr(pl_module, f"{phase}_itm_accuracy")(
         ret["itm_logits"], ret["itm_labels"]
     )
-    pl_module.log(f"itm/{phase}/loss", loss)
-    pl_module.log(f"itm/{phase}/accuracy", acc)
+    pl_module.log(f"itm/{phase}/loss", loss, batch_size=batch_size, sync_dist=True)
+    pl_module.log(f"itm/{phase}/accuracy", acc, batch_size=batch_size, sync_dist=True)
 
     return ret
 
@@ -139,14 +141,15 @@ def compute_snli(pl_module, batch):
     }
 
     phase = "train" if pl_module.training else "val"
+    batch_size = pl_module.hparams.config['per_gpu_batchsize']
 
     if phase == "train":
         loss = getattr(pl_module, f"{phase}_snli_loss")(ret["snli_loss"])
         acc = getattr(pl_module, f"{phase}_snli_accuracy")(
             ret["snli_logits"], ret["snli_labels"]
         )
-        pl_module.log(f"snli/{phase}/loss", loss)
-        pl_module.log(f"snli/{phase}/accuracy", acc)
+        pl_module.log(f"snli/{phase}/loss", loss, batch_size=batch_size, sync_dist=True)
+        pl_module.log(f"snli/{phase}/accuracy", acc, batch_size=batch_size, sync_dist=True)
     else:
         dev_batches = [i for i, n in enumerate(batch["table_name"]) if "dev" in n]
         test_batches = [i for i, n in enumerate(batch["table_name"]) if "test" in n]
@@ -160,8 +163,8 @@ def compute_snli(pl_module, batch):
             dev_acc = getattr(pl_module, f"dev_snli_accuracy")(
                 ret["snli_logits"][dev_batches], ret["snli_labels"][dev_batches]
             )
-            pl_module.log(f"snli/dev/loss", dev_loss)
-            pl_module.log(f"snli/dev/accuracy", dev_acc)
+            pl_module.log(f"snli/dev/loss", dev_loss, batch_size=batch_size, sync_dist=True)
+            pl_module.log(f"snli/dev/accuracy", dev_acc, batch_size=batch_size, sync_dist=True)
         if test_batches:
             test_loss = getattr(pl_module, f"test_snli_loss")(
                 F.cross_entropy(
@@ -171,8 +174,8 @@ def compute_snli(pl_module, batch):
             test_acc = getattr(pl_module, f"test_snli_accuracy")(
                 ret["snli_logits"][test_batches], ret["snli_labels"][test_batches]
             )
-            pl_module.log(f"snli/test/loss", test_loss)
-            pl_module.log(f"snli/test/accuracy", test_acc)
+            pl_module.log(f"snli/test/loss", test_loss, batch_size=batch_size, sync_dist=True)
+            pl_module.log(f"snli/test/accuracy", test_acc, batch_size=batch_size, sync_dist=True)
 
     return ret
 
@@ -433,6 +436,33 @@ def compute_irtr_recall(pl_module):
     ir_r1 = (tiids.unsqueeze(0) == topk1_iids).float().max(dim=0)[0].mean()
 
     return (ir_r1, ir_r5, ir_r10, tr_r1, tr_r5, tr_r10)
+
+def compute_mrpc(pl_module, batch):
+    mrpc_labels = batch.pop('label', None)
+    hidden_state = pl_module.infer_text_only(batch)
+    mrpc_logits = pl_module.mrpc_classifier(hidden_state)
+    mrpc_loss = F.cross_entropy(mrpc_logits, mrpc_labels)
+    
+    ret = {
+        'mrpc_logits' : mrpc_logits,
+        'mrpc_targets' : mrpc_labels,
+        'mrpc_loss' : mrpc_loss
+    }
+    
+    phase = "train" if pl_module.training else "val"
+    loss = getattr(pl_module, f"{phase}_mrpc_loss")(ret["mrpc_loss"])
+    acc = getattr(pl_module, f"{phase}_mrpc_accuracy")(
+        ret["mrpc_logits"], ret["mrpc_targets"]
+    )
+    preds = mrpc_logits.argmax(dim=-1)
+    f1 = getattr(pl_module, f"{phase}_mrpc_f1")(
+        preds, ret["mrpc_targets"]
+    )
+    pl_module.log(f"mrpc/{phase}/loss", loss)
+    pl_module.log(f"mrpc/{phase}/accuracy", acc)
+    pl_module.log(f"mrpc/{phase}/f1", f1)
+    
+    return ret
 
 
 def init_weights(module):

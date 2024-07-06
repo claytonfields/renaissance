@@ -424,6 +424,20 @@ class OneTowerEncoder(nn.Module):
 
         return ret
     
+    def forward_text(
+        self,
+        batch
+    ):
+    
+        input_ids = batch['input_ids']
+        hidden_states = self.text_embeddings(input_ids)
+        if hasattr(self, "text_embedding_projection"):
+            hidden_states = self.text_embedding_projection(hidden_states)
+        hidden_states = self.encoder(hidden_states)[0]
+        
+        return hidden_states
+        
+    
     def get_hidden_size(self):
         return self.hidden_size
     

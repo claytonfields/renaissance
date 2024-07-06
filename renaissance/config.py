@@ -1358,6 +1358,39 @@ def test_case_finetune_mrpc_a():
     freeze_image_encoder = False
     freeze_text_encoder = False
     
+@ex.named_config
+def test_case_finetune_mrpc_onetower():
+    # Settings
+    test_only=False
+    data_root = 'data/arrow/' 
+    num_gpus=1 
+    num_nodes=1 
+    per_gpu_batchsize=32 
+    # load_path = '/home/claytonfields/nlp/code/meter/result/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints/epoch=5-step=96215.ckpt'
+    # SNLI-VE
+    exp_name = "test_case_mrpc_onetower"
+    datasets = ["glue"]
+    loss_names = _loss_names({"mrpc": 1})
+    # Training Time
+    max_epoch = 1
+    max_steps = 10e6
+    # Text Encoder
+    model_type = "one-tower"
+    encoder = "google/electra-small-discriminator"
+    vocab_size = 30522
+    
+    # Training Settings
+    batch_size = 32
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 2e-6
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    # Freeze or UnFreeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    
     
 # Refcoco Reference Resolution
 @ex.named_config
@@ -1561,7 +1594,7 @@ def test_case_finetune_mrpc_b():
     num_gpus=1 
     num_nodes=1 
     per_gpu_batchsize=32 
-    load_path = '/home/claytonfields/nlp/code/meter/result/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints/epoch=5-step=96215.ckpt'
+    # load_path = '/home/claytonfields/nlp/code/meter/result/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints/epoch=5-step=96215.ckpt'
     # SNLI-VE
     exp_name = "test_case_finetune_mrpc_a"
     datasets = ["glue"]
@@ -1585,7 +1618,6 @@ def test_case_finetune_mrpc_b():
     image_encoder = "facebook/deit-tiny-patch16-224"
     image_encoder_hidden_size = 192
     image_size = 224
-    resolution_before = 224
     patch_size = 16
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]
