@@ -18,7 +18,7 @@ import torch
 @ex.automain
 def main(_config):
     
-    warnings.simplefilter("error")
+    # warnings.simplefilter("error")
     
     _config = copy.deepcopy(_config)
     pl.seed_everything(_config["seed"])
@@ -102,6 +102,8 @@ def main(_config):
         accelerator = 'gpu',
         # strategy = 'ddp_notebook',
         strategy='ddp_find_unused_parameters_true',
+        # strategy = 'ddp_spawn',
+        # strategy='ddp',
         deterministic='warn',
         max_epochs=_config["max_epoch"], #if max_steps is None else 1000,
         max_steps=max_steps,

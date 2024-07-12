@@ -58,13 +58,6 @@ class RenaissanceTransformer(pl.LightningModule):
             self.embedding_size = self.encoder.get_embedding_size()
         
         elif self.model_type == 'two-tower':
-            # # Handle Distributed Case
-            # # Test this on frege when time permits
-            # if torch.distributed.is_initialized():
-            #     if torch.distributed.get_rank() == 0:
-            #         AutoModel.from_pretrained(config['image_encoder'])
-            #         AutoModel.from_pretrained(config['text_encoder'])
-            #     torch.distributed.barrier()
             self.encoder = TwoTowerEncoder(
                 config,
                 self.fine_tune,

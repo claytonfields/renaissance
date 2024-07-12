@@ -48,17 +48,15 @@ def config():
 
     # Model Type Setting
     model_type = "two-tower" # Supports ['one-tower', 'two-tower]
-    pooler_type = 'double' # Supports ['single', 'double']
-    encoder = "google/electra-small-discriminator"
-
     
     #### One Tower Settings ####
     # one-tower settings will be ignored if unless model_type = "one-tower"
     # Text Setting
+    encoder = "google/electra-small-discriminator"
+    pooler_type = 'double' # Supports ['single', 'double']
     tokenizer = "bert-base-uncased"
 
     # Transformer Setting
-    encoder = "google/electra-small-discriminator"
     # Train encoder model from scratch
     random_init_encoder = False
     ## Manual Configuration
@@ -194,8 +192,6 @@ def test_one_tower_mlm_itm_manual_config_case_a():
     embedding_size = 96
     
     # Image setting
-    train_transform_keys = ["imagenet"]
-    val_transform_keys = ["imagenet"]
     image_size = 224
     patch_size = 16
     draw_false_image = 1
@@ -243,8 +239,6 @@ def test_two_tower_mlm_itm_manual_config_case_a():
     image_encoder_embedding_size = 128
     
     # Image setting
-    train_transform_keys = ["imagenet"]
-    val_transform_keys = ["imagenet"]
     image_size = 224
     patch_size = 16
     draw_false_image = 1
@@ -272,9 +266,8 @@ def test_two_tower_mlm_itm_manual_config_case_a():
 
 # ===================== Pretraining Tasks===================== #
 @ex.named_config
-def task_mlm_itm():
+def task_mlm_itm_twotower():
     exp_name = "mlm_itm"
-    # datasets = ["coco", "vg", "sbu", "gcc"]
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
     batch_size = 256
@@ -282,21 +275,21 @@ def task_mlm_itm():
     max_steps = 100000
     warmup_steps = 0.1
     whole_word_masking = True
+    
+    model_type = "two-tower"
 
-    # vocab_size = 30522
     max_text_len = 50
     image_size = 224
     learning_rate = 1e-5
     val_check_interval = 1.0
     lr_mult_head = 5
     lr_mult_cross_modal = 5
-    num_cross_layers = 6
-    # cross_layer_hidden_size = 256
-    # num_cross_layer_heads = 12
+
+
     
 @ex.named_config
 def task_mlm_itm_onetower_electra():
-    exp_name = "mlm_itm_onetower_electra"
+    exp_name = "mlm_itm_onetower_electra_small"
     seed = 0
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
@@ -311,29 +304,17 @@ def task_mlm_itm_onetower_electra():
     resume_from = None
     
     # Transformer Setting
-    # encoder = "facebook/deit-tiny-patch16-224"
-    # encoder = "FacebookAI/roberta-base"
     model_type = "one-tower"
     encoder = "google/electra-small-discriminator"
-    hidden_size = 192
-    num_heads = 4
-    num_layers = 12
-    mlp_ratio = 4
-    drop_rate = 0.1
     
     # Image setting
-    train_transform_keys = ["imagenet"]
-    val_transform_keys = ["imagenet"]
     image_size = 224
-    # max_image_len = -1
     patch_size = 16
     draw_false_image = 1
     image_only = False
     
     # Text Setting
-    vqav2_label_size = 3129
     max_text_len = 40
-    tokenizer = "bert-base-uncased"
     vocab_size = 30522
     whole_word_masking = False
     mlm_prob = 0.15
@@ -343,7 +324,7 @@ def task_mlm_itm_onetower_electra():
     
 @ex.named_config
 def task_mlm_itm_onetower_electra_base():
-    exp_name = "mlm_itm_one_electra_base"
+    exp_name = "mlm_itm_onetower_electra_base"
     seed = 0
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
@@ -358,34 +339,28 @@ def task_mlm_itm_onetower_electra_base():
     resume_from = None
     
     # Transformer Setting
-    # encoder = "facebook/deit-tiny-patch16-224"
-    # encoder = "FacebookAI/roberta-base"
     model_type = "one-tower"
     encoder = "google/electra-base-discriminator"
     drop_rate = 0.1
     
     # Image setting
-    train_transform_keys = ["imagenet"]
-    val_transform_keys = ["imagenet"]
     image_size = 224
-    # max_image_len = -1
     patch_size = 16
     draw_false_image = 1
     image_only = False
     
     # Text Setting
-    vqav2_label_size = 3129
     vocab_size = 30522
     whole_word_masking = True
     mlm_prob = 0.15
-    draw_false_text = 0
     
     max_steps = 50000
+    max_epoch = None
     
 
 @ex.named_config
 def task_mlm_itm_onetower_dinos16():
-    exp_name = "mlm_itm_one_dinos16"
+    exp_name = "mlm_itm_onetower_dinos16"
     seed = 0
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
@@ -423,8 +398,9 @@ def task_mlm_itm_onetower_dinos16():
     max_steps = 50000
     
 @ex.named_config
-def task_mlm_itm_deit_electra():
+def task_mlm_itm_twotower_deit_electra():
     exp_name = "mlm_itm_deit_electra"
+    model_type = "two-tower"
     # datasets = ["coco", "vg", "sbu", "gcc"]
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
@@ -434,6 +410,7 @@ def task_mlm_itm_deit_electra():
     max_steps = 50000
     warmup_steps = 0.1
     whole_word_masking = True
+    model_type = "two-tower"
     # DO NOT Freeze Encoders
     freeze_image_encoder = False
     freeze_text_encoder = False
@@ -465,8 +442,9 @@ def task_mlm_itm_deit_electra():
     lr_mult_cross_modal = 5
 
 @ex.named_config
-def task_mlm_itm_deit_fr_electra():
+def task_mlm_itm_twotower_deit_fr_electra():
     exp_name = "mlm_itm_deit_fr_electra"
+    model_type = "two-tower"
     # datasets = ["coco", "vg", "sbu", "gcc"]
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
@@ -493,8 +471,9 @@ def task_mlm_itm_deit_fr_electra():
     num_cross_layers = 6
     
 @ex.named_config
-def task_mlm_itm_deit_electra_fr():
+def task_mlm_itm_twotower_deit_electra_fr():
     exp_name = "mlm_itm_deit_electra_fr"
+    model_type = "two-tower"
     # datasets = ["coco", "vg", "sbu", "gcc"]
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
@@ -521,8 +500,9 @@ def task_mlm_itm_deit_electra_fr():
     num_cross_layers = 6
 
 @ex.named_config
-def task_mlm_itm_deit_fr_electra_fr():
+def task_mlm_itm_twotower_deit_fr_electra_fr():
     exp_name = "mlm_itm_deit_fr_electra_fr"
+    model_type = "two-tower"
     # datasets = ["coco", "vg", "sbu", "gcc"]
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
@@ -549,8 +529,28 @@ def task_mlm_itm_deit_fr_electra_fr():
 
 # ===================== Finetuning Tasks===================== #
 @ex.named_config
-def task_finetune_nlvr2_deit_electra():
-    exp_name = "finetune_nlvr2_deit_electra"
+def task_finetune_nlvr2_twotower():
+    exp_name = "nlvr2_twotower"
+    model_type = "two-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Training Settings
+    batch_size = 256
+    max_epoch = 10
+    max_steps = None
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 1e-5
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    # Image Size
+    image_size = 288
+    
+
+@ex.named_config
+def task_finetune_nlvr2_twotower_deit_electra():
+    exp_name = "nlvr2_twotower_deit_electra"
+    model_type = "two-tower"
     datasets = ["nlvr2"]
     loss_names = _loss_names({"nlvr2": 1})
     # Training Settings
@@ -579,8 +579,29 @@ def task_finetune_nlvr2_deit_electra():
     cross_layer_drop_rate = 0.1
 
 @ex.named_config
-def task_finetune_vqa_deit_electra():
-    exp_name = "finetune_vqa"
+def task_finetune_vqa_twotower():
+    exp_name = "vqa_twotower"
+    model_type = "two-tower"
+    datasets = ["vqa"]
+    loss_names = _loss_names({"vqa": 1})
+    batch_size = 512
+    max_epoch = 10
+    max_steps = 1e6
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 5e-6
+    val_check_interval = 0.1
+    lr_mult_head = 50
+    lr_mult_cross_modal = 5
+    # Text Settings
+    max_text_len = 50
+    # Image Settins
+    image_size = 576
+
+@ex.named_config
+def task_finetune_vqa_twotower_deit_electra():
+    exp_name = "vqa_twotower_deit_electra"
+    model_type = "two-tower"
     datasets = ["vqa"]
     loss_names = _loss_names({"vqa": 1})
     batch_size = 512
@@ -610,8 +631,9 @@ def task_finetune_vqa_deit_electra():
 
 
 @ex.named_config
-def task_finetune_snli():
-    exp_name = "finetune_snli"
+def task_finetune_snli_twotower():
+    exp_name = "snli_twotower"
+    model_type = "two-tower"
     datasets = ["snli"]
     loss_names = _loss_names({"snli": 1})
     batch_size = 64
@@ -652,7 +674,7 @@ def task_finetune_snli_onetower():
     
 @ex.named_config
 def task_finetune_snli_onetower_electra():
-    exp_name = "finetune_snli_onetower_electra"
+    exp_name = "snli_onetower_electra"
     datasets = ["snli"]
     loss_names = _loss_names({"snli": 1})
     batch_size = 64
@@ -676,7 +698,7 @@ def task_finetune_snli_onetower_electra():
     
 @ex.named_config
 def task_finetune_snli_onetower_swin():
-    exp_name = "snli_one_swin"
+    exp_name = "snli_onetower_swin"
     datasets = ["snli"]
     loss_names = _loss_names({"snli": 1})
     batch_size = 64
@@ -700,8 +722,9 @@ def task_finetune_snli_onetower_swin():
     
     
 @ex.named_config
-def task_finetune_snli_vision_fr_text_fr():
-    exp_name = "finetune_snli_vision_fr_text_fr"
+def task_finetune_snli_twotower_vision_fr_text_fr():
+    exp_name = "snli_vision_fr_text_fr"
+    model_type = "two-tower"
     datasets = ["snli"]
     loss_names = _loss_names({"snli": 1})
     batch_size = 64
@@ -717,10 +740,11 @@ def task_finetune_snli_vision_fr_text_fr():
     # Freeze Encoders
     freeze_image_encoder = True
     freeze_text_encoder = True
-
+    
 @ex.named_config
-def task_finetune_ref():
-    exp_name = "finetune_ref"
+def task_finetune_ref_twotower():
+    exp_name = "ref_twotower"
+    model_type = "two-tower"
     datasets = ["coco"]
     loss_names = _loss_names({"ref": 1})
     batch_size = 4
@@ -731,18 +755,12 @@ def task_finetune_ref():
     learning_rate = 2e-6
     lr_mult_head = 10
     lr_mult_cross_modal = 5
-    text_encoder = "google/electra-small-discriminator"
     max_text_len = 40
-    text_encoder_hidden_size = 128
-    image_encoder = 'vit_deit_tiny_patch16_224'
-    train_transform_keys = ["imagenet"]
-    val_transform_keys = ["imagenet"]
-    image_encoder_hidden_size = 192
     image_size = 224
 
 @ex.named_config
 def task_finetune_irtr_coco_clip_bert():
-    exp_name = "finetune_irtr_coco"
+    exp_name = "irtr_coco"
     datasets = ["coco"]
     loss_names = _loss_names({"itm": 0.5, "irtr": 1})
     batch_size = 512
@@ -764,7 +782,7 @@ def task_finetune_irtr_coco_clip_bert():
 
 @ex.named_config
 def task_finetune_irtr_f30k_clip_bert():
-    exp_name = "finetune_irtr_f30k"
+    exp_name = "irtr_f30k"
     datasets = ["f30k"]
     loss_names = _loss_names({"itm": 0.5, "irtr": 1})
     batch_size = 512
@@ -783,51 +801,114 @@ def task_finetune_irtr_f30k_clip_bert():
     val_transform_keys = ["clip"]
     image_encoder_hidden_size = 768
     image_size = 384
-    
-# ===================== Vision Encoders ===================== #
+
+# ===================== Texto-Only Tasks ===================== #
 @ex.named_config
-def swin_tiny_patch4_window7_224():
+def task_finetune_mrpc_twotower():
+    exp_name = "mrpc_twotower"
+    datasets = ["glue"]
+    loss_names = _loss_names({"mrpc": 1})
+    # Training Time
+    max_epoch = 3
+    max_steps = None
+    
+    image_size = 224
+    patch_size = 16
+    
+    # Training Settings
+    batch_size = 32
+    per_gpu_batchsize = 32
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 2e-6
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    max_text_len = 128
+    # Freeze or UnFreeze Encoders
+    freeze_image_encoder = True
+    freeze_cross_modal_layers = True
+    
+@ex.named_config
+def task_finetune_mrpc_twotower_deit_electra():
+    exp_name = "mrpc_twotower_deit_electra"
+    datasets = ["glue"]
+    loss_names = _loss_names({"mrpc": 1})
+    batch_size = 32
+    per_gpu_batchsize = 32
+    # Training Time
+    max_epoch = 3
+    max_steps = 10e6
+    # Text Encoder
+    text_encoder = "google/electra-small-discriminator"
+    vocab_size = 30522
+    text_encoder_hidden_size = 256
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Image Encoder Settings
+    image_encoder = "facebook/deit-tiny-patch16-224"
+    image_size = 224
+    patch_size = 16
+    # Training Settings
+    batch_size = 32
+    warmup_steps = 0
+    draw_false_image = 0
+    learning_rate = 1e-5
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    max_text_len = 128
+    # Freeze or UnFreeze Encoders
+    freeze_image_encoder = True
+    freeze_cross_modal_layers = True
+    
+# ===================== Two-Tower Vision Encoders ===================== #
+@ex.named_config
+def twotower_image_swin_tiny_patch4_window7_224():
+    model_type = "two-tower"
     image_encoder = "microsoft/swin-tiny-patch4-window7-224"
     patch_size = 4
     image_size = 224
-    train_transform_keys = ["imagenet"]
-    val_transform_keys = ["imagenet"]
-    image_encoder_hidden_size = 768
-    resolution_before = 224
+    original_image_size = 224
     
 @ex.named_config
-def deit_tiny_patch16_224():    
+def twotower_image_deit_tiny_patch16_224():
+    model_type = "two-tower"
     image_encoder = "facebook/deit-tiny-patch16-224"
-    image_encoder_hidden_size = 192
     image_size = 224
-    resolution_before = 224
+    original_image_size = 224
     patch_size = 16
-    train_transform_keys = ["imagenet"]
-    val_transform_keys = ["imagenet"]
+
+@ex.named_config
+def twotower_encoder_dino16():
+    model_type = "two-tower"
+    image_encoder = "facebook/dino-vits16"
+    image_size = 224
+    patch_size = 16
     
-# ===================== Text Encoders ===================== #
+# ===================== Two-Tower Text Encoders ===================== #
 @ex.named_config
 def twotower_text_roberta():
+    model_type = "two-tower"
     text_encoder = "FacebookAI/roberta-base"
     vocab_size = 50265
-    text_encoder_hidden_size = 768
+
 
 
 @ex.named_config
 def twotower_text_electra_small():
+    model_type = "two-tower"
     text_encoder = "google/electra-small-discriminator"
-    vocab_size = 30522
-    text_encoder_hidden_size = 256
-    num_cross_layer_heads = 4
-    # num_layers = 6
-    cross_layer_mlp_ratio = 4
-    cross_layer_hidden_size = 256
+    vocab_size = 30522    
     
 @ex.named_config
 def twotower_text_electra_base():
+    model_type = "two-tower"
     tokenizer = "google/electra-base-discriminator"
     vocab_size = 30522
-    text_encoder_hidden_size = 768
+    
 
 
 # ===================== One-Tower Encoders ===================== #
@@ -840,6 +921,15 @@ def onetower_encoder_electra_small():
     image_size = 224
     patch_size = 16
 
+@ex.named_config
+def onetower_encoder_electra_base():
+    model_type = "one-tower"
+    encoder = "google/electra-base-discriminator"
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    image_size = 224
+    patch_size = 16
+    
 @ex.named_config
 def onetower_encoder_dino16():
     model_type = "one-tower"
@@ -901,6 +991,8 @@ def test_case_mlm_itm_a():
     cross_layer_drop_rate = 0.1
     # Image Encoder Settings
     image_encoder = "facebook/deit-tiny-patch16-224"
+    # image_encoder = "microsoft/resnet-18"
+    # image_encoder = "microsoft/swin-tiny-patch4-window7-224"
     image_encoder_hidden_size = 192
     image_size = 224
     patch_size = 16
@@ -1311,7 +1403,6 @@ def test_case_vqa_a():
     freeze_image_encoder = False
     freeze_text_encoder = False
     
-# SNLI
 @ex.named_config
 def test_case_finetune_mrpc_a():
     # Settings
@@ -1323,7 +1414,7 @@ def test_case_finetune_mrpc_a():
     # load_path = '/home/claytonfields/nlp/code/meter/result/mlm_itm_deit_fr_electra_fr_is224_ps16_bs336_pgbs84_ts100k/checkpoints/epoch=5-step=96215.ckpt'
     # SNLI-VE
     exp_name = "test_case_finetune"
-    datasets = ["mrpc"]
+    datasets = ["glue"]
     loss_names = _loss_names({"mrpc": 1})
     # Training Time
     max_epoch = 1
