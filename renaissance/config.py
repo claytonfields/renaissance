@@ -266,6 +266,86 @@ def test_two_tower_mlm_itm_manual_config_case_a():
 
 # ===================== Pretraining Tasks===================== #
 @ex.named_config
+def task_mlm():
+    exp_name = "mlm"
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({ "mlm": 1})
+    batch_size = 256
+    max_epoch = None
+    max_steps = 100000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    
+    model_type = "two-tower"
+
+    max_text_len = 50
+    image_size = 224
+    learning_rate = 1e-5
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    
+@ex.named_config
+def task_mlm_onetower():
+    exp_name = "mlm_onetower"
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({ "mlm": 1})
+    batch_size = 256
+    max_epoch = None
+    max_steps = 100000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    
+    model_type = "two-tower"
+
+    max_text_len = 50
+    image_size = 224
+    learning_rate = 1e-5
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+
+
+@ex.named_config
+def task_itm_twotower():
+    exp_name = "mlm_itm"
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1})
+    batch_size = 256
+    max_epoch = None
+    max_steps = 100000
+    warmup_steps = 0.1
+    
+    model_type = "two-tower"
+    
+    draw_false_image = 1
+    max_text_len = 50
+    image_size = 224
+    learning_rate = 1e-5
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+
+@ex.named_config
+def task_mlm_itm():
+    exp_name = "mlm_itm"
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 256
+    max_epoch = None
+    max_steps = 100000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    
+    draw_false_image = 1
+    max_text_len = 50
+    image_size = 224
+    learning_rate = 5e-5
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    
+@ex.named_config
 def task_mlm_itm_twotower():
     exp_name = "mlm_itm"
     datasets = ["coco", "vg"]
@@ -277,7 +357,8 @@ def task_mlm_itm_twotower():
     whole_word_masking = True
     
     model_type = "two-tower"
-
+    
+    draw_false_image = 1
     max_text_len = 50
     image_size = 224
     learning_rate = 1e-5
@@ -348,6 +429,7 @@ def task_mlm_itm_onetower_electra_base():
     patch_size = 16
     draw_false_image = 1
     image_only = False
+    draw_false_image = 1
     
     # Text Setting
     vocab_size = 30522
@@ -462,8 +544,8 @@ def task_mlm_itm_twotower_deit_fr_electra():
     vocab_size = 30522
     max_text_len = 50
     image_size = 224
-    train_transform_keys = ["imagenet_randaug"]
-    val_transform_keys = ["imagenet_randaug"]
+    draw_false_image = 1
+    
     learning_rate = 1e-5
     val_check_interval = 1.0
     lr_mult_head = 5
@@ -491,8 +573,8 @@ def task_mlm_itm_twotower_deit_electra_fr():
     vocab_size = 30522
     max_text_len = 50
     image_size = 224
-    train_transform_keys = ["imagenet_randaug"]
-    val_transform_keys = ["imagenet_randaug"]
+    draw_false_image = 1
+    
     learning_rate = 1e-5
     val_check_interval = 1.0
     lr_mult_head = 5
@@ -519,8 +601,8 @@ def task_mlm_itm_twotower_deit_fr_electra_fr():
     vocab_size = 30522
     max_text_len = 50
     image_size = 224
-    train_transform_keys = ["imagenet_randaug"]
-    val_transform_keys = ["imagenet_randaug"]
+    draw_false_image = 1
+    
     learning_rate = 1e-5
     val_check_interval = 1.0
     lr_mult_head = 5
@@ -528,6 +610,23 @@ def task_mlm_itm_twotower_deit_fr_electra_fr():
     num_cross_layers = 6
 
 # ===================== Finetuning Tasks===================== #
+@ex.named_config
+def task_finetune_nlvr2():
+    exp_name = "nlvr2"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Training Settings
+    batch_size = 256
+    max_epoch = 10
+    max_steps = None
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 1e-5
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    # Image Size
+    image_size = 288
+
 @ex.named_config
 def task_finetune_nlvr2_twotower():
     exp_name = "nlvr2_twotower"
@@ -663,7 +762,7 @@ def task_finetune_snli_onetower():
     draw_false_image = 0
     learning_rate = 2e-6
     lr_mult_head = 10
-    max_text_len = 50
+    max_text_len = 5
     image_size = 384
     patch_size = 16
     # One-tower settings

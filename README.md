@@ -11,13 +11,9 @@ The one-tower encoder consists of an embedding layer, an encoder module and a ou
 ![alt text](one-tower.png)
 
 The tow-tower encoder consists of a text-encoder, an image-encoder and a cross-modal fusion encoder
-followed by an output layer. The text-encoder and the image-encoder can be drawn from a number of models available on huggingface. The fustion encoder is always manually configured and trained from scratch.
+followed by an output layer. The text-encoder and the image-encoder can be drawn from a number of models available on huggingface. The fusion encoder is always manually configured and trained from scratch.
 
 ![alt text](two-tower.png)
-
-
-
-
 
 
 ## Install
@@ -37,7 +33,36 @@ Here are the pre-trained models:
 
 Dataset preperation and usage is described in DATA.md.
 
-## Pretraining Models
+## Quiick Start Guide
+
+To get the most out of this program users will need to adjust the model settings in the renaissance/config.py settings. CONFIGURING_MODELS.md provides a detailed explaination of how to use the config file. Below we have provided some simple examples using only the command line.
+
+### Pretrain A One-Tower Model
+There are two pretraining tasks available, masked language modeling (mlm) and image-text matching (itm). They can be run seperately or combined. The examples below run them together, to run them individually replace task_mlm_itm with task_mlm for masked lnaguage modeling or task itm for image_text matching. 
+
+```bash
+python run.py with task_mlm_itm encoder=<ENCODER> max_steps=<TRAINING_STEPS> num_gpus=<NUM_GPUS> num_nodes=<NUM_NODES> per_gpu_batchsize=<BS_FITS_YOUR_GPU> batch_size=<BATCH_SIZE> data_root=<ARROW_ROOT>
+```
+Here is an example. The command below will train a one-tower model with DINO-Small as the encoder. It will train for 50k steps and will use gradient accumulation to achieve the batch size of 256.
+
+```bash
+python3 run.py with task_mlm_itm encoder=facebook/dino-vits16 max_steps=50000 num_gpus=1 num_nodes=1 per_gpu_batchsize=32 batch_size=256 data_root=data/arrow/
+```
+
+
+
+### Pretrain A Two-Tower Model
+```bash
+python run.py with task_mlm_itm image_encoder=<IMAGE_ENCODER> text_encoder=<TEXT_ENCODER> cross_layer_hidden_size=<CROSS_LAYER_HIDDEN_SIZE> num_cross_layers=<NUM_CROSS_LAYER> max_steps=<TRAINING_STEPS> num_gpus=<NUM_GPUS> num_nodes=<NUM_NODES> per_gpu_batchsize=<BS_FITS_YOUR_GPU> batch_size=<BATCH_SIZE> data_root=<ARROW_ROOT>
+```
+
+Here is an example. The command below will train a two-tower model with DeiT-Tiny as the image encoder, ELECTRA-Small as the text-encoder, and a six layer cross-modal encoder with a hidden size of 256. It will train for 50k steps and will use gradient accumulation to achieve the batch size of 256.
+
+```bash
+python3 run.py with task_mlm_itm image_encoder=facebook/deit-tiny-patch16-224 text_encoder=google/electra-small-discriminator cross_layer_hidden_size=256 num_cross_layers=6 max_steps=50000 num_gpus=1 num_nodes=1 per_gpu_batchsize=32 batch_size=256 data_root=data/arrow/
+``` 
+
+
 
 ## Finetuning and Evaluation
 
@@ -47,13 +72,6 @@ Dataset preperation and usage is described in DATA.md.
 ## Citation
 
 ```
-@inproceedings{dou2022meter,
-  title={An Empirical Study of Training End-to-End Vision-and-Language Transformers},
-  author={Dou, Zi-Yi and Xu, Yichong and Gan, Zhe and Wang, Jianfeng and Wang, Shuohang and Wang, Lijuan and Zhu, Chenguang and Zhang, Pengchuan and Yuan, Lu and Peng, Nanyun and Liu, Zicheng and Zeng, Michael},
-  booktitle={Conference on Computer Vision and Pattern Recognition (CVPR)},
-  year={2022},
-  url={https://arxiv.org/abs/2111.02387},
-}
 ```
 
 ## Acknowledgements
