@@ -12,3 +12,5 @@ timm
 ftfy
 torchvision
 torch
+datasets
+tensorboard

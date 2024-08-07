@@ -13,7 +13,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from ..datasets.refcoco_dataset import RefcocoDataset
-from  .refer import REFER
+# from  .refer import REFER
 from .datamodule_base import BaseDataModule
 
 

@@ -10,7 +10,7 @@ Dataset class for refCOCO
 
 
 from .base_dataset import BaseDataset
-from  .refer import REFER, get_bounded_subimage
+# from  .refer import REFER, get_bounded_subimage
 import io
 from PIL import Image
 import torch
