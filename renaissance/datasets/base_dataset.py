@@ -131,10 +131,10 @@ class BaseDataset(torch.utils.data.Dataset):
         index, caption_index = self.index_mapper[index]
         image_bytes = io.BytesIO(self.table[image_key][index].as_py())
         image_bytes.seek(0)
-        if self.clip_transform:
-            return Image.open(image_bytes).convert("RGBA")
-        else:
-            return Image.open(image_bytes).convert("RGB")
+        # if self.clip_transform:
+        #     return Image.open(image_bytes).convert("RGBA")
+        # else:
+        return Image.open(image_bytes).convert("RGB")
 
     def get_image(self, index, image_key="image"):
         image = self.get_raw_image(index, image_key=image_key)

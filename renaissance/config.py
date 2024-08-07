@@ -1057,8 +1057,19 @@ def freeze_image():
 @ex.named_config
 def freeze_text():
     freeze_text_encoder = True
+
+@ex.named_config
+def freeze_cross_modal():
+    freeze_cross_modal_layers = True
     
-# task_finetune_snli text_electra_small imagenet_randaug
+
+@ex.named_config
+def random_init_text():
+    random_init_text_encoder = True
+
+@ex.named_config
+def random_init_vision():    
+    random_init_vision_encoder = True
     
 # ===================== Test Cases ===================== #
 @ex.named_config
@@ -1095,8 +1106,8 @@ def test_case_mlm_itm_a():
     image_encoder_hidden_size = 192
     image_size = 224
     patch_size = 16
-    train_transform_keys = ["imagenet"]
-    val_transform_keys = ["imagenet"]
+    # train_transform_keys = ["imagenet"]
+    # val_transform_keys = ["imagenet"]
     # Training Settings
     batch_size = 32
     warmup_steps = 0.1

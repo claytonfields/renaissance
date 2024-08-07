@@ -122,3 +122,8 @@ def main(_config):
             trainer.fit(model, datamodule=dm)
     else:
         trainer.test(model, datamodule=dm)
+    
+    print()
+    print('Results can be found in:')
+    print('result/'+result_dir)
+    print()
