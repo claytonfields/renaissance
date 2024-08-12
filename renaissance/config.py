@@ -608,7 +608,41 @@ def task_mlm_itm_twotower_deit_fr_electra_fr():
     lr_mult_head = 5
     lr_mult_cross_modal = 5
     num_cross_layers = 6
-
+    
+@ex.named_config
+def task_mlm_itm_twoto_tower_dinos_tinybert():
+    exp_name = "mlm_itm_dinos_tinybert"
+    model_type = "two-tower"
+    # datasets = ["coco", "vg", "sbu", "gcc"]
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 256
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    
+    vocab_size = 30522
+    max_text_len = 50
+    image_size = 224
+    draw_false_image = 1
+    
+    learning_rate = 1e-5
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    
+    # Encoders
+    num_cross_layers = 6
+    cross_layer_hidden_size = 256
+    
+    image_encoder = "facebook/dino-vits16"
+    text_encoder = "huawei-noah/TinyBERT_General_4L_312D"
+    
+    # Image setting
+    image_size = 224
+    patch_size = 16
+    
 # ===================== Finetuning Tasks===================== #
 @ex.named_config
 def task_finetune_nlvr2():
@@ -658,7 +692,7 @@ def task_finetune_nlvr2_twotower_deit_electra():
     max_steps = None
     warmup_steps = 0.1
     draw_false_image = 0
-    learning_rate = 1e-5
+    learning_rate = 5e-5
     lr_mult_head = 10
     lr_mult_cross_modal = 5
     # Text Setting
