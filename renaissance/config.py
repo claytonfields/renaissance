@@ -610,7 +610,7 @@ def task_mlm_itm_twotower_deit_fr_electra_fr():
     num_cross_layers = 6
     
 @ex.named_config
-def task_mlm_itm_twoto_tower_dinos_tinybert():
+def task_mlm_itm_two_tower_dinos_tinybert():
     exp_name = "mlm_itm_dinos_tinybert"
     model_type = "two-tower"
     # datasets = ["coco", "vg", "sbu", "gcc"]
