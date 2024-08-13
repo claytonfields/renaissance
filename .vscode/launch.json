@@ -15,7 +15,8 @@
             "console": "integratedTerminal",
             // "args": ["with", "task_finetune_snli_onetower_electra", "num_gpus=1", "load_path=result/snli_mlm_itm_onetower_electra_bs44_pgbs44/checkpoints/epoch=4-step=41370.ckpt","test_only=True"]
             // "args": ["with", "task_finetune_snli_onetower_electra", "num_gpus=1", "load_path=result/snli_mlm_itm_onetower_electra_bs44_pgbs44/checkpoints/epoch=4-step=41370.ckpt","test_only=True"],
-            "args": ["with", "test_case_finetune_mrpc_b"]
+            // "args": ["with", "test_case_finetune_mrpc_b"],
+            "args": ["with", "task_finetune_ref_twotower_deit_electra", "num_gpus=1", "per_gpu_batchsize=5", "load_path=result/mlm_itm_deit_fr_electra_fr_seed0_is224_ps16_bs176_pgbs88_ts100000/version_0/checkpoints/last.ckpt"]
         }
     ]
 }
