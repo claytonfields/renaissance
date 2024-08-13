@@ -710,6 +710,38 @@ def task_finetune_nlvr2_twotower_deit_electra():
     num_cross_layer_heads = 4
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
+    
+@ex.named_config
+def task_finetune_nlvr2_twotower_dino_tinybert():
+    exp_name = "nlvr2_twotower_deit_electra"
+    model_type = "two-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Training Settings
+    batch_size = 256
+    max_epoch = 10
+    max_steps = None
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 5e-5
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    # Text Setting
+    text_encoder = "huawei-noah/TinyBERT_General_4L_312D"
+    max_text_len = 50
+    # Image Settings
+    image_encoder = "facebook/dino-vits16"
+    patch_size = 16
+    image_size = 288
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+    
+    
 
 @ex.named_config
 def task_finetune_vqa_twotower():
@@ -731,6 +763,36 @@ def task_finetune_vqa_twotower():
     # Image Settins
     image_size = 576
 
+@ex.named_config
+def task_finetune_vqa_twotower_deit_electra():
+    exp_name = "vqa_twotower_deit_electra"
+    model_type = "two-tower"
+    datasets = ["vqa"]
+    loss_names = _loss_names({"vqa": 1})
+    batch_size = 512
+    max_epoch = 10
+    max_steps = 1e6
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 5e-6
+    val_check_interval = 0.1
+    lr_mult_head = 50
+    lr_mult_cross_modal = 5
+    # Text Settings
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    # Image Settins
+    image_encoder = "facebook/deit-tiny-patch16-224"
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    image_size = 576
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
 @ex.named_config
 def task_finetune_vqa_twotower_deit_electra():
     exp_name = "vqa_twotower_deit_electra"
@@ -782,6 +844,69 @@ def task_finetune_snli_twotower():
     # DO NOT Freeze Encoders
     freeze_image_encoder = False
     freeze_text_encoder = False
+
+@ex.named_config
+def task_finetune_snli_twotower_dino_tinybert():
+    exp_name = "snli_twotower_dino_tinybert"
+    model_type = "two-tower"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    batch_size = 64
+    max_epoch = 5
+    max_steps = 10e6
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 2e-6
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    image_size = 384
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+
+    # Encoder Settings
+    text_encoder = "huawei-noah/TinyBERT_General_4L_312D"
+    image_encoder = "facebook/dino-vits16"
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+@ex.named_config
+def task_finetune_snli_twotower_deit_electra():
+    exp_name = "snli_twotower_deit_electra"
+    model_type = "two-tower"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    batch_size = 64
+    max_epoch = 5
+    max_steps = 10e6
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 2e-6
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    image_size = 384
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+
+    # Encoder Settings
+    text_encoder = "google/electra-small-discriminator"
+    image_encoder = "facebook/deit-tiny-patch16-224"
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+
     
 @ex.named_config
 def task_finetune_snli_onetower():
