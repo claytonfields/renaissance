@@ -10,6 +10,7 @@ from renaissance.datamodules.multitask_datamodule import MTDataModule
 
 import warnings
 import torch
+import torch.distributed as dist
 
 # import resource
 # rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
@@ -24,7 +25,7 @@ def main(_config):
     pl.seed_everything(_config["seed"])
 
     # print(_config)
-    dm = MTDataModule(_config, dist=False)
+    dm = MTDataModule(_config, dist=True)
 
     model = RenaissanceTransformer(_config)
     
@@ -93,7 +94,15 @@ def main(_config):
 
     max_steps = _config["max_steps"] if _config["max_steps"] is not None else None
     
+    def setup(rank, world_size):
+        os.environ['MASTER_ADDR'] = 'localhost'
+        os.environ['MASTER_PORT'] = '12355'
+    
+        # initialize the process group
+        dist.init_process_group("gloo", rank=rank, world_size=world_size)
+    
     torch.set_float32_matmul_precision('medium')
+    
     
     trainer = pl.Trainer(
         devices= _config["num_gpus"],
@@ -101,7 +110,7 @@ def main(_config):
         precision=_config["precision"],
         accelerator = 'gpu',
         # strategy = 'ddp_notebook',
-        strategy='ddp_find_unused_parameters_true',
+        # strategy='ddp_find_unused_parameters_true',
         # strategy = 'ddp_spawn',
         # strategy='ddp',
         deterministic='warn',

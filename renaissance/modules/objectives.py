@@ -90,6 +90,7 @@ def compute_itm(pl_module, batch):
 #  Must also decide on how to organize batch in dataset and dataloader
 #  
 def compute_ref(pl_module, batch):
+    batch_size = pl_module.hparams.config['per_gpu_batchsize']
     targets = batch[1]
     batch = batch[0]
     logit_list = []
@@ -117,8 +118,8 @@ def compute_ref(pl_module, batch):
     acc = getattr(pl_module, f"{phase}_ref_accuracy")(
         ret["ref_logits"], ret["ref_targets"]
     )
-    pl_module.log(f"ref/{phase}/loss", loss)
-    pl_module.log(f"ref/{phase}/accuracy", acc)
+    pl_module.log(f"ref/{phase}/loss", loss, batch_size=batch_size, sync_dist=True)
+    pl_module.log(f"ref/{phase}/accuracy", acc, batch_size=batch_size, sync_dist=True)
     # pl_module.log(f"ref/{phase}/score", score)
     
     return ret

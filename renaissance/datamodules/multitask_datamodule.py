@@ -42,14 +42,14 @@ class MTDataModule(LightningDataModule):
              self.dms[0].train_dataset.collate, mlm_collator=self.dms[0].mlm_collator,
         )
 
-        if self.dist:
-            self.train_sampler = DistributedSampler(self.train_dataset, shuffle=True)
-            self.val_sampler = DistributedSampler(self.val_dataset, shuffle=True)
-            self.test_sampler = DistributedSampler(self.test_dataset, shuffle=False)
-        else:
-            self.train_sampler = None
-            self.val_sampler = None
-            self.test_sampler = None
+        # if self.dist:
+        #     self.train_sampler = DistributedSampler(self.train_dataset, shuffle=True)
+        #     self.val_sampler = DistributedSampler(self.val_dataset, shuffle=True)
+        #     self.test_sampler = DistributedSampler(self.test_dataset, shuffle=False)
+        # else:
+        #     self.train_sampler = None
+        #     self.val_sampler = None
+        #     self.test_sampler = None
             
         return self.train_dataset
 
@@ -57,7 +57,7 @@ class MTDataModule(LightningDataModule):
         loader = DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
-            sampler=self.train_sampler,
+            # sampler=self.train_sampler,
             num_workers=self.num_workers,
             collate_fn=self.collate,
         )
@@ -67,7 +67,7 @@ class MTDataModule(LightningDataModule):
         loader = DataLoader(
             self.val_dataset,
             batch_size=batch_size if batch_size is not None else self.batch_size,
-            sampler=self.val_sampler,
+            # sampler=self.val_sampler,
             num_workers=self.num_workers,
             collate_fn=self.collate,
         )
@@ -77,7 +77,7 @@ class MTDataModule(LightningDataModule):
         loader = DataLoader(
             self.test_dataset,
             batch_size=self.batch_size,
-            sampler=self.test_sampler,
+            # sampler=self.test_sampler,
             num_workers=self.num_workers,
             collate_fn=self.collate,
         )

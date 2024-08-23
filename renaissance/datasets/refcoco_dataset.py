@@ -43,6 +43,9 @@ class RefcocoDataset(BaseDataset):
     def __getitem__(self, index):
         max_bb = self.max_bb
         image_index, ref_index = self.index_mapper[index]
+        # print("Index: ", index)
+        # print("Image Index: ", image_index)
+        # print("Ref Index: ", ref_index)
         label = self.table["labels"][image_index].as_py()
         image = np.array(self.get_raw_image(index))
         bboxes = self.table['bboxes'][image_index].as_py()
