@@ -479,6 +479,44 @@ def task_mlm_itm_onetower_dinos16():
     
     max_steps = 50000
     
+
+@ex.named_config
+def task_mlm_itm_onetower_vit_base():
+    exp_name = "mlm_itm_onetower_vit_base"
+    seed = 0
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 176  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
+    per_gpu_batchsize = 44
+    
+    test_only=False
+    data_root = 'data/arrow/' 
+    num_gpus=1 
+    num_nodes=1 
+    per_gpu_batchsize=44
+    resume_from = None
+    
+    # Transformer Setting
+    model_type = "one-tower"
+    encoder = "google/vit-base-patch16-224"
+    drop_rate = 0.1
+    
+    # Image setting
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    draw_false_image = 1
+    
+    # Text Setting
+    vocab_size = 30522
+    whole_word_masking = True
+    mlm_prob = 0.15
+    
+    max_steps = 50000
+    max_epoch = None
+    
+    
 @ex.named_config
 def task_mlm_itm_twotower_deit_electra():
     exp_name = "mlm_itm_deit_electra"
@@ -953,6 +991,30 @@ def task_finetune_snli_onetower_electra():
     random_init_encoder = False
     
 @ex.named_config
+def task_finetune_snli_onetower_electra_base():
+    exp_name = "snli_onetower_electra_base"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    batch_size = 64
+    per_gpu_batchsize = 16
+    max_epoch = 5
+    max_steps = 10e6
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 2e-6
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    image_size = 384
+    patch_size = 16
+    # One-tower settings
+    model_type = "one-tower"
+    # encoder_type = 'text'
+    pooler_type = 'double' # 'double' or 'single'
+    encoder = "google/electra-base-discriminator"
+    random_init_encoder = False
+    
+@ex.named_config
 def task_finetune_snli_onetower_swin():
     exp_name = "snli_onetower_swin"
     datasets = ["snli"]
@@ -974,6 +1036,31 @@ def task_finetune_snli_onetower_swin():
     # encoder_type = 'text'
     pooler_type = 'double' # 'double' or 'single'
     encoder = "microsoft/swin-tiny-patch4-window7-224"
+    random_init_encoder = False
+    
+
+@ex.named_config
+def task_finetune_snli_onetower_vit_base():
+    exp_name = "snli_onetower_vit_base"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    batch_size = 64
+    per_gpu_batchsize = 16
+    max_epoch = 5
+    max_steps = 10e6
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 2e-6
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    image_size = 384
+    patch_size = 16
+    # One-tower settings
+    model_type = "one-tower"
+    # encoder_type = 'text'
+    pooler_type = 'double' # 'double' or 'single'
+    encoder = "google/vit-base-patch16-224"
     random_init_encoder = False
     
     
