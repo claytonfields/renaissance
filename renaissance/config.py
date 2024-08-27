@@ -1128,8 +1128,8 @@ def task_finetune_snli_onetower_electra_base():
     
 
 @ex.named_config
-def task_finetune_snli_onetower_electra_base():
-    exp_name = "snli_onetower_electra_base"
+def task_finetune_snli_onetower_bert_base():
+    exp_name = "snli_onetower_bert_base"
     datasets = ["snli"]
     loss_names = _loss_names({"snli": 1})
     batch_size = 64
