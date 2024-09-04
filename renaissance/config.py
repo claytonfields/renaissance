@@ -599,7 +599,7 @@ def task_mlm_itm_twotower_deit_electra():
     
 @ex.named_config
 def task_mlm_itm_twotower_deittiny_electratiny():
-    exp_name = "mlm_itm_deit_electra"
+    exp_name = "mlm_itm_deittiny_electratiny"
     model_type = "two-tower"
     # datasets = ["coco", "vg", "sbu", "gcc"]
     datasets = ["coco", "vg"]
@@ -1057,7 +1057,7 @@ def task_finetune_snli_twotower_deit_electra():
     freeze_text_encoder = False
 
     # Encoder Settings
-    text_encoder = "google/electra-small-discriminator"
+    text_encoder = "claytonfields/electra-tiny"
     image_encoder = "facebook/deit-tiny-patch16-224"
     
     # Cross Layer Settings
