@@ -874,6 +874,37 @@ def task_finetune_nlvr2_twotower_deit_electra():
     cross_layer_drop_rate = 0.1
     
 @ex.named_config
+def task_finetune_nlvr2_twotower_deittiny_electratiny():
+    exp_name = "nlvr2_twotower_deit_electra"
+    model_type = "two-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Training Settings
+    batch_size = 256
+    max_epoch = 10
+    max_steps = None
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 5e-5
+    lr_mult_head = 10
+    lr_mult_cross_modal = 5
+    # Text Setting
+    text_encoder = "claytonfields/electra-tiny"
+    max_text_len = 50
+    # Image Settings
+    image_encoder = "facebook/deit-tiny-patch16-224"
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    patch_size = 16
+    image_size = 288
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+@ex.named_config
 def task_finetune_nlvr2_twotower_dino_tinybert():
     exp_name = "nlvr2_twotower_dinos_tinybert"
     model_type = "two-tower"
