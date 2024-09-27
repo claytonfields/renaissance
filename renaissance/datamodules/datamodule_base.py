@@ -163,10 +163,11 @@ class BaseDataModule(LightningDataModule):
         loader = DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
-            shuffle=True,
+            shuffle=False,
             num_workers=self.num_workers,
-            pin_memory=True,
+            # pin_memory=True,
             collate_fn=self.train_dataset.collate,
+            # drop_last=True
         )
         return loader
 

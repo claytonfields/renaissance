@@ -2,6 +2,7 @@ import os
 import copy
 import pytorch_lightning as pl
 import os
+import sys
 # os.environ["NCCL_DEBUG"] = "INFO"
 
 from renaissance.config import ex
@@ -19,6 +20,11 @@ import torch.distributed as dist
 @ex.automain
 def main(_config):
     
+    
+    
+    print('Running Renaissance vision-language platform with:', file=sys.stderr)
+    print('Task: {exp_name}', file=sys.stderr)
+    
     # warnings.simplefilter("error")
     
     _config = copy.deepcopy(_config)
@@ -33,6 +39,7 @@ def main(_config):
     load_path = _config['load_path']
     exp_name = f'{_config["exp_name"]}'
     seed = _config['seed']
+    log_dir = _config['log_dir']
     
     def parse_load_path(load_path):
         drive, path_and_file = os.path.splitdrive(load_path)
@@ -65,6 +72,17 @@ def main(_config):
     else:
         loaded_model = parse_load_path(load_path)
         result_dir = f"{exp_name}_seed{seed}_from_{loaded_model}"
+        
+    # Info Variables
+    exp_name = _config['exp_name']
+        
+    
+   
+    
+    
+    
+    
+    
     
     os.makedirs(_config["log_dir"], exist_ok=True)
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
@@ -110,7 +128,7 @@ def main(_config):
         precision=_config["precision"],
         accelerator = 'gpu',
         # strategy = 'ddp_notebook',
-        # strategy='ddp_find_unused_parameters_true',
+        strategy='ddp_find_unused_parameters_true',
         # strategy = 'ddp_spawn',
         # strategy='ddp',
         deterministic='warn',
@@ -129,10 +147,14 @@ def main(_config):
             trainer.fit(model, datamodule=dm, ckpt_path=_config["resume_from"])
         else:
             trainer.fit(model, datamodule=dm)
+        
+        # Display location of results
+        print()
+        print('Results can be found in:')
+        print(log_dir + result_dir)
+        print()
+        
     else:
         trainer.test(model, datamodule=dm)
     
-    print()
-    print('Results can be found in:')
-    print('result/'+result_dir)
-    print()
+    

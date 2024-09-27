@@ -16,6 +16,7 @@ from PIL import Image
 import torch
 import numpy as np
 import pyarrow as pa
+import random
 
 '''
 TODO: Integrate all three methods into this dataset.
@@ -36,8 +37,8 @@ class RefcocoDataset(BaseDataset):
         elif split == "test":
             names = ['refcoco_unc_test']
 
-        super().__init__(*args, names=names, text_column_name="sentences", **kwargs)
-        self.filter_table()
+        super().__init__(*args, names=names, text_column_name="sentences", remove_duplicate=False, **kwargs)
+        # self.filter_table()
 
     # Generalize padding funtion for use in different methods
     def __getitem__(self, index):
@@ -46,20 +47,52 @@ class RefcocoDataset(BaseDataset):
         # print("Index: ", index)
         # print("Image Index: ", image_index)
         # print("Ref Index: ", ref_index)
-        label = self.table["labels"][image_index].as_py()
-        image = np.array(self.get_raw_image(index))
-        bboxes = self.table['bboxes'][image_index].as_py()
+        try:
+            label = self.table["labels"][image_index].as_py()
+            image = np.array(self.get_raw_image(index))
+            bboxes = self.table['bboxes'][image_index].as_py()
+        except IndexError:
+            print("Hello World")
+            print("Index: ", index)
+            print("Image Index: ", image_index)
+            print("Ref Index: ", ref_index)
+            return_dict = {
+                # 'ann_id' : ann_id,
+                'image' : [torch.zeros(max_bb,3,self.image_size,self.image_size)],#.to(self.device)],
+                # 'obj_ids' : torch.tensor(obj_ids_total),#.to(self.device),
+                'target' : 0,#.to(self.device),
+                'text' : '',
+                'text_ids' : torch.zeros(max_bb,self.max_text_len,dtype=torch.int8),#.to(self.device),
+                'text_labels' : torch.zeros(max_bb,self.max_text_len,dtype=torch.int8),#.to(self.device),
+                'text_masks' : torch.zeros(max_bb,self.max_text_len,dtype=torch.int8),#.to(self.device)
+            }
+            
+            return return_dict
+            
+        if len(bboxes) > max_bb:
+            truth = bboxes.pop(label)
+            bboxes = random.choices(bboxes, k=max_bb-1)
+            bboxes.append(truth)
+            random.shuffle(bboxes)
+            label = bboxes.index(truth)
+        
         sub_images = []
+        # print("Hello World")
         for bbox in bboxes:
             bbox = [int(b) for b in bbox]
             sub = image[bbox[1]:bbox[1]+bbox[3],bbox[0]:bbox[0]+bbox[2]]
             if sub is not None:
-                sub = self.processor(
-                    sub, 
-                    return_tensors='pt',
-                    size={'height':self.image_size, 'width':self.image_size}
-                )['pixel_values'][0]
-                sub_images.append(sub.unsqueeze(0))
+                try :
+                    sub = self.processor(
+                        sub, 
+                        return_tensors='pt',
+                        size={'height':self.image_size, 'width':self.image_size}
+                    )['pixel_values'][0]
+                    sub_images.append(sub.unsqueeze(0))
+                except ValueError:
+                    print("Index: ", index)
+                    print("Image Index: ", image_index)
+                    print("Ref Index: ", ref_index)
         num_sub_images = len(sub_images)
         num_pad = max_bb - num_sub_images 
         

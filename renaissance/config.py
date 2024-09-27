@@ -95,7 +95,7 @@ def config():
     text_encoder = "google/electra-small-discriminator"
     # Train Text Encoder from Sratch if True
     random_init_text_encoder = False
-    # Manual Text Settings - Ignored unless random_init_text_encoder = True 
+    # Manual Text Settings - Ignored unless random_init_text_encoder = True
     text_encoder_manual_configuration = False
     text_encoder_hidden_size = 192
     text_encoder_num_heads = 4
@@ -736,7 +736,7 @@ def task_mlm_itm_two_tower_dinos_tinybert():
     loss_names = _loss_names({"itm": 1, "mlm": 1})
     batch_size = 256
     max_epoch = None
-    max_steps = 50000
+    max_steps = 100000
     warmup_steps = 0.1
     whole_word_masking = True
     
@@ -756,6 +756,118 @@ def task_mlm_itm_two_tower_dinos_tinybert():
     
     image_encoder = "facebook/dino-vits16"
     text_encoder = "huawei-noah/TinyBERT_General_4L_312D"
+    
+    # Image setting
+    image_size = 224
+    patch_size = 16
+    
+@ex.named_config
+def task_mlm_itm_two_tower_dinos_rnd_tinybert():
+    exp_name = "mlm_itm_dinos_rnd_tinybert"
+    model_type = "two-tower"
+    # datasets = ["coco", "vg", "sbu", "gcc"]
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 256
+    max_epoch = None
+    max_steps = 100000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    
+    vocab_size = 30522
+    max_text_len = 50
+    image_size = 224
+    draw_false_image = 1
+    
+    learning_rate = 1e-5
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    
+    # Encoders
+    num_cross_layers = 6
+    cross_layer_hidden_size = 256
+    
+    image_encoder = "facebook/dino-vits16"
+    text_encoder = "huawei-noah/TinyBERT_General_4L_312D"
+    
+    ## Train Vision encoder model from scratch
+    random_init_vision_encoder = True
+    
+    # Image setting
+    image_size = 224
+    patch_size = 16
+    
+@ex.named_config
+def task_mlm_itm_two_tower_dinos_tinybert_rnd():
+    exp_name = "mlm_itm_dinos_tinybert_rnd"
+    model_type = "two-tower"
+    # datasets = ["coco", "vg", "sbu", "gcc"]
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 256
+    max_epoch = None
+    max_steps = 100000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    
+    vocab_size = 30522
+    max_text_len = 50
+    image_size = 224
+    draw_false_image = 1
+    
+    learning_rate = 1e-5
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    
+    # Encoders
+    num_cross_layers = 6
+    cross_layer_hidden_size = 256
+    
+    image_encoder = "facebook/dino-vits16"
+    text_encoder = "huawei-noah/TinyBERT_General_4L_312D"
+    
+    # Train Text Encoder from Sratch if True
+    random_init_text_encoder = True
+    
+    # Image setting
+    image_size = 224
+    patch_size = 16
+    
+@ex.named_config
+def task_mlm_itm_two_tower_dinos_rnd_tinybert_rnd():
+    exp_name = "mlm_itm_dinos_rnd_tinybert_rnd"
+    model_type = "two-tower"
+    # datasets = ["coco", "vg", "sbu", "gcc"]
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 256
+    max_epoch = None
+    max_steps = 100000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    
+    vocab_size = 30522
+    max_text_len = 50
+    image_size = 224
+    draw_false_image = 1
+    
+    learning_rate = 1e-5
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    
+    # Encoders
+    num_cross_layers = 6
+    cross_layer_hidden_size = 256
+    
+    image_encoder = "facebook/dino-vits16"
+    text_encoder = "huawei-noah/TinyBERT_General_4L_312D"
+    
+    # Train Vision and Text Encoder from Sratch if True
+    random_init_vision_encoder = True
+    random_init_text_encoder = True
     
     # Image setting
     image_size = 224
@@ -875,7 +987,7 @@ def task_finetune_nlvr2_twotower_deit_electra():
     
 @ex.named_config
 def task_finetune_nlvr2_twotower_deittiny_electratiny():
-    exp_name = "nlvr2_twotower_deit_electra"
+    exp_name = "nlvr2_twotower_deittiny_electratiny"
     model_type = "two-tower"
     datasets = ["nlvr2"]
     loss_names = _loss_names({"nlvr2": 1})
@@ -1088,7 +1200,7 @@ def task_finetune_snli_twotower_deit_electra():
     freeze_text_encoder = False
 
     # Encoder Settings
-    text_encoder = "claytonfields/electra-tiny"
+    text_encoder = "google/electra-small-discriminator"
     image_encoder = "facebook/deit-tiny-patch16-224"
     
     # Cross Layer Settings

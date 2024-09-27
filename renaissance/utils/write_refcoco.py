@@ -95,9 +95,6 @@ def write_refcoco(data_root, outfile_root, dataset = 'refcoco', splitBy = 'unc')
     data['annotations'] = instances['annotations']
     data['categories'] = instances['categories']
     
-    # # create index
-    # createIndex()
-    # print ('DONE (t=%.2fs)' % (time.time()-tic)
     
     Anns, Imgs, imgToAnns = {}, {}, {}
     for ann in data['annotations']:
