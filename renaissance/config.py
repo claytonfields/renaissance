@@ -970,11 +970,7 @@ def task_finetune_nlvr2_onetower_vit():
     per_gpu_batchsize = 32
     max_epoch = 40
     max_steps = 10e6
-    warmup_steps = 0.1
     draw_false_image = 0
-    learning_rate = 1e-5
-    lr_mult_head = 15
-    lr_mult_cross_modal = 5
     # Image Size
     image_size = 288
     
@@ -995,11 +991,7 @@ def task_finetune_nlvr2_onetower_bert():
     per_gpu_batchsize = 32
     max_epoch = 40
     max_steps = 10e6
-    warmup_steps = 0.1
     draw_false_image = 0
-    learning_rate = 1e-5
-    lr_mult_head = 15
-    lr_mult_cross_modal = 5
     # Image Size
     image_size = 288
     
