@@ -24,7 +24,7 @@ TODO: Integrate all three methods into this dataset.
 
 
 class RefcocoDataset(BaseDataset):
-    def __init__(self, *args, split="", max_bb = 42, **kwargs):
+    def __init__(self, *args, split="", max_bb = 20, **kwargs):
         assert split in ["train", "val", "test"]
         self.split = split
         self.max_bb = max_bb

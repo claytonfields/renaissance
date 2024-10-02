@@ -378,7 +378,7 @@ class OneTowerEncoder(nn.Module):
     
         text_embeds = self.text_embeddings(text_ids)
         
-        image_embeds = self.image_embeddings(batch['image'][0], interpolate_pos_encoding=True)
+        image_embeds = self.image_embeddings(batch[imgkey][0], interpolate_pos_encoding=True)
         image_masks = torch.ones_like(image_embeds[:,:,0], dtype=torch.long)
 
         text_embeds, image_embeds = (

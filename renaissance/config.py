@@ -934,6 +934,80 @@ def task_finetune_nlvr2():
     lr_mult_cross_modal = 5
     # Image Size
     image_size = 288
+    
+@ex.named_config
+def task_finetune_nlvr2_onetower():
+    exp_name = "nlvr2_onetower"
+    model_type = "one-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Training Settings
+    batch_size = 256
+    per_gpu_batchsize = 32
+    max_epoch = 40
+    max_steps = 10e6
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 1e-5
+    lr_mult_head = 15
+    lr_mult_cross_modal = 5
+    # Image Size
+    image_size = 288
+    
+    learning_rate = 7.5e-5 
+    lr_mult_head = 5 
+    lr_mult_cross_modal = 15 
+    warmup_steps = 0.05
+    
+@ex.named_config
+def task_finetune_nlvr2_onetower_vit():
+    exp_name = "nlvr2_onetower_vit"
+    model_type = "one-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Training Settings
+    batch_size = 256
+    per_gpu_batchsize = 32
+    max_epoch = 40
+    max_steps = 10e6
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 1e-5
+    lr_mult_head = 15
+    lr_mult_cross_modal = 5
+    # Image Size
+    image_size = 288
+    
+    encoder = "google/vit-base-patch16-224"
+    
+    learning_rate = 7.5e-5 
+    lr_mult_head = 5
+    warmup_steps = 0.05
+    
+@ex.named_config
+def task_finetune_nlvr2_onetower_bert():
+    exp_name = "nlvr2_onetower_bert"
+    model_type = "one-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Training Settings
+    batch_size = 256
+    per_gpu_batchsize = 32
+    max_epoch = 40
+    max_steps = 10e6
+    warmup_steps = 0.1
+    draw_false_image = 0
+    learning_rate = 1e-5
+    lr_mult_head = 15
+    lr_mult_cross_modal = 5
+    # Image Size
+    image_size = 288
+    
+    encoder = "google-bert/bert-base-uncased"
+    
+    learning_rate = 7.5e-5 
+    lr_mult_head = 5 
+    warmup_steps = 0.05
 
 @ex.named_config
 def task_finetune_nlvr2_twotower():
@@ -953,6 +1027,7 @@ def task_finetune_nlvr2_twotower():
     # Image Size
     image_size = 288
     
+
 
 @ex.named_config
 def task_finetune_nlvr2_twotower_deit_electra():
