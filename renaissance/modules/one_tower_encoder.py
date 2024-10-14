@@ -294,25 +294,25 @@ class OneTowerEncoder(nn.Module):
                 }
                 hf_config = AutoConfig.from_pretrained(config['encoder'], **encoder_kwargs)
             # Use Default Encoder Dimensions with Random Weights
-            elif not config['manual_configuration']:
+            elif not config['encoder_manual_configuration']:
                 hf_config = AutoConfig.from_pretrained(config['encoder'])
             model = AutoModel.from_config(hf_config)
             self.encoder = model.encoder
             
             image_size = config['image_size']
             max_text_len = config['max_text_len']
-            self.hidden_size = config['hidden_size']
-            self.embedding_size = config['embedding_size']
+            # self.hidden_size = config['hidden_size']
+            # self.embedding_size = config['embedding_size']
         # Use Pretrained Encoder Weights from Huggingface Hub
         else:
             # Download Encoder - Get Dimensions
             model = AutoModel.from_pretrained(config['encoder'])
             self.encoder = model.encoder
-            self.hidden_size = self.encoder.config.hidden_size
-            try:
-                self.embedding_size = self.encoder.config.embedding_size
-            except:
-                self.embedding_size = self.hidden_size
+        self.hidden_size = self.encoder.config.hidden_size
+        try:
+            self.embedding_size = self.encoder.config.embedding_size
+        except:
+            self.embedding_size = self.hidden_size
             
         
         if self.embedding_size != self.hidden_size:

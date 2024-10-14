@@ -884,7 +884,7 @@ def task_mlm_itm_twotower_vitbase_fr_electrabase_fr():
     batch_size = 176
     per_gpu_batchsize = 44
     max_epoch = None
-    max_steps = 50000
+    max_steps = 100000
     warmup_steps = 0.1
     whole_word_masking = True
     model_type = "two-tower"
@@ -907,16 +907,18 @@ def task_mlm_itm_twotower_vitbase_fr_electrabase_fr():
     mlm_prob = 0.15
     draw_false_text = 0
     # Cross Layer Settings
-    cross_layer_hidden_size = 256
+    cross_layer_hidden_size = 512
     num_cross_layers = 6
     num_cross_layer_heads = 4
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
     # Optimizer Settings
-    learning_rate = 1e-5
+    learning_rate = 5e-5
     val_check_interval = 1.0
     lr_mult_head = 5
     lr_mult_cross_modal = 5
+    
+    
 # ===================== Finetuning Tasks===================== #
 @ex.named_config
 def task_finetune_nlvr2():

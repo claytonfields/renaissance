@@ -1,7 +1,7 @@
 import os
 import copy
 import pytorch_lightning as pl
-import os
+# import os
 import sys
 # os.environ["NCCL_DEBUG"] = "INFO"
 
@@ -22,8 +22,7 @@ def main(_config):
     
     
     
-    print('Running Renaissance vision-language platform with:', file=sys.stderr)
-    print('Task: {exp_name}', file=sys.stderr)
+    
     
     # warnings.simplefilter("error")
     
@@ -40,6 +39,43 @@ def main(_config):
     exp_name = f'{_config["exp_name"]}'
     seed = _config['seed']
     log_dir = _config['log_dir']
+    
+    print('\n\n')
+    print('Running Renaissance vision-language platform with:', file=sys.stderr)
+    print(f'Task: {exp_name}', file=sys.stderr)
+    print()
+    print("Model Info")
+    print("Model Type: ", _config['model_type'])
+    if _config['model_type'] == 'one-tower':
+        print("Encoder: ", _config['encoder'])
+        print("Random Init: ", _config['random_init_vision_encoder'])
+        print("Manual Config: ", _config['encoder_manual_configuration'])
+        print("Image Size: ", _config['image_size'])
+        print("Patch Size: ", _config['patch_size'])
+        
+    elif _config['model_type'] == 'two-tower':
+        print("Image Encoder: ", _config['image_encoder'])
+        print("Freeze Image Encoder: ", _config['freeze_image_encoder'])
+        print("Image Enc Random Init: ", _config['random_init_vision_encoder'])
+        print("Image Enc Manual Config: ", _config['image_encoder_manual_configuration'])
+        print("Image Size: ", _config['image_size'])
+        print("Patch Size: ", _config['patch_size'])
+        print("Text Encoder: ", _config['text_encoder'])
+        print("Freeze Text Encoder: ", _config['freeze_text_encoder'])
+        print("Text Enc Random Init: ", _config['random_init_text_encoder'])
+        print("Text Enc Manual Config: ", _config['text_encoder_manual_configuration'])
+        print("Max Text Langth: ", _config['max_text_len'])
+        print("Vocab Size: ", _config['vocab_size'])
+        
+    print()
+    print("Training Info")
+    print("Learning Rate: ", _config['learning_rate'])
+    print("Max Epochs: ", _config['max_epoch'])
+    print("Max Steps: ", _config['max_steps'])
+    print("Warmup Steps: ", _config['warmup_steps'])
+    print("LR Mult Head: ", _config['lr_mult_head'])  
+    print("LR Mult Cross Modal: ", _config['lr_mult_cross_modal'])
+    print('\n\n')
     
     def parse_load_path(load_path):
         drive, path_and_file = os.path.splitdrive(load_path)
@@ -75,13 +111,6 @@ def main(_config):
         
     # Info Variables
     exp_name = _config['exp_name']
-        
-    
-   
-    
-    
-    
-    
     
     
     os.makedirs(_config["log_dir"], exist_ok=True)
@@ -151,7 +180,7 @@ def main(_config):
         # Display location of results
         print()
         print('Results can be found in:')
-        print(log_dir + result_dir)
+        print(os.path.join(log_dir, result_dir))
         print()
         
     else:
