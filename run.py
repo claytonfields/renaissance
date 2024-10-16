@@ -42,13 +42,16 @@ def main(_config):
     
     print('\n\n')
     print('Running Renaissance vision-language platform with:', file=sys.stderr)
+    print()
+    print('Experiment Info')
     print(f'Task: {exp_name}', file=sys.stderr)
+    # print('Log Dir: ', model.logger.log_dir)
     print()
     print("Model Info")
     print("Model Type: ", _config['model_type'])
     if _config['model_type'] == 'one-tower':
         print("Encoder: ", _config['encoder'])
-        print("Random Init: ", _config['random_init_vision_encoder'])
+        print("Random Init: ", _config['random_init_encoder'])
         print("Manual Config: ", _config['encoder_manual_configuration'])
         print("Image Size: ", _config['image_size'])
         print("Patch Size: ", _config['patch_size'])
@@ -180,7 +183,8 @@ def main(_config):
         # Display location of results
         print()
         print('Results can be found in:')
-        print(os.path.join(log_dir, result_dir))
+        # print(os.path.join(log_dir, result_dir))
+        print(model.logger.log_dir)
         print()
         
     else:
