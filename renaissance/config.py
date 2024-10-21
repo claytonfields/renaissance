@@ -881,8 +881,8 @@ def task_mlm_itm_twotower_vitbase_fr_electrabase_fr():
     # datasets = ["coco", "vg", "sbu", "gcc"]
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
-    batch_size = 176
-    per_gpu_batchsize = 44
+    batch_size = 704
+    per_gpu_batchsize = 176
     max_epoch = None
     max_steps = 100000
     warmup_steps = 0.1
@@ -907,13 +907,13 @@ def task_mlm_itm_twotower_vitbase_fr_electrabase_fr():
     mlm_prob = 0.15
     draw_false_text = 0
     # Cross Layer Settings
-    cross_layer_hidden_size = 512
-    num_cross_layers = 6
+    cross_layer_hidden_size = 256
+    num_cross_layers = 10
     num_cross_layer_heads = 4
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
     # Optimizer Settings
-    learning_rate = 5e-5
+    learning_rate = 7.5e-5
     val_check_interval = 1.0
     lr_mult_head = 5
     lr_mult_cross_modal = 5
@@ -1029,15 +1029,19 @@ def task_finetune_nlvr2_twotower_deit_electra():
     model_type = "two-tower"
     datasets = ["nlvr2"]
     loss_names = _loss_names({"nlvr2": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 32 
+    num_nodes = 1 
+    num_gpus = 2 
     # Training Settings
     batch_size = 256
-    max_epoch = 10
-    max_steps = None
-    warmup_steps = 0.1
+    max_epoch = 40  
+    max_steps = 10e6
+    warmup_steps = 0.05
     draw_false_image = 0
-    learning_rate = 5e-5
-    lr_mult_head = 10
-    lr_mult_cross_modal = 5
+    learning_rate = 7.5e-5 
+    lr_mult_head = 5  
+    lr_mult_cross_modal = 15 
     # Text Setting
     text_encoder = "google/electra-small-discriminator"
     max_text_len = 50
@@ -1223,12 +1227,17 @@ def task_finetune_snli_twotower_dino_tinybert():
     model_type = "two-tower"
     datasets = ["snli"]
     loss_names = _loss_names({"snli": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 64  
+    num_nodes = 1 
+    num_gpus = 2
+    # Training Settings
     batch_size = 64
-    max_epoch = 5
+    max_epoch = 10 
     max_steps = 10e6
     warmup_steps = 0.1
     draw_false_image = 0
-    learning_rate = 2e-6
+    learning_rate = 5e-5  
     lr_mult_head = 10
     lr_mult_cross_modal = 5
     max_text_len = 50
@@ -1254,12 +1263,17 @@ def task_finetune_snli_twotower_deit_electra():
     model_type = "two-tower"
     datasets = ["snli"]
     loss_names = _loss_names({"snli": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 64  
+    num_nodes = 1 
+    num_gpus = 2
+    # Training Settings
     batch_size = 64
-    max_epoch = 5
+    max_epoch = 10 
     max_steps = 10e6
     warmup_steps = 0.1
     draw_false_image = 0
-    learning_rate = 2e-6
+    learning_rate = 5e-5  
     lr_mult_head = 10
     lr_mult_cross_modal = 5
     max_text_len = 50
@@ -1530,14 +1544,19 @@ def task_finetune_ref_twotower_deit_electra():
     model_type = "two-tower"
     datasets = ["refcoco"]
     loss_names = _loss_names({"ref": 1})
-    batch_size = 5
-    max_epoch = 5
+    # Hardware Settings
+    num_nodes = 1
+    num_gpus = 2
+    per_gpu_batchsize = 10
+    # Training Setttings
+    batch_size = 60
+    max_epoch = 10
     max_steps = 10e6
-    warmup_steps = 0.1
+    warmup_steps = 0.05
     draw_false_image = 0
-    learning_rate = 2e-6
-    lr_mult_head = 10
-    lr_mult_cross_modal = 5
+    learning_rate = 7.5e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 15
     max_text_len = 40
     image_size = 224
     
