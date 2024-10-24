@@ -213,7 +213,25 @@ def test_two_tower_mlm_itm_manual_config_case_a():
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
     batch_size = 10  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
-    # per_gpu_batchsize = 12
+    # per_gpu_batchsize = 12@ex.named_config
+    def task_mlm_onetower():
+        exp_name = "mlm_onetower"
+        datasets = ["coco", "vg"]
+        loss_names = _loss_names({ "mlm": 1})
+        batch_size = 256
+        max_epoch = None
+        max_steps = 100000
+        warmup_steps = 0.1
+        whole_word_masking = True
+        
+        model_type = "two-tower"
+
+        max_text_len = 50
+        image_size = 224
+        learning_rate = 1e-5
+        val_check_interval = 1.0
+        lr_mult_head = 5
+        lr_mult_cross_modal = 5
     
     test_only=False
     data_root = 'data/arrow/' 
@@ -228,7 +246,25 @@ def test_two_tower_mlm_itm_manual_config_case_a():
     # Image Encoder Setting
     image_encoder = "facebook/deit-tiny-patch16-224"
     # Train Image Encoder from Sratch if True
-    random_init_vision_encoder = True
+    random_init_vision_encoder = True@ex.named_config
+    def task_mlm_onetower():
+        exp_name = "mlm_onetower"
+        datasets = ["coco", "vg"]
+        loss_names = _loss_names({ "mlm": 1})
+        batch_size = 256
+        max_epoch = None
+        max_steps = 100000
+        warmup_steps = 0.1
+        whole_word_masking = True
+        
+        model_type = "two-tower"
+
+        max_text_len = 50
+        image_size = 224
+        learning_rate = 1e-5
+        val_check_interval = 1.0
+        lr_mult_head = 5
+        lr_mult_cross_modal = 5
     ## Manual Configuration
     image_encoder_manual_configuration = True
     image_encoder_hidden_size = 512
@@ -313,7 +349,25 @@ def task_itm_twotower():
     loss_names = _loss_names({"itm": 1})
     batch_size = 256
     max_epoch = None
-    max_steps = 100000
+    max_steps = 100000@ex.named_config
+    def task_mlm_onetower():
+        exp_name = "mlm_onetower"
+        datasets = ["coco", "vg"]
+        loss_names = _loss_names({ "mlm": 1})
+        batch_size = 256
+        max_epoch = None
+        max_steps = 100000
+        warmup_steps = 0.1
+        whole_word_masking = True
+        
+        model_type = "two-tower"
+
+        max_text_len = 50
+        image_size = 224
+        learning_rate = 1e-5
+        val_check_interval = 1.0
+        lr_mult_head = 5
+        lr_mult_cross_modal = 5
     warmup_steps = 0.1
     
     model_type = "two-tower"
@@ -1598,6 +1652,79 @@ def task_finetune_ref_twotower_dinos_tinybert():
     num_cross_layer_heads = 4
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
+    
+@ex.named_config
+def task_finetune_ref_onetower():
+    exp_name = "ref_onetower"
+    model_type = "one-tower"
+    datasets = ["refcoco"]
+    loss_names = _loss_names({"ref": 1})
+    # Hardware Settings
+    num_nodes = 1
+    num_gpus = 2
+    per_gpu_batchsize = 10
+    # Training Setttings
+    batch_size = 60
+    max_epoch = 10
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 7.5e-4
+    lr_mult_head = 5
+    max_text_len = 40
+    image_size = 224
+    
+@ex.named_config
+def task_finetune_ref_onetower_vit_base():
+    exp_name = "ref_onetower_vit_base"
+    model_type = "one-tower"
+    datasets = ["refcoco"]
+    loss_names = _loss_names({"ref": 1})
+    # Hardware Settings
+    num_nodes = 1
+    num_gpus = 2
+    per_gpu_batchsize = 10
+    # Training Setttings
+    batch_size = 60
+    max_epoch = 10
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 7.5e-4
+    lr_mult_head = 5
+    max_text_len = 40
+    image_size = 224
+    # One-tower settings
+    model_type = "one-tower"
+    pooler_type = 'double' # 'double' or 'single'
+    encoder = "google/vit-base-patch16-224"
+    random_init_encoder = False
+    
+@ex.named_config
+def task_finetune_ref_onetower_bert_base():
+    exp_name = "ref_onetower_bert_base"
+    model_type = "one-tower"
+    datasets = ["refcoco"]
+    loss_names = _loss_names({"ref": 1})
+    # Hardware Settings
+    num_nodes = 1
+    num_gpus = 2
+    per_gpu_batchsize = 10
+    # Training Setttings
+    batch_size = 60
+    max_epoch = 10
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 7.5e-4
+    lr_mult_head = 5
+    max_text_len = 40
+    image_size = 224
+    # One-tower settings
+    model_type = "one-tower"
+    pooler_type = 'double' # 'double' or 'single'
+    encoder = "google-bert/bert-base-uncased"
+    random_init_encoder = False
     
 
 @ex.named_config
