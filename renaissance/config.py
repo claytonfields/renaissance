@@ -658,10 +658,10 @@ def task_mlm_itm_twotower_deittiny_electratiny():
     # datasets = ["coco", "vg", "sbu", "gcc"]
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
-    batch_size = 176
-    per_gpu_batchsize = 44
+    batch_size = 704
+    per_gpu_batchsize = 176
     max_epoch = None
-    max_steps = 50000
+    max_steps = 100000
     warmup_steps = 0.1
     whole_word_masking = True
     model_type = "two-tower"
@@ -690,10 +690,10 @@ def task_mlm_itm_twotower_deittiny_electratiny():
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
     # Optimizer Settings
-    learning_rate = 1e-5
+    learning_rate = 7.5e-5
     val_check_interval = 1.0
     lr_mult_head = 5
-    lr_mult_cross_modal = 5
+    lr_mult_cross_modal = 15
 
 @ex.named_config
 def task_mlm_itm_twotower_deit_fr_electra():
