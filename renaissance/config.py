@@ -1120,18 +1120,50 @@ def task_finetune_nlvr2_twotower_deittiny_electratiny():
     loss_names = _loss_names({"nlvr2": 1})
     # Training Settings
     batch_size = 256
-    max_epoch = 10
-    max_steps = None
-    warmup_steps = 0.1
+    max_epoch = 40  
+    max_steps = 10e6
+    warmup_steps = 0.05
     draw_false_image = 0
-    learning_rate = 5e-5
-    lr_mult_head = 10
-    lr_mult_cross_modal = 5
+    learning_rate = 7.5e-5 
+    lr_mult_head = 5  
+    lr_mult_cross_modal = 15 
     # Text Setting
     text_encoder = "claytonfields/electra-tiny"
     max_text_len = 50
     # Image Settings
     image_encoder = "facebook/deit-tiny-patch16-224"
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    patch_size = 16
+    image_size = 288
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+
+    
+@ex.named_config
+def task_finetune_nlvr2_twotower_vitbase_electrabase():
+    exp_name = "nlvr2_twotower_vitbase_electrabase"
+    model_type = "two-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Training Settings
+    batch_size = 256
+    max_epoch = 40  
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 7.5e-5 
+    lr_mult_head = 5  
+    lr_mult_cross_modal = 15 
+    # Text Setting
+    text_encoder = "google/electra-base-discriminator"
+    max_text_len = 50
+    # Image Settings
+    image_encoder = "google/vit-base-patch16-224"
     train_transform_keys = ["imagenet"]
     val_transform_keys = ["imagenet"]
     patch_size = 16
@@ -1354,12 +1386,13 @@ def task_finetune_snli_twotower_deittiny_electratiny():
     model_type = "two-tower"
     datasets = ["snli"]
     loss_names = _loss_names({"snli": 1})
+    # Training Settings
     batch_size = 64
-    max_epoch = 5
+    max_epoch = 10 
     max_steps = 10e6
     warmup_steps = 0.1
     draw_false_image = 0
-    learning_rate = 2e-6
+    learning_rate = 5e-5  
     lr_mult_head = 10
     lr_mult_cross_modal = 5
     max_text_len = 50
@@ -1616,6 +1649,41 @@ def task_finetune_ref_twotower_deit_electra():
     
     # Encoder Settings
     text_encoder = "google/electra-small-discriminator"
+    image_encoder = "facebook/deit-tiny-patch16-224"
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+
+
+@ex.named_config
+def task_finetune_ref_twotower_deittiny_electratiny():
+    exp_name = "ref_twotower_deittiny_electratiny"
+    model_type = "two-tower"
+    datasets = ["refcoco"]
+    loss_names = _loss_names({"ref": 1})
+    # Hardware Settings
+    num_nodes = 1
+    num_gpus = 2
+    per_gpu_batchsize = 10
+    # Training Setttings
+    batch_size = 60
+    max_epoch = 10
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 7.5e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 15
+    max_text_len = 40
+    image_size = 224
+    
+    # Encoder Settings
+    text_encoder = "claytonfields/electra-tiny"
     image_encoder = "facebook/deit-tiny-patch16-224"
     
     # Cross Layer Settings
