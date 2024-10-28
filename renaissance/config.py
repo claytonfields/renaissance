@@ -1658,6 +1658,38 @@ def task_finetune_ref_twotower_deit_electra():
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
     
+@ex.named_config
+def task_finetune_ref_twotower_vitbase_electrabase():
+    exp_name = "ref_twotower_vitbase_electrabase"
+    model_type = "two-tower"
+    datasets = ["refcoco"]
+    loss_names = _loss_names({"ref": 1})
+    # Hardware Settings
+    num_nodes = 1
+    num_gpus = 2
+    per_gpu_batchsize = 10
+    # Training Setttings
+    batch_size = 60
+    max_epoch = 10
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 7.5e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 15
+    max_text_len = 40
+    image_size = 224
+    
+    # Encoder Settings
+    text_encoder = "google/electra-base-discriminator"
+    image_encoder = "google/vit-base-patch16-224"
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
 
 
 @ex.named_config
