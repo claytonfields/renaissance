@@ -246,59 +246,61 @@ def test_two_tower_mlm_itm_manual_config_case_a():
     # Image Encoder Setting
     image_encoder = "facebook/deit-tiny-patch16-224"
     # Train Image Encoder from Sratch if True
-    random_init_vision_encoder = True@ex.named_config
-    def task_mlm_onetower():
-        exp_name = "mlm_onetower"
-        datasets = ["coco", "vg"]
-        loss_names = _loss_names({ "mlm": 1})
-        batch_size = 256
-        max_epoch = None
-        max_steps = 100000
-        warmup_steps = 0.1
-        whole_word_masking = True
-        
-        model_type = "two-tower"
+    random_init_vision_encoder = True
+    
+# @ex.named_config
+# def task_mlm_onetower():
+#     exp_name = "mlm_onetower"
+#     datasets = ["coco", "vg"]
+#     loss_names = _loss_names({ "mlm": 1})
+#     batch_size = 256
+#     max_epoch = None
+#     max_steps = 100000
+#     warmup_steps = 0.1
+#     whole_word_masking = True
+    
+#     model_type = "two-tower"
 
-        max_text_len = 50
-        image_size = 224
-        learning_rate = 1e-5
-        val_check_interval = 1.0
-        lr_mult_head = 5
-        lr_mult_cross_modal = 5
-    ## Manual Configuration
-    image_encoder_manual_configuration = True
-    image_encoder_hidden_size = 512
-    image_encoder_num_heads = 4
-    image_encoder_num_layers = 12
-    image_encoder_mlp_ratio = 4
-    image_encoder_drop_rate = 0.1
-    image_encoder_embedding_size = 128
-    
-    # Image setting
-    image_size = 224
-    patch_size = 16
-    draw_false_image = 1
-    
-    # Text Setting
-    text_encoder = "google/electra-small-discriminator"
-    random_init_text_encoder = True
-    # Manual Text Settings - Ignored unless random_init_text_encoder = True 
-    text_encoder_manual_configuration = True
-    text_encoder_hidden_size = 192
-    text_encoder_num_heads = 4
-    text_encoder_num_layers = 12
-    text_encoder_mlp_ratio = 4
-    text_encoder_drop_rate = 0.1
-    text_encoder_embedding_size = 64
-    max_text_len = 40
-    vocab_size = 30522
-    
-    # MLM/ITM Settings
-    whole_word_masking = False
-    mlm_prob = 0.15
-    draw_false_text = 0
-    
-    max_steps = 10
+#     max_text_len = 50
+#     image_size = 224
+#     learning_rate = 1e-5
+#     val_check_interval = 1.0
+#     lr_mult_head = 5
+#     lr_mult_cross_modal = 5
+# ## Manual Configuration
+# image_encoder_manual_configuration = True
+# image_encoder_hidden_size = 512
+# image_encoder_num_heads = 4
+# image_encoder_num_layers = 12
+# image_encoder_mlp_ratio = 4
+# image_encoder_drop_rate = 0.1
+# image_encoder_embedding_size = 128
+
+# # Image setting
+# image_size = 224
+# patch_size = 16
+# draw_false_image = 1
+
+# # Text Setting
+# text_encoder = "google/electra-small-discriminator"
+# random_init_text_encoder = True
+# # Manual Text Settings - Ignored unless random_init_text_encoder = True 
+# text_encoder_manual_configuration = True
+# text_encoder_hidden_size = 192
+# text_encoder_num_heads = 4
+# text_encoder_num_layers = 12
+# text_encoder_mlp_ratio = 4
+# text_encoder_drop_rate = 0.1
+# text_encoder_embedding_size = 64
+# max_text_len = 40
+# vocab_size = 30522
+
+# # MLM/ITM Settings
+# whole_word_masking = False
+# mlm_prob = 0.15
+# draw_false_text = 0
+
+# max_steps = 10
 
 # ===================== Pretraining Tasks===================== #
 @ex.named_config
@@ -419,6 +421,39 @@ def task_mlm_itm_twotower():
     val_check_interval = 1.0
     lr_mult_head = 5
     lr_mult_cross_modal = 5
+
+@ex.named_config
+def task_mlm_itm_onetower_deitsmall():
+    exp_name = "mlm_itm_onetower_deitsmall"
+    seed = 0
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 704  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
+    per_gpu_batchsize = 176
+    
+    # Transformer Setting
+    model_type = "one-tower"
+    encoder = "facebook/deit-small-distilled-patch16-224"
+    
+    # Image setting
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    
+    # Text Setting
+    max_text_len = 40
+    vocab_size = 30522
+    whole_word_masking = False
+    mlm_prob = 0.15
+    draw_false_text = 0
+    
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    
+    max_steps = 100000
 
 
     
@@ -650,6 +685,46 @@ def task_mlm_itm_twotower_deit_electra():
     val_check_interval = 1.0
     lr_mult_head = 5
     lr_mult_cross_modal = 5
+
+@ex.named_config
+def task_mlm_itm_twotower_deit_electra_exp2():
+    exp_name = "mlm_itm_deit_electra_exp2"
+    model_type = "two-tower"
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 704
+    per_gpu_batchsize = 176
+    max_epoch = None
+    max_steps = 100000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = "facebook/deit-tiny-patch16-224"
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    # Text Setting
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 292
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
     
 @ex.named_config
 def task_mlm_itm_twotower_deittiny_electratiny():
@@ -670,13 +745,9 @@ def task_mlm_itm_twotower_deittiny_electratiny():
     freeze_text_encoder = False
     # Image settings
     image_encoder = "facebook/deit-tiny-patch16-224"
-    train_transform_keys = ["imagenet"]
-    val_transform_keys = ["imagenet"]
     image_size = 224
-    # resolution_before = 224
     patch_size = 16
     draw_false_image = 1
-    image_only = False
     # Text Setting
     text_encoder = "claytonfields/electra-tiny"
     max_text_len = 50
@@ -690,10 +761,10 @@ def task_mlm_itm_twotower_deittiny_electratiny():
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
     # Optimizer Settings
-    learning_rate = 7.5e-5
+    learning_rate = 1e-4
     val_check_interval = 1.0
     lr_mult_head = 5
-    lr_mult_cross_modal = 15
+    lr_mult_cross_modal = 5
 
 @ex.named_config
 def task_mlm_itm_twotower_deit_fr_electra():
