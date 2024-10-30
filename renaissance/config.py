@@ -1199,23 +1199,49 @@ def task_finetune_nlvr2_onetower():
     model_type = "one-tower"
     datasets = ["nlvr2"]
     loss_names = _loss_names({"nlvr2": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 32 
+    num_nodes = 1 
+    num_gpus = 2 
     # Training Settings
     batch_size = 256
-    per_gpu_batchsize = 32
-    max_epoch = 40
+    max_epoch = 40  
     max_steps = 10e6
-    warmup_steps = 0.1
-    draw_false_image = 0
-    learning_rate = 1e-5
-    lr_mult_head = 15
-    lr_mult_cross_modal = 5
-    # Image Size
-    image_size = 288
-    
-    learning_rate = 7.5e-5 
-    lr_mult_head = 5 
-    lr_mult_cross_modal = 15 
     warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5  
+    # Text Setting
+    max_text_len = 50
+    # Image Settings
+    patch_size = 16
+    image_size = 288
+
+@ex.named_config
+def task_finetune_nlvr2_onetower_deitsmall():
+    exp_name = "nlvr2_onetower_deitsmall"
+    model_type = "one-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 32 
+    num_nodes = 1 
+    num_gpus = 2 
+    # Training Settings
+    batch_size = 256
+    max_epoch = 40  
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5  
+    # Text Setting
+    max_text_len = 50
+    # Image Settings
+    patch_size = 16
+    image_size = 288
+    # Encoder Settings
+    encoder = "facebook/deit-small-distilled-patch16-224"
     
 @ex.named_config
 def task_finetune_nlvr2_onetower_vit():
@@ -1595,8 +1621,8 @@ def task_finetune_snli_twotower_deit_electra():
     warmup_steps = 0.1
     draw_false_image = 0
     learning_rate = 5e-5  
-    lr_mult_head = 10
-    lr_mult_cross_modal = 5
+    lr_mult_head = 5
+    lr_mult_cross_modal = 15
     max_text_len = 50
     image_size = 384
     # DO NOT Freeze Encoders
@@ -1633,8 +1659,8 @@ def finetune_snli_twotower_deit_electra_exp2():
     warmup_steps = 0.05
     draw_false_image = 0
     learning_rate = 1e-4
-    lr_mult_head = 15
-    lr_mult_cross_modal = 5
+    lr_mult_head = 5
+    lr_mult_cross_modal = 15
     max_text_len = 50
     image_size = 384
     # DO NOT Freeze Encoders
@@ -1720,20 +1746,52 @@ def task_finetune_snli_onetower():
     exp_name = "snli_onetower"
     datasets = ["snli"]
     loss_names = _loss_names({"snli": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 64  
+    num_nodes = 1 
+    num_gpus = 2
+    # Training Settings
     batch_size = 64
-    per_gpu_batchsize = 64
-    max_epoch = 5
+    max_epoch = 10 
     max_steps = 10e6
-    warmup_steps = 0.1
+    warmup_steps = 0.05
     draw_false_image = 0
-    learning_rate = 2e-6
-    lr_mult_head = 10
-    max_text_len = 5
+    learning_rate = 1e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 15
+    max_text_len = 50
     image_size = 384
     patch_size = 16
     # One-tower settings
     model_type = "one-tower"
     # encoder_type = 'text'
+    pooler_type = 'double' # 'double' or 'single'
+    random_init_encoder = False
+    
+@ex.named_config
+def task_finetune_snli_onetower_deitsmall():
+    exp_name = "snli_onetower_deitsmall"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 64  
+    num_nodes = 1 
+    num_gpus = 2
+    # Training Settings
+    batch_size = 64
+    max_epoch = 10 
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 15
+    max_text_len = 50
+    image_size = 384
+    patch_size = 16
+    # One-tower settings
+    encoder = "facebook/deit-small-distilled-patch16-224"
+    model_type = "one-tower"
     pooler_type = 'double' # 'double' or 'single'
     random_init_encoder = False
     
@@ -2080,6 +2138,30 @@ def task_finetune_ref_onetower():
     lr_mult_head = 5
     max_text_len = 40
     image_size = 224
+    
+    
+@ex.named_config
+def task_finetune_ref_onetower_deitsmall():
+    exp_name = "ref_onetower_deitsmall"
+    model_type = "one-tower"
+    datasets = ["refcoco"]
+    loss_names = _loss_names({"ref": 1})
+    # Hardware Settings
+    num_nodes = 1
+    num_gpus = 2
+    per_gpu_batchsize = 10
+    # Training Setttings
+    batch_size = 60
+    max_epoch = 10
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 7.5e-4
+    lr_mult_head = 5
+    max_text_len = 40
+    image_size = 224
+    # Encoder Settings
+    encoder = "facebook/deit-small-distilled-patch16-224"
     
 @ex.named_config
 def task_finetune_ref_onetower_vit_base():
