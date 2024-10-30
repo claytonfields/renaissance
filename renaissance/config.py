@@ -858,8 +858,8 @@ def task_mlm_itm_twotower_deittiny_electratiny():
     lr_mult_cross_modal = 5
     
 @ex.named_config
-def task_mlm_itm_twotower_deittiny_swintiny():
-    exp_name = "mlm_itm_deittiny_swintiny"
+def task_mlm_itm_twotower_electrasmall_swintiny():
+    exp_name = "mlm_itm_electrasmall_swintiny"
     model_type = "two-tower"
     # datasets = ["coco", "vg", "sbu", "gcc"]
     datasets = ["coco", "vg"]
