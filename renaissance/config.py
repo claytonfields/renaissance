@@ -396,10 +396,81 @@ def task_mlm_itm():
     draw_false_image = 1
     max_text_len = 50
     image_size = 224
-    learning_rate = 5e-5
+    learning_rate = 1e-4
     val_check_interval = 1.0
     lr_mult_head = 5
     lr_mult_cross_modal = 5
+    
+@ex.named_config
+def task_mlm_itm_onetower():
+    exp_name = "mlm_itm"
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 256
+    max_epoch = None
+    max_steps = 100000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    
+    draw_false_image = 1
+    max_text_len = 50
+    image_size = 224
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    
+    # Transformer Setting
+    model_type = "one-tower"
+    
+@ex.named_config
+def task_one_tower_mlm_itm_manual_config_electra_exp1():
+    exp_name = "test_one_tower_mlm_itm_manual_config_case_a"
+    seed = 0
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 704
+    per_gpu_batchsize = 176
+    num_gpus=2
+    num_nodes=1 
+    
+    max_epoch = None
+    max_steps = 100000
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    warmup_steps = 0.1
+    
+    # Transformer Setting
+    model_type = "one-tower"
+    encoder = "google/electra-base-discriminator"
+    # Train encoder model from scratch
+    random_init_encoder = True
+    ## Manual Configuration
+    encoder_manual_configuration = True
+    hidden_size = 448
+    num_heads = 4
+    num_layers = 12
+    mlp_ratio = 4
+    drop_rate = 0.1
+    embedding_size = 128
+    
+    # Image setting
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    
+    # Text Setting
+    max_text_len = 40
+    tokenizer = "bert-base-uncased"
+    vocab_size = 30522
+    whole_word_masking = True
+    mlm_prob = 0.15
+    draw_false_text = 0
+    
+    
     
 @ex.named_config
 def task_mlm_itm_twotower():
@@ -417,7 +488,7 @@ def task_mlm_itm_twotower():
     draw_false_image = 1
     max_text_len = 50
     image_size = 224
-    learning_rate = 1e-5
+    learning_rate = 1e-4
     val_check_interval = 1.0
     lr_mult_head = 5
     lr_mult_cross_modal = 5
@@ -571,25 +642,16 @@ def task_mlm_itm_onetower_dinos16():
     seed = 0
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
-    batch_size = 176  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
-    per_gpu_batchsize = 44
-    
-    test_only=False
-    data_root = 'data/arrow/' 
-    num_gpus=1 
+    batch_size = 704  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
+    per_gpu_batchsize = 176
+    num_gpus=2 
     num_nodes=1 
-    # per_gpu_batchsize=44
-    resume_from = None
-    
     # Transformer Setting
     model_type = "one-tower"
     encoder = "facebook/dino-vits16"
     
     # Image setting
-    train_transform_keys = ["imagenet"]
-    val_transform_keys = ["imagenet"]
     image_size = 224
-    # max_image_len = -1
     patch_size = 16
     draw_false_image = 1
     image_only = False
@@ -598,11 +660,40 @@ def task_mlm_itm_onetower_dinos16():
     max_text_len = 50
     tokenizer = "bert-base-uncased"
     vocab_size = 30522
-    whole_word_masking = False
+    whole_word_masking = True
     mlm_prob = 0.15
     draw_false_text = 0
     
-    max_steps = 50000
+    max_steps = 100000
+    
+@ex.named_config
+def task_mlm_itm_onetower_swinsmall():
+    exp_name = "mlm_itm_onetower_swinsmall"
+    seed = 0
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 704  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
+    per_gpu_batchsize = 176
+    num_gpus=2 
+    num_nodes=1 
+    # Transformer Setting
+    model_type = "one-tower"
+    encoder = "microsoft/swin-small-patch4-window7-224"
+    
+    # Image setting
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    
+    # Text Setting
+    max_text_len = 50
+    tokenizer = "bert-base-uncased"
+    vocab_size = 30522
+    whole_word_masking = True
+    mlm_prob = 0.15
+    draw_false_text = 0
+    
+    max_steps = 100000
     
 
 @ex.named_config
@@ -757,6 +848,46 @@ def task_mlm_itm_twotower_deittiny_electratiny():
     # Cross Layer Settings
     cross_layer_hidden_size = 256
     num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    
+@ex.named_config
+def task_mlm_itm_twotower_deittiny_swintiny():
+    exp_name = "mlm_itm_deittiny_swintiny"
+    model_type = "two-tower"
+    # datasets = ["coco", "vg", "sbu", "gcc"]
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 704
+    per_gpu_batchsize = 176
+    max_epoch = None
+    max_steps = 100000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = "microsoft/swin-tiny-patch4-window7-224"
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    # Text Setting
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 7
     num_cross_layer_heads = 4
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
