@@ -161,150 +161,10 @@ def config():
     
 
 # ===================== Current Test Cases ===================== #
-@ex.named_config
-def test_one_tower_mlm_itm_manual_config_case_a():
-    exp_name = "test_one_tower_mlm_itm_manual_config_case_a"
-    seed = 0
-    datasets = ["coco", "vg"]
-    loss_names = _loss_names({"itm": 1, "mlm": 1})
-    batch_size = 10  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
-    # per_gpu_batchsize = 12
-    
-    test_only=False
-    data_root = 'data/arrow/' 
-    num_gpus=1 
-    num_nodes=1 
-    per_gpu_batchsize=2
-    resume_from = None
-    
-    # Transformer Setting
-    model_type = "one-tower"
-    encoder = "google/electra-small-discriminator"
-    # Train encoder model from scratch
-    random_init_encoder = True
-    ## Manual Configuration
-    encoder_manual_configuration = True
-    hidden_size = 192
-    num_heads = 4
-    num_layers = 12
-    mlp_ratio = 4
-    drop_rate = 0.1
-    embedding_size = 96
-    
-    # Image setting
-    image_size = 224
-    patch_size = 16
-    draw_false_image = 1
-    
-    # Text Setting
-    max_text_len = 40
-    tokenizer = "bert-base-uncased"
-    vocab_size = 30522
-    whole_word_masking = False
-    mlm_prob = 0.15
-    draw_false_text = 0
-    
-    max_steps = 10
-    
-@ex.named_config
-def test_two_tower_mlm_itm_manual_config_case_a():
-    exp_name = "test_one_tower_mlm_itm_manual_config_case_a"
-    seed = 0
-    datasets = ["coco", "vg"]
-    loss_names = _loss_names({"itm": 1, "mlm": 1})
-    batch_size = 10  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
-    # per_gpu_batchsize = 12@ex.named_config
-    def task_mlm_onetower():
-        exp_name = "mlm_onetower"
-        datasets = ["coco", "vg"]
-        loss_names = _loss_names({ "mlm": 1})
-        batch_size = 256
-        max_epoch = None
-        max_steps = 100000
-        warmup_steps = 0.1
-        whole_word_masking = True
-        
-        model_type = "two-tower"
-
-        max_text_len = 50
-        image_size = 224
-        learning_rate = 1e-5
-        val_check_interval = 1.0
-        lr_mult_head = 5
-        lr_mult_cross_modal = 5
-    
-    test_only=False
-    data_root = 'data/arrow/' 
-    num_gpus=1 
-    num_nodes=1 
-    per_gpu_batchsize=2
-    resume_from = None
-    
-    ## Model-Type
-    model_type = "two-tower"
-    
-    # Image Encoder Setting
-    image_encoder = "facebook/deit-tiny-patch16-224"
-    # Train Image Encoder from Sratch if True
-    random_init_vision_encoder = True
-    
-# @ex.named_config
-# def task_mlm_onetower():
-#     exp_name = "mlm_onetower"
-#     datasets = ["coco", "vg"]
-#     loss_names = _loss_names({ "mlm": 1})
-#     batch_size = 256
-#     max_epoch = None
-#     max_steps = 100000
-#     warmup_steps = 0.1
-#     whole_word_masking = True
-    
-#     model_type = "two-tower"
-
-#     max_text_len = 50
-#     image_size = 224
-#     learning_rate = 1e-5
-#     val_check_interval = 1.0
-#     lr_mult_head = 5
-#     lr_mult_cross_modal = 5
-# ## Manual Configuration
-# image_encoder_manual_configuration = True
-# image_encoder_hidden_size = 512
-# image_encoder_num_heads = 4
-# image_encoder_num_layers = 12
-# image_encoder_mlp_ratio = 4
-# image_encoder_drop_rate = 0.1
-# image_encoder_embedding_size = 128
-
-# # Image setting
-# image_size = 224
-# patch_size = 16
-# draw_false_image = 1
-
-# # Text Setting
-# text_encoder = "google/electra-small-discriminator"
-# random_init_text_encoder = True
-# # Manual Text Settings - Ignored unless random_init_text_encoder = True 
-# text_encoder_manual_configuration = True
-# text_encoder_hidden_size = 192
-# text_encoder_num_heads = 4
-# text_encoder_num_layers = 12
-# text_encoder_mlp_ratio = 4
-# text_encoder_drop_rate = 0.1
-# text_encoder_embedding_size = 64
-# max_text_len = 40
-# vocab_size = 30522
-
-# # MLM/ITM Settings
-# whole_word_masking = False
-# mlm_prob = 0.15
-# draw_false_text = 0
-
-# max_steps = 10
 
 # ===================== Pretraining Tasks===================== #
 @ex.named_config
-def task_mlm():
+def pretrain_mlm():
     exp_name = "mlm"
     datasets = ["coco", "vg"]
     loss_names = _loss_names({ "mlm": 1})
@@ -324,7 +184,7 @@ def task_mlm():
     lr_mult_cross_modal = 5
     
 @ex.named_config
-def task_mlm_onetower():
+def pretrain_mlm_onetower():
     exp_name = "mlm_onetower"
     datasets = ["coco", "vg"]
     loss_names = _loss_names({ "mlm": 1})
@@ -345,31 +205,13 @@ def task_mlm_onetower():
 
 
 @ex.named_config
-def task_itm_twotower():
+def pretrain_itm_twotower():
     exp_name = "mlm_itm"
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1})
     batch_size = 256
     max_epoch = None
-    max_steps = 100000@ex.named_config
-    def task_mlm_onetower():
-        exp_name = "mlm_onetower"
-        datasets = ["coco", "vg"]
-        loss_names = _loss_names({ "mlm": 1})
-        batch_size = 256
-        max_epoch = None
-        max_steps = 100000
-        warmup_steps = 0.1
-        whole_word_masking = True
-        
-        model_type = "two-tower"
-
-        max_text_len = 50
-        image_size = 224
-        learning_rate = 1e-5
-        val_check_interval = 1.0
-        lr_mult_head = 5
-        lr_mult_cross_modal = 5
+    max_steps = 100000
     warmup_steps = 0.1
     
     model_type = "two-tower"
@@ -383,7 +225,7 @@ def task_itm_twotower():
     lr_mult_cross_modal = 5
 
 @ex.named_config
-def task_mlm_itm():
+def pretrain_mlm_itm():
     exp_name = "mlm_itm"
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
@@ -402,7 +244,7 @@ def task_mlm_itm():
     lr_mult_cross_modal = 5
     
 @ex.named_config
-def task_mlm_itm_onetower():
+def pretrain_mlm_itm_onetower():
     exp_name = "mlm_itm"
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
@@ -424,8 +266,8 @@ def task_mlm_itm_onetower():
     model_type = "one-tower"
     
 @ex.named_config
-def task_one_tower_mlm_itm_manual_config_electra_exp1():
-    exp_name = "test_one_tower_mlm_itm_manual_config_case_a"
+def pretrain_onetower_mlm_itm_manual_config_electra_exp1():
+    exp_name = "test_onetower_mlm_itm__manual_config_electra_exp1"
     seed = 0
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
@@ -473,7 +315,7 @@ def task_one_tower_mlm_itm_manual_config_electra_exp1():
     
     
 @ex.named_config
-def task_mlm_itm_twotower():
+def pretrain_mlm_itm_twotower():
     exp_name = "mlm_itm"
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
@@ -494,7 +336,7 @@ def task_mlm_itm_twotower():
     lr_mult_cross_modal = 5
 
 @ex.named_config
-def task_mlm_itm_onetower_deitsmall():
+def pretrain_mlm_itm_onetower_deitsmall():
     exp_name = "mlm_itm_onetower_deitsmall"
     seed = 0
     datasets = ["coco", "vg"]
@@ -529,7 +371,7 @@ def task_mlm_itm_onetower_deitsmall():
 
     
 @ex.named_config
-def task_mlm_itm_onetower_electra():
+def pretrain_mlm_itm_onetower_electra():
     exp_name = "mlm_itm_onetower_electra_small"
     seed = 0
     datasets = ["coco", "vg"]
@@ -564,7 +406,7 @@ def task_mlm_itm_onetower_electra():
     max_steps = 50000
     
 @ex.named_config
-def task_mlm_itm_onetower_electra_base():
+def pretrain_mlm_itm_onetower_electra_base():
     exp_name = "mlm_itm_onetower_electra_base"
     seed = 0
     datasets = ["coco", "vg"]
@@ -600,7 +442,7 @@ def task_mlm_itm_onetower_electra_base():
     max_epoch = None
     
 @ex.named_config
-def task_mlm_itm_onetower_bert_base():
+def pretrain_mlm_itm_onetower_bert_base():
     exp_name = "mlm_itm_onetower_bert_base"
     seed = 0
     datasets = ["coco", "vg"]
@@ -637,7 +479,7 @@ def task_mlm_itm_onetower_bert_base():
     
 
 @ex.named_config
-def task_mlm_itm_onetower_dinos16():
+def pretrain_mlm_itm_onetower_dinos16():
     exp_name = "mlm_itm_onetower_dinos16"
     seed = 0
     datasets = ["coco", "vg"]
@@ -667,7 +509,7 @@ def task_mlm_itm_onetower_dinos16():
     max_steps = 100000
     
 @ex.named_config
-def task_mlm_itm_onetower_swinsmall():
+def pretrain_mlm_itm_onetower_swinsmall():
     exp_name = "mlm_itm_onetower_swinsmall"
     seed = 0
     datasets = ["coco", "vg"]
@@ -697,7 +539,7 @@ def task_mlm_itm_onetower_swinsmall():
     
 
 @ex.named_config
-def task_mlm_itm_onetower_vit_base():
+def pretrain_mlm_itm_onetower_vit_base():
     exp_name = "mlm_itm_onetower_vit_base"
     seed = 0
     datasets = ["coco", "vg"]
@@ -734,7 +576,7 @@ def task_mlm_itm_onetower_vit_base():
     
     
 @ex.named_config
-def task_mlm_itm_twotower_deit_electra():
+def pretrain_mlm_itm_twotower_deit_electra():
     exp_name = "mlm_itm_deit_electra"
     model_type = "two-tower"
     # datasets = ["coco", "vg", "sbu", "gcc"]
@@ -778,7 +620,7 @@ def task_mlm_itm_twotower_deit_electra():
     lr_mult_cross_modal = 5
 
 @ex.named_config
-def task_mlm_itm_twotower_deit_electra_exp2():
+def pretrain_mlm_itm_twotower_deit_electra_exp2():
     exp_name = "mlm_itm_deit_electra_exp2"
     model_type = "two-tower"
     datasets = ["coco", "vg"]
@@ -818,7 +660,7 @@ def task_mlm_itm_twotower_deit_electra_exp2():
     lr_mult_cross_modal = 5
     
 @ex.named_config
-def task_mlm_itm_twotower_deittiny_electratiny():
+def pretrain_mlm_itm_twotower_deittiny_electratiny():
     exp_name = "mlm_itm_deittiny_electratiny"
     model_type = "two-tower"
     # datasets = ["coco", "vg", "sbu", "gcc"]
@@ -858,7 +700,7 @@ def task_mlm_itm_twotower_deittiny_electratiny():
     lr_mult_cross_modal = 5
     
 @ex.named_config
-def task_mlm_itm_twotower_electrasmall_swintiny():
+def pretrain_mlm_itm_twotower_electrasmall_swintiny():
     exp_name = "mlm_itm_electrasmall_swintiny"
     model_type = "two-tower"
     # datasets = ["coco", "vg", "sbu", "gcc"]
@@ -896,9 +738,11 @@ def task_mlm_itm_twotower_electrasmall_swintiny():
     val_check_interval = 1.0
     lr_mult_head = 5
     lr_mult_cross_modal = 5
+    
+
 
 @ex.named_config
-def task_mlm_itm_twotower_deit_fr_electra():
+def pretrain_mlm_itm_twotower_deit_fr_electra():
     exp_name = "mlm_itm_deit_fr_electra"
     model_type = "two-tower"
     # datasets = ["coco", "vg", "sbu", "gcc"]
@@ -927,7 +771,7 @@ def task_mlm_itm_twotower_deit_fr_electra():
     num_cross_layers = 6
     
 @ex.named_config
-def task_mlm_itm_twotower_deit_electra_fr():
+def pretrain_mlm_itm_twotower_deit_electra_fr():
     exp_name = "mlm_itm_deit_electra_fr"
     model_type = "two-tower"
     # datasets = ["coco", "vg", "sbu", "gcc"]
@@ -956,7 +800,7 @@ def task_mlm_itm_twotower_deit_electra_fr():
     num_cross_layers = 6
 
 @ex.named_config
-def task_mlm_itm_twotower_deit_fr_electra_fr():
+def pretrain_mlm_itm_twotower_deit_fr_electra_fr():
     exp_name = "mlm_itm_deit_fr_electra_fr"
     model_type = "two-tower"
     # datasets = ["coco", "vg", "sbu", "gcc"]
@@ -984,7 +828,7 @@ def task_mlm_itm_twotower_deit_fr_electra_fr():
     num_cross_layers = 6
     
 @ex.named_config
-def task_mlm_itm_two_tower_dinos_tinybert():
+def pretrain_mlm_itm_two_tower_dinos_tinybert():
     exp_name = "mlm_itm_dinos_tinybert"
     model_type = "two-tower"
     # datasets = ["coco", "vg", "sbu", "gcc"]
@@ -1018,7 +862,7 @@ def task_mlm_itm_two_tower_dinos_tinybert():
     patch_size = 16
     
 @ex.named_config
-def task_mlm_itm_two_tower_dinos_rnd_tinybert():
+def pretrain_mlm_itm_two_tower_dinos_rnd_tinybert():
     exp_name = "mlm_itm_dinos_rnd_tinybert"
     model_type = "two-tower"
     # datasets = ["coco", "vg", "sbu", "gcc"]
@@ -1055,7 +899,7 @@ def task_mlm_itm_two_tower_dinos_rnd_tinybert():
     patch_size = 16
     
 @ex.named_config
-def task_mlm_itm_two_tower_dinos_tinybert_rnd():
+def pretrain_mlm_itm_two_tower_dinos_tinybert_rnd():
     exp_name = "mlm_itm_dinos_tinybert_rnd"
     model_type = "two-tower"
     # datasets = ["coco", "vg", "sbu", "gcc"]
@@ -1092,7 +936,7 @@ def task_mlm_itm_two_tower_dinos_tinybert_rnd():
     patch_size = 16
     
 @ex.named_config
-def task_mlm_itm_two_tower_dinos_rnd_tinybert_rnd():
+def pretrain_mlm_itm_two_tower_dinos_rnd_tinybert_rnd():
     exp_name = "mlm_itm_dinos_rnd_tinybert_rnd"
     model_type = "two-tower"
     # datasets = ["coco", "vg", "sbu", "gcc"]
@@ -1131,7 +975,7 @@ def task_mlm_itm_two_tower_dinos_rnd_tinybert_rnd():
     
     
 @ex.named_config
-def task_mlm_itm_twotower_vitbase_fr_electrabase_fr():
+def pretrain_mlm_itm_twotower_vitbase_fr_electrabase_fr():
     exp_name = "mlm_itm_twotower_vitbase_fr_electrabase_fr"
     model_type = "two-tower"
     # datasets = ["coco", "vg", "sbu", "gcc"]
@@ -1177,7 +1021,7 @@ def task_mlm_itm_twotower_vitbase_fr_electrabase_fr():
     
 # ===================== Finetuning Tasks===================== #
 @ex.named_config
-def task_finetune_nlvr2():
+def finetune_nlvr2():
     exp_name = "nlvr2"
     datasets = ["nlvr2"]
     loss_names = _loss_names({"nlvr2": 1})
@@ -1194,7 +1038,7 @@ def task_finetune_nlvr2():
     image_size = 288
     
 @ex.named_config
-def task_finetune_nlvr2_onetower():
+def finetune_nlvr2_onetower():
     exp_name = "nlvr2_onetower"
     model_type = "one-tower"
     datasets = ["nlvr2"]
@@ -1218,7 +1062,7 @@ def task_finetune_nlvr2_onetower():
     image_size = 288
 
 @ex.named_config
-def task_finetune_nlvr2_onetower_deitsmall():
+def finetune_nlvr2_onetower_deitsmall():
     exp_name = "nlvr2_onetower_deitsmall"
     model_type = "one-tower"
     datasets = ["nlvr2"]
@@ -1242,9 +1086,47 @@ def task_finetune_nlvr2_onetower_deitsmall():
     image_size = 288
     # Encoder Settings
     encoder = "facebook/deit-small-distilled-patch16-224"
-    
+
+
 @ex.named_config
-def task_finetune_nlvr2_onetower_vit():
+def finetune_nlvr2_onetower_manual_config_electrabase_exp1():
+    exp_name = "nlvr2_onetower__manual_config_electrabase_exp1"
+    model_type = "one-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 32 
+    num_nodes = 1 
+    num_gpus = 2 
+    # Training Settings
+    batch_size = 256
+    max_epoch = 40  
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5  
+    # Text Setting
+    max_text_len = 50
+    # Image Settings
+    patch_size = 16
+    image_size = 288
+    # Encoder Settings
+    model_type = "one-tower"
+    encoder = "google/electra-base-discriminator"
+    # Train encoder model from scratch
+    random_init_encoder = True
+    ## Manual Configuration
+    encoder_manual_configuration = True
+    hidden_size = 448
+    num_heads = 4
+    num_layers = 12
+    mlp_ratio = 4
+    drop_rate = 0.1
+    embedding_size = 128
+
+@ex.named_config
+def finetune_nlvr2_onetower_vit():
     exp_name = "nlvr2_onetower_vit"
     model_type = "one-tower"
     datasets = ["nlvr2"]
@@ -1265,7 +1147,7 @@ def task_finetune_nlvr2_onetower_vit():
     warmup_steps = 0.05
     
 @ex.named_config
-def task_finetune_nlvr2_onetower_bert():
+def finetune_nlvr2_onetower_bert():
     exp_name = "nlvr2_onetower_bert"
     model_type = "one-tower"
     datasets = ["nlvr2"]
@@ -1286,7 +1168,7 @@ def task_finetune_nlvr2_onetower_bert():
     warmup_steps = 0.05
 
 @ex.named_config
-def task_finetune_nlvr2_twotower():
+def finetune_nlvr2_twotower():
     exp_name = "nlvr2_twotower"
     model_type = "two-tower"
     datasets = ["nlvr2"]
@@ -1306,7 +1188,7 @@ def task_finetune_nlvr2_twotower():
 
 
 @ex.named_config
-def task_finetune_nlvr2_twotower_deit_electra():
+def finetune_nlvr2_twotower_deit_electra():
     exp_name = "nlvr2_twotower_deit_electra"
     model_type = "two-tower"
     datasets = ["nlvr2"]
@@ -1341,7 +1223,7 @@ def task_finetune_nlvr2_twotower_deit_electra():
     cross_layer_drop_rate = 0.1
     
 @ex.named_config
-def task_finetune_nlvr2_twotower_deit_electra_exp2():
+def finetune_nlvr2_twotower_deit_electra_exp2():
     exp_name = "nlvr2_twotower_deit_electra_exp2"
     model_type = "two-tower"
     datasets = ["nlvr2"]
@@ -1373,8 +1255,42 @@ def task_finetune_nlvr2_twotower_deit_electra_exp2():
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
     
+
 @ex.named_config
-def task_finetune_nlvr2_twotower_deittiny_electratiny():
+def finetune_nlvr2_twotower_electrasmall_swintiny():
+    exp_name = "nlvr2_twotower_electrasmall_swintiny"
+    model_type = "two-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 32 
+    num_nodes = 1 
+    num_gpus = 2 
+    # Training Settings
+    batch_size = 256
+    max_epoch = 40  
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5  
+    lr_mult_cross_modal = 15 
+    # Text Setting
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    # Image Settings
+    image_encoder = "microsoft/swin-tiny-patch4-window7-224"
+    patch_size = 16
+    image_size = 288
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 7
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+@ex.named_config
+def finetune_nlvr2_twotower_deittiny_electratiny():
     exp_name = "nlvr2_twotower_deittiny_electratiny"
     model_type = "two-tower"
     datasets = ["nlvr2"]
@@ -1406,7 +1322,7 @@ def task_finetune_nlvr2_twotower_deittiny_electratiny():
 
     
 @ex.named_config
-def task_finetune_nlvr2_twotower_vitbase_electrabase():
+def finetune_nlvr2_twotower_vitbase_electrabase():
     exp_name = "nlvr2_twotower_vitbase_electrabase"
     model_type = "two-tower"
     datasets = ["nlvr2"]
@@ -1437,7 +1353,7 @@ def task_finetune_nlvr2_twotower_vitbase_electrabase():
     cross_layer_drop_rate = 0.1
     
 @ex.named_config
-def task_finetune_nlvr2_twotower_dino_tinybert():
+def finetune_nlvr2_twotower_dino_tinybert():
     exp_name = "nlvr2_twotower_dinos_tinybert"
     model_type = "two-tower"
     datasets = ["nlvr2"]
@@ -1469,7 +1385,7 @@ def task_finetune_nlvr2_twotower_dino_tinybert():
     
 
 @ex.named_config
-def task_finetune_vqa_twotower():
+def finetune_vqa_twotower():
     exp_name = "vqa_twotower"
     model_type = "two-tower"
     datasets = ["vqa"]
@@ -1489,7 +1405,7 @@ def task_finetune_vqa_twotower():
     image_size = 576
 
 @ex.named_config
-def task_finetune_vqa_twotower_deit_electra():
+def finetune_vqa_twotower_deit_electra():
     exp_name = "vqa_twotower_deit_electra"
     model_type = "two-tower"
     datasets = ["vqa"]
@@ -1519,7 +1435,7 @@ def task_finetune_vqa_twotower_deit_electra():
     cross_layer_drop_rate = 0.1
     
 @ex.named_config
-def task_finetune_vqa_twotower_dinos_tinybert():
+def finetune_vqa_twotower_dinos_tinybert():
     exp_name = "vqa_twotower_dinos_tinybert"
     model_type = "two-tower"
     datasets = ["vqa"]
@@ -1549,7 +1465,7 @@ def task_finetune_vqa_twotower_dinos_tinybert():
     cross_layer_drop_rate = 0.1
 
 @ex.named_config
-def task_finetune_snli_twotower():
+def finetune_snli_twotower():
     exp_name = "snli_twotower"
     model_type = "two-tower"
     datasets = ["snli"]
@@ -1569,7 +1485,7 @@ def task_finetune_snli_twotower():
     freeze_text_encoder = False
 
 @ex.named_config
-def task_finetune_snli_twotower_dino_tinybert():
+def finetune_snli_twotower_dino_tinybert():
     exp_name = "snli_twotower_dino_tinybert"
     model_type = "two-tower"
     datasets = ["snli"]
@@ -1605,7 +1521,7 @@ def task_finetune_snli_twotower_dino_tinybert():
     cross_layer_drop_rate = 0.1
     
 @ex.named_config
-def task_finetune_snli_twotower_deit_electra():
+def finetune_snli_twotower_deit_electra():
     exp_name = "snli_twotower_deit_electra"
     model_type = "two-tower"
     datasets = ["snli"]
@@ -1679,7 +1595,43 @@ def finetune_snli_twotower_deit_electra_exp2():
     cross_layer_drop_rate = 0.1
 
 @ex.named_config
-def task_finetune_snli_twotower_deittiny_electratiny():
+def snli_twotower_electrasmall_swintiny():
+    exp_name = "snli_twotower_electrasmall_swintiny"
+    model_type = "two-tower"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 64  
+    num_nodes = 1 
+    num_gpus = 2
+    # Training Settings
+    batch_size = 64
+    max_epoch = 10 
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 15
+    max_text_len = 50
+    image_size = 384
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+
+    # Encoder Settings
+    text_encoder = "google/electra-small-discriminator"
+    image_encoder = "microsoft/swin-tiny-patch4-window7-224"
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 7
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+
+@ex.named_config
+def finetune_snli_twotower_deittiny_electratiny():
     exp_name = "snli_twotower_deit_electra"
     model_type = "two-tower"
     datasets = ["snli"]
@@ -1711,7 +1663,7 @@ def task_finetune_snli_twotower_deittiny_electratiny():
     cross_layer_drop_rate = 0.1
 
 @ex.named_config
-def task_finetune_snli_twotower_vitbase_electrabase():
+def finetune_snli_twotower_vitbase_electrabase():
     exp_name = "snli_twotower_deit_electra"
     model_type = "two-tower"
     datasets = ["snli"]
@@ -1742,7 +1694,7 @@ def task_finetune_snli_twotower_vitbase_electrabase():
     cross_layer_drop_rate = 0.1
     
 @ex.named_config
-def task_finetune_snli_onetower():
+def finetune_snli_onetower():
     exp_name = "snli_onetower"
     datasets = ["snli"]
     loss_names = _loss_names({"snli": 1})
@@ -1769,7 +1721,7 @@ def task_finetune_snli_onetower():
     random_init_encoder = False
     
 @ex.named_config
-def task_finetune_snli_onetower_deitsmall():
+def finetune_snli_onetower_deitsmall():
     exp_name = "snli_onetower_deitsmall"
     datasets = ["snli"]
     loss_names = _loss_names({"snli": 1})
@@ -1795,8 +1747,44 @@ def task_finetune_snli_onetower_deitsmall():
     pooler_type = 'double' # 'double' or 'single'
     random_init_encoder = False
     
+
 @ex.named_config
-def task_finetune_snli_onetower_electra():
+def finetune_snli_onetower_manual_config_electrabase_exp1():
+    exp_name = "snli_onetower_manual_config_electrabase_exp1"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 64  
+    num_nodes = 1 
+    num_gpus = 2
+    # Training Settings
+    batch_size = 64
+    max_epoch = 10 
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 15
+    max_text_len = 50
+    image_size = 384
+    patch_size = 16
+    # Encoder Settings
+    model_type = "one-tower"
+    encoder = "google/electra-base-discriminator"
+    # Train encoder model from scratch
+    random_init_encoder = True
+    ## Manual Configuration
+    encoder_manual_configuration = True
+    hidden_size = 448
+    num_heads = 4
+    num_layers = 12
+    mlp_ratio = 4
+    drop_rate = 0.1
+    embedding_size = 128
+    
+@ex.named_config
+def finetune_snli_onetower_electra():
     exp_name = "snli_onetower_electra"
     datasets = ["snli"]
     loss_names = _loss_names({"snli": 1})
@@ -1820,7 +1808,7 @@ def task_finetune_snli_onetower_electra():
     random_init_encoder = False
     
 @ex.named_config
-def task_finetune_snli_onetower_electra_base():
+def finetune_snli_onetower_electra_base():
     exp_name = "snli_onetower_electra_base"
     datasets = ["snli"]
     loss_names = _loss_names({"snli": 1})
@@ -1845,7 +1833,7 @@ def task_finetune_snli_onetower_electra_base():
     
 
 @ex.named_config
-def task_finetune_snli_onetower_bert_base():
+def finetune_snli_onetower_bert_base():
     exp_name = "snli_onetower_bert_base"
     datasets = ["snli"]
     loss_names = _loss_names({"snli": 1})
@@ -1869,7 +1857,7 @@ def task_finetune_snli_onetower_bert_base():
     random_init_encoder = False
     
 @ex.named_config
-def task_finetune_snli_onetower_swin():
+def finetune_snli_onetower_swin():
     exp_name = "snli_onetower_swin"
     datasets = ["snli"]
     loss_names = _loss_names({"snli": 1})
@@ -1894,7 +1882,7 @@ def task_finetune_snli_onetower_swin():
     
 
 @ex.named_config
-def task_finetune_snli_onetower_vit_base():
+def finetune_snli_onetower_vit_base():
     exp_name = "snli_onetower_vit_base"
     datasets = ["snli"]
     loss_names = _loss_names({"snli": 1})
@@ -1919,7 +1907,7 @@ def task_finetune_snli_onetower_vit_base():
     
     
 @ex.named_config
-def task_finetune_snli_twotower_vision_fr_text_fr():
+def finetune_snli_twotower_vision_fr_text_fr():
     exp_name = "snli_vision_fr_text_fr"
     model_type = "two-tower"
     datasets = ["snli"]
@@ -1939,7 +1927,7 @@ def task_finetune_snli_twotower_vision_fr_text_fr():
     freeze_text_encoder = True
     
 @ex.named_config
-def task_finetune_ref_twotower():
+def finetune_ref_twotower():
     exp_name = "ref_twotower"
     model_type = "two-tower"
     datasets = ["refcoco"]
@@ -1956,7 +1944,7 @@ def task_finetune_ref_twotower():
     image_size = 224
     
 @ex.named_config
-def task_finetune_ref_twotower_deit_electra():
+def finetune_ref_twotower_deit_electra():
     exp_name = "ref_twotower_deit_electra"
     model_type = "two-tower"
     datasets = ["refcoco"]
@@ -1991,7 +1979,7 @@ def task_finetune_ref_twotower_deit_electra():
 
 
 @ex.named_config
-def task_finetune_ref_twotower_deit_electra_exp2():
+def finetune_ref_twotower_deit_electra_exp2():
     exp_name = "ref_twotower_deit_electra_exp2"
     model_type = "two-tower"
     datasets = ["refcoco"]
@@ -2022,9 +2010,42 @@ def task_finetune_ref_twotower_deit_electra_exp2():
     num_cross_layer_heads = 4
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
-    
+
 @ex.named_config
-def task_finetune_ref_twotower_vitbase_electrabase():
+def finetune_twotower_electrasmall_swintiny():
+    exp_name = "ref_twotower_electrasmall_swintiny"
+    model_type = "two-tower"
+    datasets = ["refcoco"]
+    loss_names = _loss_names({"ref": 1})
+    # Hardware Settings
+    num_nodes = 1
+    num_gpus = 2
+    per_gpu_batchsize = 10
+    # Training Setttings
+    batch_size = 60
+    max_epoch = 10
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 7.5e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 15
+    max_text_len = 40
+    image_size = 224
+    
+    # Encoder Settings
+    image_encoder = "microsoft/swin-tiny-patch4-window7-224"
+    text_encoder = "google/electra-small-discriminator"
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 7
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+
+@ex.named_config
+def finetune_ref_twotower_vitbase_electrabase():
     exp_name = "ref_twotower_vitbase_electrabase"
     model_type = "two-tower"
     datasets = ["refcoco"]
@@ -2058,7 +2079,7 @@ def task_finetune_ref_twotower_vitbase_electrabase():
 
 
 @ex.named_config
-def task_finetune_ref_twotower_deittiny_electratiny():
+def finetune_ref_twotower_deittiny_electratiny():
     exp_name = "ref_twotower_deittiny_electratiny"
     model_type = "two-tower"
     datasets = ["refcoco"]
@@ -2091,7 +2112,7 @@ def task_finetune_ref_twotower_deittiny_electratiny():
     cross_layer_drop_rate = 0.1
     
 @ex.named_config
-def task_finetune_ref_twotower_dinos_tinybert():
+def finetune_ref_twotower_dinos_tinybert():
     exp_name = "ref_twotower_dinos_tinybert"
     model_type = "two-tower"
     datasets = ["refcoco"]
@@ -2119,7 +2140,7 @@ def task_finetune_ref_twotower_dinos_tinybert():
     cross_layer_drop_rate = 0.1
     
 @ex.named_config
-def task_finetune_ref_onetower():
+def finetune_ref_onetower():
     exp_name = "ref_onetower"
     model_type = "one-tower"
     datasets = ["refcoco"]
@@ -2141,7 +2162,7 @@ def task_finetune_ref_onetower():
     
     
 @ex.named_config
-def task_finetune_ref_onetower_deitsmall():
+def finetune_ref_onetower_deitsmall():
     exp_name = "ref_onetower_deitsmall"
     model_type = "one-tower"
     datasets = ["refcoco"]
@@ -2163,8 +2184,43 @@ def task_finetune_ref_onetower_deitsmall():
     # Encoder Settings
     encoder = "facebook/deit-small-distilled-patch16-224"
     
+
 @ex.named_config
-def task_finetune_ref_onetower_vit_base():
+def finetune_ref_onetower_manual_config_electrabase_exp1():
+    exp_name = "ref_onetower_deitsmall"
+    model_type = "one-tower"
+    datasets = ["refcoco"]
+    loss_names = _loss_names({"ref": 1})
+    # Hardware Settings
+    num_nodes = 1
+    num_gpus = 2
+    per_gpu_batchsize = 10
+    # Training Setttings
+    batch_size = 60
+    max_epoch = 10
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 7.5e-4
+    lr_mult_head = 5
+    max_text_len = 40
+    image_size = 224
+    # Encoder Settings
+    model_type = "one-tower"
+    encoder = "google/electra-base-discriminator"
+    # Train encoder model from scratch
+    random_init_encoder = True
+    ## Manual Configuration
+    encoder_manual_configuration = True
+    hidden_size = 448
+    num_heads = 4
+    num_layers = 12
+    mlp_ratio = 4
+    drop_rate = 0.1
+    embedding_size = 128
+    
+@ex.named_config
+def finetune_ref_onetower_vit_base():
     exp_name = "ref_onetower_vit_base"
     model_type = "one-tower"
     datasets = ["refcoco"]
@@ -2190,7 +2246,7 @@ def task_finetune_ref_onetower_vit_base():
     random_init_encoder = False
     
 @ex.named_config
-def task_finetune_ref_onetower_bert_base():
+def finetune_ref_onetower_bert_base():
     exp_name = "ref_onetower_bert_base"
     model_type = "one-tower"
     datasets = ["refcoco"]
@@ -2217,7 +2273,7 @@ def task_finetune_ref_onetower_bert_base():
     
 
 @ex.named_config
-def task_finetune_irtr_coco_clip_bert():
+def finetune_irtr_coco_clip_bert():
     exp_name = "irtr_coco"
     datasets = ["coco"]
     loss_names = _loss_names({"itm": 0.5, "irtr": 1})
@@ -2239,7 +2295,7 @@ def task_finetune_irtr_coco_clip_bert():
     image_size = 384
 
 @ex.named_config
-def task_finetune_irtr_f30k_clip_bert():
+def finetune_irtr_f30k_clip_bert():
     exp_name = "irtr_f30k"
     datasets = ["f30k"]
     loss_names = _loss_names({"itm": 0.5, "irtr": 1})
@@ -2262,7 +2318,7 @@ def task_finetune_irtr_f30k_clip_bert():
 
 # ===================== Texto-Only Tasks ===================== #
 @ex.named_config
-def task_finetune_mrpc_twotower():
+def finetune_mrpc_twotower():
     exp_name = "mrpc_twotower"
     datasets = ["glue"]
     loss_names = _loss_names({"mrpc": 1})
@@ -2287,7 +2343,7 @@ def task_finetune_mrpc_twotower():
     freeze_cross_modal_layers = True
     
 @ex.named_config
-def task_finetune_mrpc_twotower_deit_electra():
+def finetune_mrpc_twotower_deit_electra():
     exp_name = "mrpc_twotower_deit_electra"
     datasets = ["glue"]
     loss_names = _loss_names({"mrpc": 1})
@@ -2632,6 +2688,52 @@ def test_case_finetune_snli_a():
     # Freeze or UnFreeze Encoders
     freeze_image_encoder = False
     freeze_text_encoder = False
+    
+@ex.named_config
+def test_one_tower_mlm_itm_manual_config_case_a():
+    exp_name = "test_one_tower_mlm_itm_manual_config_case_a"
+    seed = 0
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 10  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
+    # per_gpu_batchsize = 12
+    
+    test_only=False
+    data_root = 'data/arrow/' 
+    num_gpus=1 
+    num_nodes=1 
+    per_gpu_batchsize=2
+    resume_from = None
+    
+    # Transformer Setting
+    model_type = "one-tower"
+    encoder = "google/electra-small-discriminator"
+    # Train encoder model from scratch
+    random_init_encoder = True
+    ## Manual Configuration
+    encoder_manual_configuration = True
+    hidden_size = 192
+    num_heads = 4
+    num_layers = 12
+    mlp_ratio = 4
+    drop_rate = 0.1
+    embedding_size = 96
+    
+    # Image setting
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    
+    # Text Setting
+    max_text_len = 40
+    tokenizer = "bert-base-uncased"
+    vocab_size = 30522
+    whole_word_masking = False
+    mlm_prob = 0.15
+    draw_false_text = 0
+    
+    max_steps = 10
+    
 
 @ex.named_config
 def test_case_eval_snli_a():
