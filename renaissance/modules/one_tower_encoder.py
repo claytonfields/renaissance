@@ -299,8 +299,8 @@ class OneTowerEncoder(nn.Module):
             model = AutoModel.from_config(hf_config)
             self.encoder = model.encoder
             
-            image_size = config['image_size']
-            max_text_len = config['max_text_len']
+            # image_size = config['image_size']
+            # max_text_len = config['max_text_len']
             # self.hidden_size = config['hidden_size']
             # self.embedding_size = config['embedding_size']
         # Use Pretrained Encoder Weights from Huggingface Hub
