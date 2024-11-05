@@ -163,6 +163,54 @@ def config():
 # ===================== Current Test Cases ===================== #
 
 # ===================== Pretraining Tasks===================== #
+
+@ex.named_config
+def demo():
+    exp_name = "mlm_itm_deit_electra"
+    model_type = "two-tower"
+    # datasets = ["coco", "vg", "sbu", "gcc"]
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 176
+    per_gpu_batchsize = 44
+    num_nodes = 1
+    num_gpus = 2
+    max_epoch = None
+    max_steps = 200
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = "facebook/deit-tiny-patch16-224"
+    train_transform_keys = ["imagenet"]
+    val_transform_keys = ["imagenet"]
+    image_size = 224
+    # resolution_before = 224
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    # Text Setting
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-5
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+
+
 @ex.named_config
 def pretrain_mlm():
     exp_name = "mlm"
