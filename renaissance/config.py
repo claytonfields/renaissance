@@ -166,7 +166,7 @@ def config():
 
 @ex.named_config
 def demo():
-    exp_name = "mlm_itm_deit_electra"
+    exp_name = "demo"
     model_type = "two-tower"
     # datasets = ["coco", "vg", "sbu", "gcc"]
     datasets = ["coco", "vg"]
@@ -668,8 +668,8 @@ def pretrain_mlm_itm_twotower_deit_electra():
     lr_mult_cross_modal = 5
 
 @ex.named_config
-def pretrain_mlm_itm_twotower_deit_electra_exp2():
-    exp_name = "mlm_itm_deit_electra_exp2"
+def pretrain_mlm_itm_twotower_deit_electra_exp1():
+    exp_name = "mlm_itm_deit_electra_exp1"
     model_type = "two-tower"
     datasets = ["coco", "vg"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
@@ -707,6 +707,87 @@ def pretrain_mlm_itm_twotower_deit_electra_exp2():
     lr_mult_head = 5
     lr_mult_cross_modal = 5
     
+
+@ex.named_config
+def pretrain_mlm_itm_twotower_exp2_deittiny_electrasmall():
+    exp_name = "mlm_itm_twotower_exp2_deittiny_electrasmall"
+    model_type = "two-tower"
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 512
+    per_gpu_batchsize = 128
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = "facebook/deit-tiny-distilled-patch16-224"
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    # Text Setting
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+
+@ex.named_config
+def pretrain_mlm_itm_twotower_exp2_deitsmall_electrasmall():
+    exp_name = "mlm_itm_twotower_exp2_deitsmall_electrasmall"
+    model_type = "two-tower"
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 512
+    per_gpu_batchsize = 128
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = "facebook/deit-small-distilled-patch16-224"
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    # Text Setting
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    
 @ex.named_config
 def pretrain_mlm_itm_twotower_deittiny_electratiny():
     exp_name = "mlm_itm_deittiny_electratiny"
@@ -726,6 +807,166 @@ def pretrain_mlm_itm_twotower_deittiny_electratiny():
     freeze_text_encoder = False
     # Image settings
     image_encoder = "facebook/deit-tiny-patch16-224"
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    # Text Setting
+    text_encoder = "claytonfields/electra-tiny"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    
+@ex.named_config
+def pretrain_mlm_itm_twotower_exp2_deittiny_electratiny():
+    exp_name = "mlm_itm_exp2_deittiny_electratiny"
+    model_type = "two-tower"
+    # datasets = ["coco", "vg", "sbu", "gcc"]
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 512
+    per_gpu_batchsize = 128
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = "facebook/deit-tiny-distilled-patch16-224"
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    # Text Setting
+    text_encoder = "claytonfields/electra-tiny"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    
+@ex.named_config
+def pretrain_mlm_itm_twotower_exp2_deitsmall_electratiny():
+    exp_name = "mlm_itm_exp2_deitsmall_electratiny"
+    model_type = "two-tower"
+    # datasets = ["coco", "vg", "sbu", "gcc"]
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 512
+    per_gpu_batchsize = 128
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = "facebook/deit-small-distilled-patch16-224"
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    # Text Setting
+    text_encoder = "claytonfields/electra-tiny"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    
+@ex.named_config
+def pretrain_mlm_itm_twotower_exp2_swintiny_electratiny():
+    exp_name = "mlm_itm_exp2_swintiny_electratiny"
+    model_type = "two-tower"
+    # datasets = ["coco", "vg", "sbu", "gcc"]
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 512
+    per_gpu_batchsize = 128
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = "facebook/deit-small-distilled-patch16-224"
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    # Text Setting
+    text_encoder = "claytonfields/electra-tiny"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    
+@ex.named_config
+def pretrain_mlm_itm_twotower_exp2_swintiny_electrasmall():
+    exp_name = "mlm_itm_exp2_swintiny_electrasmall"
+    model_type = "two-tower"
+    # datasets = ["coco", "vg", "sbu", "gcc"]
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 512
+    per_gpu_batchsize = 128
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = "facebook/deit-small-distilled-patch16-224"
     image_size = 224
     patch_size = 16
     draw_false_image = 1
