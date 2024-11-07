@@ -356,7 +356,7 @@ class OneTowerEncoder(nn.Module):
             self.image_pooler = Pooler(self.hidden_size)
             self.image_pooler.apply(init_weights)
 
-    # Implement infer method for one_tower models
+    
     def forward(
         self,
         batch,
