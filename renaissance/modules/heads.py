@@ -5,7 +5,6 @@ renaissance/modules/renaissance_module.py.
 """
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from transformers.models.bert.configuration_bert import BertConfig
 from transformers.models.bert.modeling_bert import BertPredictionHeadTransform

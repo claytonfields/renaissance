@@ -1,18 +1,7 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jun 18 17:19:52 2024
-
-@author: claytonfields
-"""
-
 import math
-import collections
 import torch
 import torch.nn as nn
-# import torch.nn.functional as F
 
-# from transformers.models.bert.configuration_bert import BertConfig
 from transformers.models.auto import AutoConfig, AutoModel
 from transformers.models.lxmert.modeling_lxmert import LxmertXLayer
 from transformers.models.lxmert.configuration_lxmert import LxmertConfig
@@ -23,10 +12,6 @@ from transformers.modeling_utils import (
     find_pruneable_heads_and_indices,
     prune_linear_layer,
 )
-
-# from transformers.models.bert.modeling_bert import BertPredictionHeadTransform
-
-from typing import List, Optional, Tuple, Union
 
 from .objectives import init_weights
 from .heads import Pooler

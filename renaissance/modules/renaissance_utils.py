@@ -1,5 +1,5 @@
 import torch
-import random
+# import random
 import os
 
 from torch.optim import AdamW
@@ -7,10 +7,10 @@ from transformers import (
     get_polynomial_decay_schedule_with_warmup,
     get_cosine_schedule_with_warmup,
 )
-from .dist_utils import all_gather
+# from .dist_utils import all_gather
 from .objectives import compute_irtr_recall
 from ..gadgets.my_metrics import Accuracy, VQAScore, Scalar
-from torchmetrics import F1Score
+# from torchmetrics import F1Score
 from torchmetrics.classification import BinaryF1Score, MatthewsCorrCoef
 
 # Creat a set_attribute type function to gneralize this

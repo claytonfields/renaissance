@@ -1,26 +1,10 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Aug 17 12:34:37 2023
-
-@author: claytonfields
-
-Dataset class for refCOCO 
-"""
-
-
 from .base_dataset import BaseDataset
-# from  .refer import REFER, get_bounded_subimage
 import io
 from PIL import Image
 import torch
 import numpy as np
 import pyarrow as pa
 import random
-
-'''
-TODO: Integrate all three methods into this dataset.
-'''
 
 
 class RefcocoDataset(BaseDataset):
@@ -44,9 +28,6 @@ class RefcocoDataset(BaseDataset):
     def __getitem__(self, index):
         max_bb = self.max_bb
         image_index, ref_index = self.index_mapper[index]
-        # print("Index: ", index)
-        # print("Image Index: ", image_index)
-        # print("Ref Index: ", ref_index)
         try:
             label = self.table["labels"][image_index].as_py()
             image = np.array(self.get_raw_image(index))

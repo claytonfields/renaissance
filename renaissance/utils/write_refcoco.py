@@ -1,40 +1,13 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Feb 24 10:08:40 2024
-
-@author: claytonfields
-"""
-
 import json
 import pandas as pd
 import pyarrow as pa
 import os
 
-import torch
-
-from transformers import AutoTokenizer, AutoImageProcessor
-
-from PIL import Image
-
 import sys
 import os.path as osp
-import json
 import pickle
-import time
-import itertools
-import skimage.io as io
-# import matplotlib.pyplot as plt
-# from matplotlib.collections import PatchCollection
-# from matplotlib.patches import Polygon, Rectangle
-from pprint import pprint
-import numpy as np
-# from refer import REFER
 
 from tqdm import tqdm
-from collections import defaultdict
-
-# from meter.datasets.base_dataset import BaseDataset
 
 
 class StrToBytes:

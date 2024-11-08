@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Feb 26 13:37:50 2024
-
-@author: claytonfields
-"""
-
 from renaissance.datamodules.datamodule_base import BaseDataModule
 from renaissance.datasets.glue_dataset import GlueDataset
 

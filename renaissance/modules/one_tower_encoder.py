@@ -1,20 +1,10 @@
-"""
-Embedding modules for one-tower vision language 
-encoder models. Embedding modules are used in 
-renaissance/modules/renaissance_module.py.
-"""
-
 import math
 import collections
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
-# from transformers.models.bert.configuration_bert import BertConfig
 from transformers.models.vit.configuration_vit import ViTConfig
 from transformers.models.electra import ElectraConfig
-
-# from transformers.models.bert.modeling_bert import BertPredictionHeadTransform
 
 from typing import List, Optional, Tuple, Union
 

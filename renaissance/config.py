@@ -34,8 +34,7 @@ def _loss_names(d):
 def config():
     exp_name = "renaissance"
     seed = 0
-    # datasets = ["coco", "vg", "sbu", "gcc"]
-    datasets = ["coco", "vg"]
+    datasets = ["coco", "vg"] # Supports ["coco", "vg", "sbu", "gcc"]
     loss_names = _loss_names({"itm": 1, "mlm": 1})
     batch_size = 256  # this is a desired batch size; pl trainer will accumulate gradients when per step batch is smaller.
     per_gpu_batchsize = 0  # you should define this manually with per_gpu_batch_size=#

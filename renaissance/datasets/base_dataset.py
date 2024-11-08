@@ -9,10 +9,6 @@ from ..transforms import keys_to_transforms
 from datasets import load_dataset
 from torch.utils.data._utils.collate import default_collate
 
-'''
-Claen this up, it's ugly
-
-'''
 
 class BaseDataset(torch.utils.data.Dataset):
     def __init__(

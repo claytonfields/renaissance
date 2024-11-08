@@ -13,18 +13,10 @@ import warnings
 import torch
 import torch.distributed as dist
 
-# import resource
-# rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
-# resource.setrlimit(resource.RLIMIT_NOFILE, (20480, rlimit[1]))
+
 
 @ex.automain
 def main(_config):
-    
-    
-    
-    
-    
-    # warnings.simplefilter("error")
     
     _config = copy.deepcopy(_config)
     pl.seed_everything(_config["seed"])
@@ -143,14 +135,6 @@ def main(_config):
     ), 1)
 
     max_steps = _config["max_steps"] if _config["max_steps"] is not None else None
-    
-    def setup(rank, world_size):
-        os.environ['MASTER_ADDR'] = 'localhost'
-        os.environ['MASTER_PORT'] = '12355'
-    
-        # initialize the process group
-        dist.init_process_group("gloo", rank=rank, world_size=world_size)
-    
     torch.set_float32_matmul_precision('medium')
     
     
@@ -159,9 +143,7 @@ def main(_config):
         num_nodes=_config["num_nodes"],
         precision=_config["precision"],
         accelerator = 'gpu',
-        # strategy = 'ddp_notebook',
         strategy='ddp_find_unused_parameters_true',
-        # strategy = 'ddp_spawn',
         # strategy='ddp',
         deterministic='warn',
         max_epochs=_config["max_epoch"], #if max_steps is None else 1000,
@@ -183,7 +165,6 @@ def main(_config):
         # Display location of results
         print()
         print('Results can be found in:')
-        # print(os.path.join(log_dir, result_dir))
         print(model.logger.log_dir)
         print()
         

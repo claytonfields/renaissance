@@ -1,5 +1,3 @@
-import torch
-
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
 from transformers import (
@@ -8,10 +6,6 @@ from transformers import (
     AutoTokenizer,
     AutoImageProcessor
 )
-
-
-
-
 
 class BaseDataModule(LightningDataModule):
     def __init__(self, _config):
