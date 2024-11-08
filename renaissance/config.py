@@ -425,7 +425,7 @@ def finetune_nlvr2_twotower_exp2_deittiny_electrasmall():
     text_encoder = "google/electra-small-discriminator"
     max_text_len = 50
     # Image Settings
-    image_encoder = "facebook/deit-tiny-patch16-224"
+    image_encoder = "facebook/deit-tiny-distilled-patch16-224"
     patch_size = 16
     image_size = 288
     # Cross Layer Settings
@@ -458,7 +458,7 @@ def finetune_nlvr2_twotower_exp2_deittiny_electratiny():
     text_encoder = "claytonfields/electra-tiny"
     max_text_len = 50
     # Image Settings
-    image_encoder = "facebook/deit-tiny-patch16-224"
+    image_encoder = "facebook/deit-tiny-distilled-patch16-224"
     patch_size = 16
     image_size = 288
     # Cross Layer Settings
@@ -497,7 +497,7 @@ def finetune_snli_twotower_exp2_deittiny_electrasmall():
 
     # Encoder Settings
     text_encoder = "google/electra-small-discriminator"
-    image_encoder = "facebook/deit-tiny-patch16-224"
+    image_encoder = "facebook/deit-tiny-distilled-patch16-224"
     
     # Cross Layer Settings
     cross_layer_hidden_size = 256
@@ -533,7 +533,7 @@ def finetune_snli_twotower_exp2_deittiny_electratiny():
 
     # Encoder Settings
     text_encoder = "claytonfields/electra-tiny"
-    image_encoder = "facebook/deit-tiny-patch16-224"
+    image_encoder = "facebook/deit-tiny-distilled-patch16-224"
     
     # Cross Layer Settings
     cross_layer_hidden_size = 256
@@ -566,7 +566,7 @@ def finetune_ref_twotower_exp2_deittiny_electrasmall():
     
     # Encoder Settings
     text_encoder = "google/electra-small-discriminator"
-    image_encoder = "facebook/deit-tiny-patch16-224"
+    image_encoder = "facebook/deit-tiny-distilled-patch16-224"
     
     # Cross Layer Settings
     cross_layer_hidden_size = 256
@@ -599,7 +599,7 @@ def finetune_ref_twotower_exp2_deittiny_electratiny():
     
     # Encoder Settings
     text_encoder = "claytonfields/electra-tiny"
-    image_encoder = "facebook/deit-tiny-patch16-224"
+    image_encoder = "facebook/deit-tiny-distilled-patch16-224"
     
     # Cross Layer Settings
     cross_layer_hidden_size = 256
