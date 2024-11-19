@@ -535,7 +535,8 @@ class TwoTowerEncoder(nn.Module):
         input_shape = text_masks.size()
         extend_text_masks = self.text_transformer.get_extended_attention_mask(text_masks, input_shape)#, device)
         
-        text_embeds = self.text_transformer(inputs_embeds=text_embeds).last_hidden_state
+        # text_embeds = self.text_transformer(inputs_embeds=text_embeds).last_hidden_state
+        text_embeds = self.text_transformer(input_ids=text_ids).last_hidden_state
         text_embeds = self.cross_modal_text_transform(text_embeds)
         
         # Process Image Input to Image Embeddings
