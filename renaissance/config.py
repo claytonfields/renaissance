@@ -1473,6 +1473,110 @@ def finetune_ref_twotower_exp2_swintiny_mobilebert():
     num_cross_layer_heads = 4
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
+    
+@ex.named_config
+def finetune_ref_twotower_exp2_dinos_electatiny():
+    exp_name = "ref_twotower_exp2_dinos_electratiny"
+    model_type = "two-tower"
+    datasets = ["refcoco"]
+    loss_names = _loss_names({"ref": 1})
+    # Hardware Settings
+    num_nodes = 1
+    num_gpus = 2
+    per_gpu_batchsize = 10
+    # Training Setttings
+    batch_size = 60
+    max_epoch = 10
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 7.5e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    max_text_len = 40
+    image_size = 224
+    patch_size = 4
+    
+    # Encoder Settings
+    text_encoder = "claytonfields/electra-tiny"
+    image_encoder = "facebook/dino-vits16"
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+
+@ex.named_config
+def finetune_ref_twotower_exp2_dinos_electrasmall():
+    exp_name = "ref_twotower_exp2_dinos_electrasmall"
+    model_type = "two-tower"
+    datasets = ["refcoco"]
+    loss_names = _loss_names({"ref": 1})
+    # Hardware Settings
+    num_nodes = 1
+    num_gpus = 2
+    per_gpu_batchsize = 10
+    # Training Setttings
+    batch_size = 60
+    max_epoch = 10
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 7.5e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    max_text_len = 40
+    image_size = 224
+    patch_size = 4
+    
+    # Encoder Settings
+    text_encoder = "google/electra-small-discriminator"
+    image_encoder = "facebook/dino-vits16"
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+@ex.named_config
+def finetune_ref_twotower_exp2_dinos_mobilebert():
+    exp_name = "ref_twotower_exp2_dinos_mobilebert"
+    model_type = "two-tower"
+    datasets = ["refcoco"]
+    loss_names = _loss_names({"ref": 1})
+    # Hardware Settings
+    num_nodes = 1
+    num_gpus = 2
+    per_gpu_batchsize = 10
+    # Training Setttings
+    batch_size = 60
+    max_epoch = 10
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 7.5e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    max_text_len = 40
+    image_size = 224
+    patch_size = 4
+    
+    # Encoder Settings
+    text_encoder = "google/mobilebert-uncased"
+    image_encoder = "facebook/dino-vits16"
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+
 
 # ===================== Pretraining Tasks===================== #
 
