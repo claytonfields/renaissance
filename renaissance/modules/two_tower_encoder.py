@@ -478,7 +478,13 @@ class TwoTowerEncoder(nn.Module):
                 param.requires_grad = False
         
         
-        self.image_encoder_hidden_size = self.image_encoder.config.hidden_size
+        # self.image_encoder_hidden_size = self.image_encoder.config.hidden_size
+        try:
+            self.image_encoder_hidden_size = self.image_encoder.config.hidden_size
+        except:
+            self.image_encoder_hidden_size = self.image_encoder.config.hidden_sizes[-1]
+        
+        
         self.text_transformer_hidden_size = self.text_transformer.config.hidden_size
         self.hidden_size = config['cross_layer_hidden_size']
         # Cross Modal Layers
@@ -542,14 +548,18 @@ class TwoTowerEncoder(nn.Module):
         # Process Image Input to Image Embeddings
         if self.fine_tune or self.test_only:
             try:
-                image_embeds = self.image_encoder(img, interpolate_pos_encoding = True)
+                image_output = self.image_encoder(img, interpolate_pos_encoding = True)
             except:
-                image_embeds = self.image_encoder(img)
+                image_output = self.image_encoder(img)
         else:
-            image_embeds = self.image_encoder(img)
+            image_output = self.image_encoder(img)
             
         # if self.is_huggingface:
-        image_embeds = image_embeds.last_hidden_state
+        image_embeds = image_output.last_hidden_state
+        # image_dims = len(image_embeds.shape)
+        if len(image_embeds.shape) == 4:
+            image_embeds = self.resize_convolutional_output(image_output)
+        
         image_embeds = self.cross_modal_image_transform(image_embeds)
         image_masks = torch.ones((image_embeds.size(0), image_embeds.size(1)), dtype=torch.long, device=device)
         extend_image_masks = self.text_transformer.get_extended_attention_mask(image_masks, image_masks.size())#, device)
@@ -578,6 +588,23 @@ class TwoTowerEncoder(nn.Module):
         
     def get_hidden_size(self):
         return self.hidden_size
+    
+    def resize_convolutional_output(self, image_output):
+    
+        # pooled_output = image_output.pooler_output
+        # cls = pooled_output.squeeze(-1).permute((0,2,1))
+        cls_feature = image_output.pooler_output
+        cls_dims = len(image_output.pooler_output.shape)
+        if cls_dims ==4:
+            cls_feature = cls_feature.squeeze(-1).permute((0,2,1))
+        elif cls_dims == 2:
+            cls_feature = cls_feature.unsqueeze(1)
+        # pooled_output = image_encoder.pooler(image_embeds)
+        hidden_state = image_output.last_hidden_state
+        hidden_state = hidden_state.flatten(start_dim=2, end_dim=3).permute((0,2,1))
+        
+        final_output = torch.concat((cls_feature, hidden_state), dim=1)
+        return final_output
     
     def adjust_type_embeds_for_nlvr2(self):
         emb_data = self.token_type_embeddings.weight.data
