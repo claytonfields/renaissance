@@ -1536,8 +1536,240 @@ def finetune_nlvr2_twotower_exp2_dinos_mobilebert():
     num_cross_layer_heads = 4
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
+    
+@ex.named_config
+def finetune_nlvr2_twotower_exp2_dinos_electrasmall():
+    exp_name = "nlvr2_twotower_exp2_dinos_electrasmall"
+    model_type = "two-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 32 
+    num_nodes = 1 
+    num_gpus = 2 
+    # Training Settings
+    batch_size = 256
+    max_epoch = 40  
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5  
+    lr_mult_cross_modal = 5 
+    # Text Setting
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    # Image Settings
+    image_encoder = "facebook/dino-vits16"
+    patch_size = 16
+    image_size = 288
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+## resnet50
+@ex.named_config
+def finetune_nlvr2_twotower_exp2_resnet50_electratiny():
+    exp_name = "nlvr2_twotower_exp2_resnet50_electratiny"
+    model_type = "two-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 32 
+    num_nodes = 1 
+    num_gpus = 2 
+    # Training Settings
+    batch_size = 256
+    max_epoch = 40  
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5  
+    lr_mult_cross_modal = 5 
+    # Text Setting
+    text_encoder = "claytonfields/electra-tiny"
+    max_text_len = 50
+    # Image Settings
+    image_encoder = "microsoft/resnet-50"
+    patch_size = 16
+    image_size = 288
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+@ex.named_config
+def finetune_nlvr2_twotower_exp2_resnet50_electrasmall():
+    exp_name = "nlvr2_twotower_exp2_resnet50_electrasmall"
+    model_type = "two-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 32 
+    num_nodes = 1 
+    num_gpus = 2 
+    # Training Settings
+    batch_size = 256
+    max_epoch = 40  
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5  
+    lr_mult_cross_modal = 5 
+    # Text Setting
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    # Image Settings
+    image_encoder = "microsoft/resnet-50"
+    patch_size = 16
+    image_size = 288
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
 
+@ex.named_config
+def finetune_nlvr2_twotower_exp2_resnet50_mobilebert():
+    exp_name = "nlvr2_twotower_exp2_resnet50_mobilebert"
+    model_type = "two-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 32 
+    num_nodes = 1 
+    num_gpus = 2 
+    # Training Settings
+    batch_size = 256
+    max_epoch = 40  
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5  
+    lr_mult_cross_modal = 5 
+    # Text Setting
+    text_encoder = "google/mobilebert-uncased"
+    max_text_len = 50
+    # Image Settings
+    image_encoder = "microsoft/resnet-50"
+    patch_size = 4
+    image_size = 288
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+## efficientformerl1300
+@ex.named_config
+def finetune_nlvr2_twotower_exp2_efficientformerl1300_electratiny():
+    exp_name = "nlvr2_twotower_exp2_efficientformerl1300_electratiny"
+    model_type = "two-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 32 
+    num_nodes = 1 
+    num_gpus = 2 
+    # Training Settings
+    batch_size = 256
+    max_epoch = 40  
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5  
+    lr_mult_cross_modal = 5 
+    # Text Setting
+    text_encoder = "claytonfields/electra-tiny"
+    max_text_len = 50
+    # Image Settings
+    image_encoder = "snap-research/efficientformer-l1-300" 
+    patch_size = 16
+    image_size = 288
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+@ex.named_config
+def finetune_nlvr2_twotower_exp2_efficientformerl1300_electrasmall():
+    exp_name = "nlvr2_twotower_exp2_efficientformerl1300_electrasmall"
+    model_type = "two-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 32 
+    num_nodes = 1 
+    num_gpus = 2 
+    # Training Settings
+    batch_size = 256
+    max_epoch = 40  
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5  
+    lr_mult_cross_modal = 5 
+    # Text Setting
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    # Image Settings
+    image_encoder = "snap-research/efficientformer-l1-300" 
+    patch_size = 16
+    image_size = 288
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
 
+@ex.named_config
+def finetune_nlvr2_twotower_exp2_efficientformerl1300_mobilebert():
+    exp_name = "nlvr2_twotower_exp2_efficientformerl1300_mobilebert"
+    model_type = "two-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 32 
+    num_nodes = 1 
+    num_gpus = 2 
+    # Training Settings
+    batch_size = 256
+    max_epoch = 40  
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5  
+    lr_mult_cross_modal = 5 
+    # Text Setting
+    text_encoder = "google/mobilebert-uncased"
+    max_text_len = 50
+    # Image Settings
+    image_encoder = "snap-research/efficientformer-l1-300" 
+    patch_size = 4
+    image_size = 288
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
 ### Exp2 snli Configs ###
 ## deit-tiny
 @ex.named_config
@@ -1987,6 +2219,230 @@ def finetune_snli_twotower_exp2_dinos_mobilebert():
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
 
+## resnet50
+@ex.named_config
+def finetune_snli_twotower_exp2_resnet50_electratiny():
+    exp_name = "snli_twotower_exp2_resnet50_electratiny"
+    model_type = "two-tower"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 64  
+    num_nodes = 1 
+    num_gpus = 2
+    # Training Settings
+    batch_size = 64
+    max_epoch = 10 
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    image_size = 384
+    patch_size = 4
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+
+    # Encoder Settings
+    text_encoder = "claytonfields/electra-tiny"
+    image_encoder = "microsoft/resnet-50"
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+
+@ex.named_config
+def finetune_snli_twotower_exp2_resnet50_electrasmall():
+    exp_name = "snli_twotower_exp2_resnet50_electrasmall"
+    model_type = "two-tower"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 64  
+    num_nodes = 1 
+    num_gpus = 2
+    # Training Settings
+    batch_size = 64
+    max_epoch = 10 
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    image_size = 384
+    patch_size = 4
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+
+    # Encoder Settings
+    text_encoder = "google/electra-small-discriminator"
+    image_encoder = "microsoft/resnet-50"
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+@ex.named_config
+def finetune_snli_twotower_exp2_resnet50_mobilebert():
+    exp_name = "snli_twotower_exp2_resnet50_mobilebert"
+    model_type = "two-tower"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 64  
+    num_nodes = 1 
+    num_gpus = 2
+    # Training Settings
+    batch_size = 64
+    max_epoch = 10 
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    image_size = 384
+    patch_size = 4
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+
+    # Encoder Settings
+    text_encoder = "google/mobilebert-uncased"
+    image_encoder = "microsoft/resnet-50"
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+## efficientformerl1300
+@ex.named_config
+def finetune_snli_twotower_exp2_efficientformerl1300_electratiny():
+    exp_name = "snli_twotower_exp2_efficientformerl1300_electratiny"
+    model_type = "two-tower"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 64  
+    num_nodes = 1 
+    num_gpus = 2
+    # Training Settings
+    batch_size = 64
+    max_epoch = 10 
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    image_size = 384
+    patch_size = 4
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+
+    # Encoder Settings
+    text_encoder = "claytonfields/electra-tiny"
+    image_encoder = "snap-research/efficientformer-l1-300" 
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+
+@ex.named_config
+def finetune_snli_twotower_exp2_efficientformerl1300_electrasmall():
+    exp_name = "snli_twotower_exp2_efficientformerl1300_electrasmall"
+    model_type = "two-tower"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 64  
+    num_nodes = 1 
+    num_gpus = 2
+    # Training Settings
+    batch_size = 64
+    max_epoch = 10 
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    image_size = 384
+    patch_size = 4
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+
+    # Encoder Settings
+    text_encoder = "google/electra-small-discriminator"
+    image_encoder = "snap-research/efficientformer-l1-300" 
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+@ex.named_config
+def finetune_snli_twotower_exp2_efficientformerl1300_mobilebert():
+    exp_name = "snli_twotower_exp2_efficientformerl1300_mobilebert"
+    model_type = "two-tower"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 64  
+    num_nodes = 1 
+    num_gpus = 2
+    # Training Settings
+    batch_size = 64
+    max_epoch = 10 
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    image_size = 384
+    patch_size = 4
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+
+    # Encoder Settings
+    text_encoder = "google/mobilebert-uncased"
+    image_encoder = "snap-research/efficientformer-l1-300" 
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+
 
 ### Exp2 ref-res Configs ###
 ## deit-tiny
@@ -2400,8 +2856,212 @@ def finetune_ref_twotower_exp2_dinos_mobilebert():
     num_cross_layer_heads = 4
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
-    
 
+## resnet50
+@ex.named_config
+def finetune_ref_twotower_exp2_resnet50_electatiny():
+    exp_name = "ref_twotower_exp2_resnet50_electratiny"
+    model_type = "two-tower"
+    datasets = ["refcoco"]
+    loss_names = _loss_names({"ref": 1})
+    # Hardware Settings
+    num_nodes = 1
+    num_gpus = 2
+    per_gpu_batchsize = 10
+    # Training Setttings
+    batch_size = 60
+    max_epoch = 10
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 7.5e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    max_text_len = 40
+    image_size = 224
+    patch_size = 4
+    
+    # Encoder Settings
+    text_encoder = "claytonfields/electra-tiny"
+    image_encoder = "microsoft/resnet-50"
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+
+@ex.named_config
+def finetune_ref_twotower_exp2_resnet50_electrasmall():
+    exp_name = "ref_twotower_exp2_resnet50_electrasmall"
+    model_type = "two-tower"
+    datasets = ["refcoco"]
+    loss_names = _loss_names({"ref": 1})
+    # Hardware Settings
+    num_nodes = 1
+    num_gpus = 2
+    per_gpu_batchsize = 10
+    # Training Setttings
+    batch_size = 60
+    max_epoch = 10
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 7.5e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    max_text_len = 40
+    image_size = 224
+    patch_size = 4
+    
+    # Encoder Settings
+    text_encoder = "google/electra-small-discriminator"
+    image_encoder = "microsoft/resnet-50"
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+@ex.named_config
+def finetune_ref_twotower_exp2_resnet50_mobilebert():
+    exp_name = "ref_twotower_exp2_resnet50_mobilebert"
+    model_type = "two-tower"
+    datasets = ["refcoco"]
+    loss_names = _loss_names({"ref": 1})
+    # Hardware Settings
+    num_nodes = 1
+    num_gpus = 2
+    per_gpu_batchsize = 10
+    # Training Setttings
+    batch_size = 60
+    max_epoch = 10
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 7.5e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    max_text_len = 40
+    image_size = 224
+    patch_size = 4
+    
+    # Encoder Settings
+    text_encoder = "google/mobilebert-uncased"
+    image_encoder = "microsoft/resnet-50"
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+
+## efficientformerl1300
+@ex.named_config
+def finetune_ref_twotower_exp2_efficientformerl1300_electatiny():
+    exp_name = "ref_twotower_exp2_efficientformerl1300_electratiny"
+    model_type = "two-tower"
+    datasets = ["refcoco"]
+    loss_names = _loss_names({"ref": 1})
+    # Hardware Settings
+    num_nodes = 1
+    num_gpus = 2
+    per_gpu_batchsize = 10
+    # Training Setttings
+    batch_size = 60
+    max_epoch = 10
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 7.5e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    max_text_len = 40
+    image_size = 224
+    patch_size = 4
+    
+    # Encoder Settings
+    text_encoder = "claytonfields/electra-tiny"
+    image_encoder = "snap-research/efficientformer-l1-300" 
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+
+@ex.named_config
+def finetune_ref_twotower_exp2_efficientformerl1300_electrasmall():
+    exp_name = "ref_twotower_exp2_efficientformerl1300_electrasmall"
+    model_type = "two-tower"
+    datasets = ["refcoco"]
+    loss_names = _loss_names({"ref": 1})
+    # Hardware Settings
+    num_nodes = 1
+    num_gpus = 2
+    per_gpu_batchsize = 10
+    # Training Setttings
+    batch_size = 60
+    max_epoch = 10
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 7.5e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    max_text_len = 40
+    image_size = 224
+    patch_size = 4
+    
+    # Encoder Settings
+    text_encoder = "google/electra-small-discriminator"
+    image_encoder = "snap-research/efficientformer-l1-300" 
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+@ex.named_config
+def finetune_ref_twotower_exp2_efficientformerl1300_mobilebert():
+    exp_name = "ref_twotower_exp2_efficientformerl1300_mobilebert"
+    model_type = "two-tower"
+    datasets = ["refcoco"]
+    loss_names = _loss_names({"ref": 1})
+    # Hardware Settings
+    num_nodes = 1
+    num_gpus = 2
+    per_gpu_batchsize = 10
+    # Training Setttings
+    batch_size = 60
+    max_epoch = 10
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 7.5e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    max_text_len = 40
+    image_size = 224
+    patch_size = 4
+    
+    # Encoder Settings
+    text_encoder = "google/mobilebert-uncased"
+    image_encoder = "snap-research/efficientformer-l1-300" 
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
 
 # ===================== Pretraining Tasks===================== #
 
