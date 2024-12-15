@@ -1537,38 +1537,6 @@ def finetune_nlvr2_twotower_exp2_dinos_mobilebert():
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
     
-@ex.named_config
-def finetune_nlvr2_twotower_exp2_dinos_electrasmall():
-    exp_name = "nlvr2_twotower_exp2_dinos_electrasmall"
-    model_type = "two-tower"
-    datasets = ["nlvr2"]
-    loss_names = _loss_names({"nlvr2": 1})
-    # Hardware Settings
-    per_gpu_batchsize = 32 
-    num_nodes = 1 
-    num_gpus = 2 
-    # Training Settings
-    batch_size = 256
-    max_epoch = 40  
-    max_steps = 10e6
-    warmup_steps = 0.05
-    draw_false_image = 0
-    learning_rate = 1e-4
-    lr_mult_head = 5  
-    lr_mult_cross_modal = 5 
-    # Text Setting
-    text_encoder = "google/electra-small-discriminator"
-    max_text_len = 50
-    # Image Settings
-    image_encoder = "facebook/dino-vits16"
-    patch_size = 16
-    image_size = 288
-    # Cross Layer Settings
-    cross_layer_hidden_size = 256
-    num_cross_layers = 6
-    num_cross_layer_heads = 4
-    cross_layer_mlp_ratio = 4
-    cross_layer_drop_rate = 0.1
     
 ## resnet50
 @ex.named_config
