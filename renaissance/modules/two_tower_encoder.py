@@ -482,7 +482,19 @@ class TwoTowerEncoder(nn.Module):
         try:
             self.image_encoder_hidden_size = self.image_encoder.config.hidden_size
         except:
+            pass
+        try :
             self.image_encoder_hidden_size = self.image_encoder.config.hidden_sizes[-1]
+        except:
+            pass
+        try:
+            self.image_encoder_hidden_size = self.image_encoder.config.embed_dim[-1]
+        except:
+            pass
+        try:    
+            self.image_encoder_hidden_size = self.image_encoder.config.embed_dims[-1]
+        except:
+            pass
         
         
         self.text_transformer_hidden_size = self.text_transformer.config.hidden_size
@@ -593,8 +605,15 @@ class TwoTowerEncoder(nn.Module):
     
         # pooled_output = image_output.pooler_output
         # cls = pooled_output.squeeze(-1).permute((0,2,1))
-        cls_feature = image_output.pooler_output
-        cls_dims = len(image_output.pooler_output.shape)
+        # cls_feature = image_output.pooler_output
+        try:
+            cls_feature = image_output.pooler_output
+        except:
+            try:
+                cls_feature = image_output.cls_token_value
+            except:
+                cls_feature = image_output.last_hidden_state.flatten(2).mean(-1)
+        cls_dims = len(cls_feature.shape)
         if cls_dims ==4:
             cls_feature = cls_feature.squeeze(-1).permute((0,2,1))
         elif cls_dims == 2:

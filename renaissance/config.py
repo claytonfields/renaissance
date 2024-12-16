@@ -1129,7 +1129,494 @@ def pretrain_mlm_itm_twotower_exp2_efficientformerl130_mobilebert():
     learning_rate = 1e-4
     val_check_interval = 1.0
     lr_mult_head = 5
-    lr_mult_cross_modal = 5  
+    lr_mult_cross_modal = 5
+    
+## efficientformerl3300
+@ex.named_config
+def pretrain_mlm_itm_twotower_exp2_efficientformerl3300_electratiny():
+    exp_name = "mlm_itm_exp2_efficientformerl3300_electratiny"
+    model_type = "two-tower"
+    # datasets = ["coco", "vg", "sbu", "gcc"]
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 512
+    per_gpu_batchsize = 128
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = "snap-research/efficientformer-l3-300" 
+    image_size = 224
+    patch_size = 4
+    draw_false_image = 1
+    # Text Setting
+    text_encoder = "claytonfields/electra-tiny"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+
+@ex.named_config
+def pretrain_mlm_itm_twotower_exp2_efficientformerl3300_electrasmall():
+    exp_name = "mlm_itm_twotower_exp2_efficientformerl3300_electrasmall"
+    model_type = "two-tower"
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 512
+    per_gpu_batchsize = 128
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = "snap-research/efficientformer-l3-300" 
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    # Text Setting
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+
+@ex.named_config
+def pretrain_mlm_itm_twotower_exp2_efficientformerl3300_mobilebert():
+    exp_name = "mlm_itm_twotower_exp2_efficientformerl3300_mobilebert"
+    model_type = "two-tower"
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 512
+    per_gpu_batchsize = 128
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = "snap-research/efficientformer-l3-300" 
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    # Text Setting
+    text_encoder = "google/mobilebert-uncased"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+
+## swiftformerl3
+# 'MBZUAI/swiftformer-l3'
+@ex.named_config
+def pretrain_mlm_itm_twotower_exp2_swiftformerl3_electratiny():
+    exp_name = "mlm_itm_exp2_swiftformerl3_electratiny"
+    model_type = "two-tower"
+    # datasets = ["coco", "vg", "sbu", "gcc"]
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 512
+    per_gpu_batchsize = 128
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = 'MBZUAI/swiftformer-l3'
+    image_size = 224
+    patch_size = 4
+    draw_false_image = 1
+    # Text Setting
+    text_encoder = "claytonfields/electra-tiny"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+
+@ex.named_config
+def pretrain_mlm_itm_twotower_exp2_swiftformerl3_electrasmall():
+    exp_name = "mlm_itm_twotower_exp2_swiftformerl3_electrasmall"
+    model_type = "two-tower"
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 512
+    per_gpu_batchsize = 128
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = 'MBZUAI/swiftformer-l3'
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    # Text Setting
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+
+@ex.named_config
+def pretrain_mlm_itm_twotower_exp2_swiftformerl3_mobilebert():
+    exp_name = "mlm_itm_twotower_exp2_swiftformerl3_mobilebert"
+    model_type = "two-tower"
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 512
+    per_gpu_batchsize = 128
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = 'MBZUAI/swiftformer-l3'
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    # Text Setting
+    text_encoder = "google/mobilebert-uncased"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+
+## cvt21
+# 'microsoft/cvt-21'
+@ex.named_config
+def pretrain_mlm_itm_twotower_exp2_cvt21_electratiny():
+    exp_name = "mlm_itm_exp2_cvt21_electratiny"
+    model_type = "two-tower"
+    # datasets = ["coco", "vg", "sbu", "gcc"]
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 512
+    per_gpu_batchsize = 128
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = 'microsoft/cvt-21'
+    image_size = 224
+    patch_size = 4
+    draw_false_image = 1
+    # Text Setting
+    text_encoder = "claytonfields/electra-tiny"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+
+@ex.named_config
+def pretrain_mlm_itm_twotower_exp2_cvt21_electrasmall():
+    exp_name = "mlm_itm_twotower_exp2_cvt21_electrasmall"
+    model_type = "two-tower"
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 512
+    per_gpu_batchsize = 128
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = 'microsoft/cvt-21'
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    # Text Setting
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+
+@ex.named_config
+def pretrain_mlm_itm_twotower_exp2_cvt21_mobilebert():
+    exp_name = "mlm_itm_twotower_exp2_cvt21_mobilebert"
+    model_type = "two-tower"
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 512
+    per_gpu_batchsize = 128
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = 'microsoft/cvt-21'
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    # Text Setting
+    text_encoder = "google/mobilebert-uncased"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+
+## bit50
+# 'google/bit-50'
+@ex.named_config
+def pretrain_mlm_itm_twotower_exp2_bit50_electratiny():
+    exp_name = "mlm_itm_exp2_bit50_electratiny"
+    model_type = "two-tower"
+    # datasets = ["coco", "vg", "sbu", "gcc"]
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 512
+    per_gpu_batchsize = 128
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = 'google/bit-50'
+    image_size = 224
+    patch_size = 4
+    draw_false_image = 1
+    # Text Setting
+    text_encoder = "claytonfields/electra-tiny"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+
+@ex.named_config
+def pretrain_mlm_itm_twotower_exp2_bit50_electrasmall():
+    exp_name = "mlm_itm_twotower_exp2_bit50_electrasmall"
+    model_type = "two-tower"
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 512
+    per_gpu_batchsize = 128
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = 'google/bit-50'
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    # Text Setting
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+
+@ex.named_config
+def pretrain_mlm_itm_twotower_exp2_bit50_mobilebert():
+    exp_name = "mlm_itm_twotower_exp2_bit50_mobilebert"
+    model_type = "two-tower"
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 512
+    per_gpu_batchsize = 128
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = 'google/bit-50'
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    # Text Setting
+    text_encoder = "google/mobilebert-uncased"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
     
 
     
@@ -1737,6 +2224,110 @@ def finetune_nlvr2_twotower_exp2_efficientformerl1300_mobilebert():
     num_cross_layer_heads = 4
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
+    
+## efficientformerl3300
+
+@ex.named_config
+def finetune_nlvr2_twotower_exp2_efficientformerl3300_electratiny():
+    exp_name = "nlvr2_twotower_exp2_efficientformerl3300_electratiny"
+    model_type = "two-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 32 
+    num_nodes = 1 
+    num_gpus = 2 
+    # Training Settings
+    batch_size = 256
+    max_epoch = 40  
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5  
+    lr_mult_cross_modal = 5 
+    # Text Setting
+    text_encoder = "claytonfields/electra-tiny"
+    max_text_len = 50
+    # Image Settings
+    image_encoder = "nap-research/efficientformer-l3-300" 
+    patch_size = 16
+    image_size = 288
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+@ex.named_config
+def finetune_nlvr2_twotower_exp2_efficientformerl3300_electrasmall():
+    exp_name = "nlvr2_twotower_exp2_efficientformerl3300_electrasmall"
+    model_type = "two-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 32 
+    num_nodes = 1 
+    num_gpus = 2 
+    # Training Settings
+    batch_size = 256
+    max_epoch = 40  
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5  
+    lr_mult_cross_modal = 5 
+    # Text Setting
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    # Image Settings
+    image_encoder = "nap-research/efficientformer-l3-300" 
+    patch_size = 16
+    image_size = 288
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+
+@ex.named_config
+def finetune_nlvr2_twotower_exp2_efficientformerl3300_mobilebert():
+    exp_name = "nlvr2_twotower_exp2_efficientformerl3300_mobilebert"
+    model_type = "two-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 32 
+    num_nodes = 1 
+    num_gpus = 2 
+    # Training Settings
+    batch_size = 256
+    max_epoch = 40  
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5  
+    lr_mult_cross_modal = 5 
+    # Text Setting
+    text_encoder = "google/mobilebert-uncased"
+    max_text_len = 50
+    # Image Settings
+    image_encoder = "nap-research/efficientformer-l3-300" 
+    patch_size = 4
+    image_size = 288
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+    
+    
     
 ### Exp2 snli Configs ###
 ## deit-tiny
