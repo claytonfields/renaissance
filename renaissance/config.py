@@ -160,6 +160,50 @@ def config():
 
 
 ## Test Cases
+# ===================== Experiment 3 Cofigs ===================== #
+
+### Exp2 Pertrining ###
+@ex.named_config
+def pretrain_mlm_itm_twotower_exp3_hs256_ffn256_l12():
+    exp_name = "mlm_itm_twotower_exp3_hs256_ffn256_l12"
+    model_type = "two-tower"
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 512
+    per_gpu_batchsize = 128
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = "facebook/deit-tiny-patch16-224"
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    # Text Setting
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 12
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 1
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+
+
 
 
 # ===================== Experiment 2 Cofigs ===================== #
