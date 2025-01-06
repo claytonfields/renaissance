@@ -65,19 +65,19 @@ class RefcocoDataset(BaseDataset):
             if sub is not None:
                 try :
                     try:
-                        sub = self.processor(
+                        sub_proc = self.processor(
                             sub, 
                             return_tensors='pt',
                             size={'height':self.image_size, 'width':self.image_size}
                         )['pixel_values'][0]
-                        sub_images.append(sub.unsqueeze(0))
+                        sub_images.append(sub_proc.unsqueeze(0))
                     except:
-                        sub = self.processor(
+                        sub_proc = self.processor(
                             sub, 
                             return_tensors='pt',
                             size={'shortest_edge':self.image_size}
                         )['pixel_values'][0]
-                        sub_images.append(sub.unsqueeze(0))
+                        sub_images.append(sub_proc.unsqueeze(0))
                 except ValueError:
                     print("Index: ", index)
                     print("Image Index: ", image_index)
