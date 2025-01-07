@@ -5,6 +5,7 @@ import torch
 import numpy as np
 import pyarrow as pa
 import random
+import transformers
 
 
 class RefcocoDataset(BaseDataset):
@@ -64,18 +65,18 @@ class RefcocoDataset(BaseDataset):
             sub = image[bbox[1]:bbox[1]+bbox[3],bbox[0]:bbox[0]+bbox[2]]
             if sub is not None:
                 try :
-                    try:
+                    if type(self.processor) != transformers.models.convnext.image_processing_convnext.ConvNextImageProcessor:
                         sub_proc = self.processor(
                             sub, 
                             return_tensors='pt',
                             size={'height':self.image_size, 'width':self.image_size}
                         )['pixel_values'][0]
                         sub_images.append(sub_proc.unsqueeze(0))
-                    except:
+                    else:
                         sub_proc = self.processor(
                             sub, 
                             return_tensors='pt',
-                            size={'shortest_edge':self.image_size}
+                            size={'shortest_edge':self.image_size, 'longest_edge':self.image_size}
                         )['pixel_values'][0]
                         sub_images.append(sub_proc.unsqueeze(0))
                 except ValueError:
