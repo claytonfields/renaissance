@@ -79,7 +79,7 @@ class RefcocoDataset(BaseDataset):
                             size={'shortest_edge':self.image_size, 'longest_edge':self.image_size}
                         )['pixel_values'][0]
                         sub_images.append(sub_proc.unsqueeze(0))
-                except ValueError:
+                except:
                     print("Index: ", index)
                     print("Image Index: ", image_index)
                     print("Ref Index: ", ref_index)
