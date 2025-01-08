@@ -483,6 +483,10 @@ class TwoTowerEncoder(nn.Module):
             self.image_encoder_hidden_size = self.image_encoder.config.hidden_size
         except:
             pass
+        try:
+            self.image_encoder_hidden_size = self.image_encoder.config.hidden_dim
+        except:
+            pass
         try :
             self.image_encoder_hidden_size = self.image_encoder.config.hidden_sizes[-1]
         except:
