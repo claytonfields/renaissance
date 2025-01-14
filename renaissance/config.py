@@ -232,9 +232,9 @@ def finetune_nlvr2_twotower_exp3_hs256_ffn512_l18():
     image_size = 288
     # Cross Layer Settings
     cross_layer_hidden_size = 256
-    num_cross_layers = 12
+    num_cross_layers = 18
     num_cross_layer_heads = 4
-    cross_layer_mlp_ratio = 1
+    cross_layer_mlp_ratio = 2
     cross_layer_drop_rate = 0.1
     
 @ex.named_config
@@ -269,9 +269,9 @@ def finetune_snli_twotower_exp3_hs256_ffn512_l18():
     
     # Cross Layer Settings
     cross_layer_hidden_size = 256
-    num_cross_layers = 12
+    num_cross_layers = 18
     num_cross_layer_heads = 4
-    cross_layer_mlp_ratio = 1
+    cross_layer_mlp_ratio = 2
     cross_layer_drop_rate = 0.1
     
 @ex.named_config
@@ -303,9 +303,9 @@ def finetune_ref_twotower_exp3_hs256_ffn512_l18():
     
     # Cross Layer Settings
     cross_layer_hidden_size = 256
-    num_cross_layers = 12
+    num_cross_layers = 18
     num_cross_layer_heads = 4
-    cross_layer_mlp_ratio = 1
+    cross_layer_mlp_ratio = 2
     cross_layer_drop_rate = 0.1
 
 # Model 2
