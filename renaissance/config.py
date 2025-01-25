@@ -659,10 +659,10 @@ def finetune_nlvr2_twotower_exp3_hs320_ffn1280_l6():
     lr_mult_head = 5  
     lr_mult_cross_modal = 5 
     # Text Setting
-    image_encoder = "google/efficientnet-b2"
+    text_encoder = "google/electra-small-discriminator"
     max_text_len = 50
     # Image Settings
-    image_encoder = "facebook/deit-small-patch16-224"
+    image_encoder = "google/efficientnet-b2"
     patch_size = 16
     image_size = 288
     # Cross Layer Settings
