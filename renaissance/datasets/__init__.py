@@ -7,4 +7,5 @@ from .vqav2_dataset import VQAv2Dataset
 from .nlvr2_dataset import NLVR2Dataset
 from .snli_dataset import SNLIDataset
 from .refcoco_dataset import RefcocoDataset
+from .refcoco2_dataset import Refcoco2Dataset
 from .glue_dataset import GlueDataset

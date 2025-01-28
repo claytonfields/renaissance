@@ -7,6 +7,7 @@ from .vqav2_datamodule import VQAv2DataModule
 from .nlvr2_datamodule import NLVR2DataModule
 from .snli_datamodule import SNLIDataModule
 from .refcoco_datamodule import RefcocoDataModule
+from .refcoco2_datamodule import Refcoco2DataModule
 from .glue_datamodule import GlueDataModule
 
 _datamodules = {
@@ -19,5 +20,6 @@ _datamodules = {
     "nlvr2": NLVR2DataModule,
     "snli": SNLIDataModule,
     'refcoco' : RefcocoDataModule,
+    'refcoco2' : Refcoco2DataModule,
     'glue' : GlueDataModule
 }

@@ -129,7 +129,7 @@ def epoch_wrapup(pl_module):
                 getattr(pl_module, f"{phase}_{loss_name}_loss").compute(),
             )
             getattr(pl_module, f"{phase}_{loss_name}_loss").reset()
-        elif loss_name == 'ref':
+        elif loss_name == 'ref' or loss_name=='ref2':
             epoch = pl_module.current_epoch
             value = getattr(pl_module, f"{phase}_{loss_name}_accuracy").compute()
             pl_module.log(f"{loss_name}/{phase}/accuracy_epoch", value, sync_dist=True)

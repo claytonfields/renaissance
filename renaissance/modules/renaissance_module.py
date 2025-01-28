@@ -142,6 +142,15 @@ class RenaissanceTransformer(pl.LightningModule):
             )
             self.ref_classifier.apply(objectives.init_weights)
         
+        # Initialize Reference Resolution 2 Classifier
+        if self.hparams.config["loss_names"]['ref2'] > 0:
+            self.ref2_classifier = heads.RefResClassificationHead(
+                hidden_size=hs, 
+                num_labels=self.hparams.config['max_bb'],
+                num_layers=self.hparams.config['ref_res_head_layers']
+            )
+            self.ref2_classifier.apply(objectives.init_weights)
+            
         # Text-Only Classification
         if self.model_type == 'one-tower':
             self.text_hs = self.hidden_size
@@ -339,6 +348,9 @@ class RenaissanceTransformer(pl.LightningModule):
         # Reference Resolution Task
         if 'ref' in self.current_tasks:
             ret.update(objectives.compute_ref(self, batch))
+            
+        if 'ref2' in self.current_tasks:
+            ret.update(objectives.compute_ref2(self, batch))
         
         # Text Only Tasks
         
