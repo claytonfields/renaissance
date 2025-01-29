@@ -176,7 +176,7 @@ def finetune_ref2_twotower_exp2_deittiny_electrasmall():
     num_gpus = 1
     per_gpu_batchsize = 10
     # Training Setttings
-    batch_size = 10
+    batch_size = 128
     max_epoch = 10
     max_steps = 10
     warmup_steps = 0.05
@@ -497,6 +497,154 @@ def finetune_ref_twotower_exp3_hs384_ffn384_l10():
 
 # Model 3
 @ex.named_config
+def pretrain_mlm_itm_twotower_exp3_hs256_ffn1024_l4():
+    exp_name = "mlm_itm_twotower_exp3_hs256_ffn1024_l4"
+    model_type = "two-tower"
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 512
+    per_gpu_batchsize = 128
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = "google/efficientnet-b2"
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    # Text Setting
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 4
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+
+@ex.named_config
+def finetune_nlvr2_twotower_exp3_hs256_ffn1024_l4():
+    exp_name = "nlvr2_twotower_exp3_hs256_ffn1024_l4"
+    model_type = "two-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 32 
+    num_nodes = 1 
+    num_gpus = 2 
+    # Training Settings
+    batch_size = 256
+    max_epoch = 40  
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5  
+    lr_mult_cross_modal = 5 
+    # Text Setting
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    # Image Settings
+    image_encoder = "google/efficientnet-b2"
+    patch_size = 16
+    image_size = 288
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 4
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+@ex.named_config
+def finetune_snli_twotower_exp3_hs256_ffn1024_l4():
+    exp_name = "snli_twotower_exp3_hs256_ffn1024_l4"
+    model_type = "two-tower"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 64  
+    num_nodes = 1 
+    num_gpus = 2
+    # Training Settings
+    batch_size = 64
+    max_epoch = 10 
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    image_size = 384
+    patch_size = 16
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+
+    # Encoder Settings
+    text_encoder = "google/electra-small-discriminator"
+    image_encoder = "google/efficientnet-b2"
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 4
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+@ex.named_config
+def finetune_ref_twotower_exp3_hs256_ffn1024_l4():
+    exp_name = "ref_twotower_exp3_hs256_ffn1024_l4"
+    model_type = "two-tower"
+    datasets = ["refcoco"]
+    loss_names = _loss_names({"ref": 1})
+    # Hardware Settings
+    num_nodes = 1
+    num_gpus = 2
+    per_gpu_batchsize = 10
+    # Training Setttings
+    batch_size = 60
+    max_epoch = 10
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 7.5e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    max_text_len = 40
+    image_size = 224
+    patch_size = 16
+    
+    # Encoder Settings
+    text_encoder = "google/electra-small-discriminator"
+    image_encoder = "google/efficientnet-b2"
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 256
+    num_cross_layers = 4
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+
+
+
+
+# Model 3
+@ex.named_config
 def pretrain_mlm_itm_twotower_exp3_hs256_ffn1024_l8():
     exp_name = "mlm_itm_twotower_exp3_hs256_ffn1024_l8"
     model_type = "two-tower"
@@ -784,6 +932,153 @@ def finetune_ref_twotower_exp3_hs256_ffn1024_l10():
     num_cross_layer_heads = 4
     cross_layer_mlp_ratio = 4
     cross_layer_drop_rate = 0.1
+
+# Model 4
+@ex.named_config
+def pretrain_mlm_itm_twotower_exp3_hs192_ffn768_l6():
+    exp_name = "mlm_itm_twotower_exp3_hs192_ffn768_l6"
+    model_type = "two-tower"
+    datasets = ["coco", "vg"]
+    loss_names = _loss_names({"itm": 1, "mlm": 1})
+    batch_size = 512
+    per_gpu_batchsize = 128
+    max_epoch = None
+    max_steps = 50000
+    warmup_steps = 0.1
+    whole_word_masking = True
+    model_type = "two-tower"
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+    # Image settings
+    image_encoder = "google/efficientnet-b2"
+    image_size = 224
+    patch_size = 16
+    draw_false_image = 1
+    image_only = False
+    # Text Setting
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    whole_word_masking = True # note that whole_word_masking does not work for RoBERTa
+    mlm_prob = 0.15
+    draw_false_text = 0
+    # Cross Layer Settings
+    cross_layer_hidden_size = 192
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    # Optimizer Settings
+    learning_rate = 1e-4
+    val_check_interval = 1.0
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+
+@ex.named_config
+def finetune_nlvr2_twotower_exp3_hs192_ffn768_l6():
+    exp_name = "nlvr2_twotower_exp3_hs192_ffn768_l6"
+    model_type = "two-tower"
+    datasets = ["nlvr2"]
+    loss_names = _loss_names({"nlvr2": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 32 
+    num_nodes = 1 
+    num_gpus = 2 
+    # Training Settings
+    batch_size = 256
+    max_epoch = 40  
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5  
+    lr_mult_cross_modal = 5 
+    # Text Setting
+    text_encoder = "google/electra-small-discriminator"
+    max_text_len = 50
+    # Image Settings
+    image_encoder = "google/efficientnet-b2"
+    patch_size = 16
+    image_size = 288
+    # Cross Layer Settings
+    cross_layer_hidden_size = 192
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+@ex.named_config
+def finetune_snli_twotower_exp3_hs192_ffn768_l6():
+    exp_name = "snli_twotower_exp3_hhs192_ffn768_l6"
+    model_type = "two-tower"
+    datasets = ["snli"]
+    loss_names = _loss_names({"snli": 1})
+    # Hardware Settings
+    per_gpu_batchsize = 64  
+    num_nodes = 1 
+    num_gpus = 2
+    # Training Settings
+    batch_size = 64
+    max_epoch = 10 
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 1e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    max_text_len = 50
+    image_size = 384
+    patch_size = 16
+    # DO NOT Freeze Encoders
+    freeze_image_encoder = False
+    freeze_text_encoder = False
+
+    # Encoder Settings
+    text_encoder = "google/electra-small-discriminator"
+    image_encoder = "google/efficientnet-b2"
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 192
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+    
+@ex.named_config
+def finetune_ref_twotower_exp3_hs192_ffn768_l6():
+    exp_name = "ref_twotower_exp3_hs192_ffn768_l6"
+    model_type = "two-tower"
+    datasets = ["refcoco"]
+    loss_names = _loss_names({"ref": 1})
+    # Hardware Settings
+    num_nodes = 1
+    num_gpus = 2
+    per_gpu_batchsize = 10
+    # Training Setttings
+    batch_size = 60
+    max_epoch = 10
+    max_steps = 10e6
+    warmup_steps = 0.05
+    draw_false_image = 0
+    learning_rate = 7.5e-4
+    lr_mult_head = 5
+    lr_mult_cross_modal = 5
+    max_text_len = 40
+    image_size = 224
+    patch_size = 16
+    
+    # Encoder Settings
+    text_encoder = "google/electra-small-discriminator"
+    image_encoder = "google/efficientnet-b2"
+    
+    # Cross Layer Settings
+    cross_layer_hidden_size = 192
+    num_cross_layers = 6
+    num_cross_layer_heads = 4
+    cross_layer_mlp_ratio = 4
+    cross_layer_drop_rate = 0.1
+
+
 
 # Model 4
 @ex.named_config
