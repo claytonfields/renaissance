@@ -65,6 +65,10 @@ class Refcoco2Dataset(BaseDataset):
         elif num_bboxes < max_bb:
             pad_boxes = [[0.0, 0.0, 0.0, 0.0] for _ in range(num_pad)]
             bboxes = bboxes + pad_boxes
+            
+        resized_bboxes = []
+        for bbox in bboxes:
+            resized_bboxes.append(self.resize_bbox(bbox))
 
         
         text = self.get_text(index)
@@ -75,7 +79,7 @@ class Refcoco2Dataset(BaseDataset):
 
         return_dict = {
             'image' : [image],#.to(self.device)],
-            'bboxes' : torch.tensor(bboxes),#.to(self.device),
+            'bboxes' : torch.tensor(resized_bboxes),#.to(self.device),
             'target' : label,#.to(self.device),
             'text_ids' : ids,#.unsqueeze(dim=0),#.to(self.device),
             'text_labels' : labels,#.unsqueeze(dim=0),#.to(self.device),
@@ -86,3 +90,11 @@ class Refcoco2Dataset(BaseDataset):
     
     def collate(self, batch, mlm_collator=None):
         return default_collate(batch)
+    
+    def resize_bbox(self, bbox):
+        ret=[0.0,0.0,0.0,0.0]
+        ret[1] = bbox[1]*(self.image_size/640)
+        ret[3] = bbox[3]*(self.image_size/640)
+        ret[0] = bbox[0]*(self.image_size/427)
+        ret[2] = bbox[2]*(self.image_size/427)
+        return ret
