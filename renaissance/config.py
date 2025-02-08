@@ -189,7 +189,7 @@ def finetune_ref2_twotower_exp2_deittiny_electrasmall():
     patch_size = 16
     
     max_bb = 40
-    ref_res_head_layers = 6
+    ref_res_head_layers = 2
     
     # Encoder Settings
     text_encoder = "google/electra-small-discriminator"

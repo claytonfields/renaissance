@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 
 from transformers.models.bert.configuration_bert import BertConfig
-from transformers.models.bert.modeling_bert import BertPredictionHeadTransform
+from transformers.models.bert.modeling_bert import BertPredictionHeadTransform, BertLayer
 
 from typing import List, Optional, Tuple, Union
 
@@ -149,15 +149,44 @@ class RefResClassificationLayer(nn.Module):
         x = self.activation(x)  
         return x
 
+# class RefResClassificationHead(nn.Module):
+#     """Head for reference resolution classification task."""
+
+
+#     def __init__(self, hidden_size = None, num_labels = None, num_layers=2):
+#         super().__init__()
+#         self.hidden_size = hidden_size
+#         self.num_labels = num_labels
+#         self.layers = nn.ModuleList([RefResClassificationLayer(self.hidden_size) for _ in range(num_layers)])
+#         self.pooler = Pooler(hidden_size)
+#         self.bbox_proj = nn.Linear(4, self.hidden_size)
+#         self.out_proj = nn.Linear(self.hidden_size, self.num_labels)
+
+#     def forward(self, cls_features, bboxes, **kwargs):
+#         bbox_features = self.bbox_proj(bboxes)
+#         x = torch.concat((cls_features,bbox_features), dim=1)
+#         for layer in self.layers:
+#             x = layer(x)
+#         x = self.pooler(x)
+#         x = self.out_proj(x)
+#         return x
+    
 class RefResClassificationHead(nn.Module):
     """Head for reference resolution classification task."""
-
+    
 
     def __init__(self, hidden_size = None, num_labels = None, num_layers=2):
+        bert_config = BertConfig(
+            hidden_size=hidden_size,
+            num_attention_heads=4,
+            return_dict = False
+        )
+        
         super().__init__()
         self.hidden_size = hidden_size
         self.num_labels = num_labels
-        self.layers = nn.ModuleList([RefResClassificationLayer(self.hidden_size) for _ in range(num_layers)])
+        self.bert_layers = nn.ModuleList([BertLayer(bert_config) for _ in range(num_layers)])
+        self.linear_layers = nn.ModuleList([RefResClassificationLayer(self.hidden_size) for _ in range(num_layers)])
         self.pooler = Pooler(hidden_size)
         self.bbox_proj = nn.Linear(4, self.hidden_size)
         self.out_proj = nn.Linear(self.hidden_size, self.num_labels)
@@ -165,10 +194,10 @@ class RefResClassificationHead(nn.Module):
     def forward(self, cls_features, bboxes, **kwargs):
         bbox_features = self.bbox_proj(bboxes)
         x = torch.concat((cls_features,bbox_features), dim=1)
-        for layer in self.layers:
-            x = layer(x)
+        for bert_layer in self.bert_layers:
+            x = bert_layer(x)[0]
+        for linear_layer in self.linear_layers:
+            x = linear_layer(x)
         x = self.pooler(x)
         x = self.out_proj(x)
-        return x
-    
-        
+        return x    
