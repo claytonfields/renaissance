@@ -1,33 +1,28 @@
 import torch
 from torchmetrics import Metric
+from torchmetrics.functional.detection.iou import intersection_over_union
 
 
 ### TODO: Implement F1 metric
 
-class F1(Metric):
+class IoU(Metric):
     def __init__(self, dist_sync_on_step=False):
         super().__init__(dist_sync_on_step=dist_sync_on_step)
         self.add_state("correct", default=torch.tensor(0.0), dist_reduce_fx="sum")
         self.add_state("total", default=torch.tensor(0.0), dist_reduce_fx="sum")
         
-        def update(self, logits, target):
-            # logits, target = (
-            #     logits.detach().to(self.correct.device),
-            #     target.detach().to(self.correct.device),
-            # )
-            
-            preds = logits.argmax(dim=-1)
-            # preds = preds[target != -100]
-            # target = target[target != -100]
-            # if target.numel() == 0:
-            #     return 1
-            
-            assert preds.shape == target.shape
-            
-            
-            
-            self.correct += torch.sum(preds == target)
-            self.total += target.numel()
+    def update(self, preds, target):
+        
+        
+        assert preds.shape == target.shape
+        
+        iou = intersection_over_union(preds, target, aggregate=False).diag()
+        
+        self.correct += torch.sum(iou > 0.5)
+        self.total += target.shape[0]
+    
+    def compute(self):
+        return self.correct / self.total
 
 
 class Accuracy(Metric):

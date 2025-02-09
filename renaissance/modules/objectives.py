@@ -7,6 +7,8 @@ import json
 import tqdm
 import functools
 
+from torchvision.ops import generalized_box_iou
+
 from torch.utils.data.distributed import DistributedSampler
 from einops import rearrange
 
@@ -123,28 +125,54 @@ def compute_ref(pl_module, batch):
     
     return ret
 
+# def compute_ref2(pl_module, batch):
+#     batch_size = pl_module.hparams.config['per_gpu_batchsize']
+#     targets = batch['target']
+#     cls_features = pl_module.infer(batch)['cls_feats'].unsqueeze(dim=1)
+#     logits = pl_module.ref2_classifier(cls_features, batch['bboxes'])
+    
+#     loss = F.cross_entropy(logits, targets)
+    
+#     # losses.append(loss.item())                                                       
+#     ret = {
+#         "ref2_loss" : loss,
+#         "ref2_logits" : logits,
+#         "ref2_targets" : targets
+#     }
+        
+#     phase = "train" if pl_module.training else "val"
+#     loss = getattr(pl_module, f"{phase}_ref2_loss")(ret["ref2_loss"])
+#     acc = getattr(pl_module, f"{phase}_ref2_accuracy")(
+#         ret["ref2_logits"], ret["ref2_targets"]
+#     )
+#     pl_module.log(f"ref2/{phase}/loss", loss, batch_size=batch_size, sync_dist=True)
+#     pl_module.log(f"ref2/{phase}/accuracy", acc, batch_size=batch_size, sync_dist=True)
+#     # pl_module.log(f"ref/{phase}/score", score)
+    
+#     return ret
+
 def compute_ref2(pl_module, batch):
     batch_size = pl_module.hparams.config['per_gpu_batchsize']
     targets = batch['target']
-    cls_features = pl_module.infer(batch)['cls_feats'].unsqueeze(dim=1)
-    logits = pl_module.ref2_classifier(cls_features, batch['bboxes'])
+    cls_features = pl_module.infer(batch)['cls_feats']#.unsqueeze(dim=1)
+    preds = pl_module.ref2_classifier(cls_features)
     
-    loss = F.cross_entropy(logits, targets)
+    loss = generalized_box_iou(preds, targets).diag().mean()
     
     # losses.append(loss.item())                                                       
     ret = {
         "ref2_loss" : loss,
-        "ref2_logits" : logits,
+        "ref2_preds" : preds,
         "ref2_targets" : targets
     }
         
     phase = "train" if pl_module.training else "val"
     loss = getattr(pl_module, f"{phase}_ref2_loss")(ret["ref2_loss"])
-    acc = getattr(pl_module, f"{phase}_ref2_accuracy")(
-        ret["ref2_logits"], ret["ref2_targets"]
+    iou = getattr(pl_module, f"{phase}_ref2_iou")(
+        ret["ref2_preds"], ret["ref2_targets"]
     )
     pl_module.log(f"ref2/{phase}/loss", loss, batch_size=batch_size, sync_dist=True)
-    pl_module.log(f"ref2/{phase}/accuracy", acc, batch_size=batch_size, sync_dist=True)
+    pl_module.log(f"ref2/{phase}/iou", iou, batch_size=batch_size, sync_dist=True)
     # pl_module.log(f"ref/{phase}/score", score)
     
     return ret

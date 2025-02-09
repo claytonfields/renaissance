@@ -9,7 +9,7 @@ from transformers import (
 )
 # from .dist_utils import all_gather
 from .objectives import compute_irtr_recall
-from ..gadgets.my_metrics import Accuracy, VQAScore, Scalar
+from ..gadgets.my_metrics import Accuracy, VQAScore, Scalar, IoU
 # from torchmetrics import F1Score
 from torchmetrics.classification import BinaryF1Score, MatthewsCorrCoef
 
@@ -25,7 +25,9 @@ def set_metrics(pl_module):
             elif k == "ref":
                 setattr(pl_module, f"{split}_ref_accuracy", Accuracy())
                 setattr(pl_module, f"{split}_{k}_loss", Scalar())
-            
+            elif k == "ref2":
+                setattr(pl_module, f"{split}_ref2_iou", IoU())
+                setattr(pl_module, f"{split}_{k}_loss", Scalar())
             elif k == "nlvr2":
                 if split == "train":
                     setattr(pl_module, f"train_{k}_accuracy", Accuracy())
@@ -129,7 +131,7 @@ def epoch_wrapup(pl_module):
                 getattr(pl_module, f"{phase}_{loss_name}_loss").compute(),
             )
             getattr(pl_module, f"{phase}_{loss_name}_loss").reset()
-        elif loss_name == 'ref' or loss_name=='ref2':
+        elif loss_name == 'ref':
             epoch = pl_module.current_epoch
             value = getattr(pl_module, f"{phase}_{loss_name}_accuracy").compute()
             pl_module.log(f"{loss_name}/{phase}/accuracy_epoch", value, sync_dist=True)
@@ -146,6 +148,24 @@ def epoch_wrapup(pl_module):
                 loss_string = f'Epoch: {epoch}, Final Loss on {phase} Set: {loss} \n'
                 f.write(loss_string)
                 acc_string = f'Epoch: {epoch}, Acurracy on {phase} Set: {value} \n\n'
+                f.write(acc_string)
+        elif loss_name=='ref2':
+            epoch = pl_module.current_epoch
+            value = getattr(pl_module, f"{phase}_{loss_name}_iou").compute()
+            pl_module.log(f"{loss_name}/{phase}/iou_epoch", value, sync_dist=True)
+            getattr(pl_module, f"{phase}_{loss_name}_iou").reset()
+            loss =  getattr(pl_module, f"{phase}_{loss_name}_loss").compute()
+            pl_module.log(
+                f"{loss_name}/{phase}/loss_epoch",
+                loss, sync_dist=True)
+            getattr(pl_module, f"{phase}_{loss_name}_loss").reset()
+            
+            log_dir = pl_module.logger.log_dir
+            file_path = os.path.join(log_dir, 'eval.txt')
+            with open(file_path,'a') as f:
+                loss_string = f'Epoch: {epoch}, Final Loss on {phase} Set: {loss} \n'
+                f.write(loss_string)
+                acc_string = f'Epoch: {epoch}, IoU on {phase} Set: {value} \n\n'
                 f.write(acc_string)
         elif loss_name == "nlvr2" or loss_name == 'snli':
             if phase == "train":

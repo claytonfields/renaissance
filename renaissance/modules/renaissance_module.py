@@ -144,11 +144,11 @@ class RenaissanceTransformer(pl.LightningModule):
         
         # Initialize Reference Resolution 2 Classifier
         if self.hparams.config["loss_names"]['ref2'] > 0:
-            self.ref2_classifier = heads.RefResClassificationHead(
+            self.ref2_classifier = heads.MultiModalClassificationHead(
                 hidden_size=hs, 
-                num_labels=self.hparams.config['max_bb'],
-                num_layers=self.hparams.config['ref_res_head_layers']
-            )
+                num_labels=4
+                )
+            # ref2_classifier.apply(init_weights)
             self.ref2_classifier.apply(objectives.init_weights)
             
         # Text-Only Classification

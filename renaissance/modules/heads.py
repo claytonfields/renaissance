@@ -149,27 +149,6 @@ class RefResClassificationLayer(nn.Module):
         x = self.activation(x)  
         return x
 
-# class RefResClassificationHead(nn.Module):
-#     """Head for reference resolution classification task."""
-
-
-#     def __init__(self, hidden_size = None, num_labels = None, num_layers=2):
-#         super().__init__()
-#         self.hidden_size = hidden_size
-#         self.num_labels = num_labels
-#         self.layers = nn.ModuleList([RefResClassificationLayer(self.hidden_size) for _ in range(num_layers)])
-#         self.pooler = Pooler(hidden_size)
-#         self.bbox_proj = nn.Linear(4, self.hidden_size)
-#         self.out_proj = nn.Linear(self.hidden_size, self.num_labels)
-
-#     def forward(self, cls_features, bboxes, **kwargs):
-#         bbox_features = self.bbox_proj(bboxes)
-#         x = torch.concat((cls_features,bbox_features), dim=1)
-#         for layer in self.layers:
-#             x = layer(x)
-#         x = self.pooler(x)
-#         x = self.out_proj(x)
-#         return x
     
 class RefResClassificationHead(nn.Module):
     """Head for reference resolution classification task."""
@@ -201,3 +180,25 @@ class RefResClassificationHead(nn.Module):
         x = self.pooler(x)
         x = self.out_proj(x)
         return x    
+    
+class RefRes3ClassificationHead(nn.Module):
+    """Head for reference resolution classification task."""
+
+
+    def __init__(self, hidden_size = None, num_labels = None, num_layers=2):
+        super().__init__()
+        self.hidden_size = hidden_size
+        self.num_labels = num_labels
+        self.layers = nn.ModuleList([RefResClassificationLayer(self.hidden_size) for _ in range(num_layers)])
+        self.pooler = Pooler(hidden_size)
+        self.bbox_proj = nn.Linear(4, self.hidden_size)
+        self.out_proj = nn.Linear(self.hidden_size, self.num_labels)
+
+    def forward(self, cls_features, bboxes, **kwargs):
+        bbox_features = self.bbox_proj(bboxes)
+        x = torch.concat((cls_features,bbox_features), dim=1)
+        for layer in self.layers:
+            x = layer(x)
+        x = self.pooler(x)
+        x = self.out_proj(x)
+        return x
