@@ -58,3 +58,6 @@ result/*
 
 # Data
 data/*
+
+# Dev Files
+dev/*
