@@ -13,6 +13,9 @@ import warnings
 import torch
 import torch.distributed as dist
 
+from lightning.fabric import Fabric
+# from lightning.fabric.plugins import BitsandbytesPrecision
+from lightning.pytorch.plugins import BitsandbytesPrecision
 
 
 @ex.automain
@@ -23,8 +26,24 @@ def main(_config):
 
     # print(_config)
     dm = MTDataModule(_config, dist=True)
-
+    
+    
+    
+    # available 8-bit quantization modes
+    # ("int8")
+    
+    mode = "int8"
+    # plugin = BitsandbytesPrecision(mode=mode)
+    # fabric = Fabric(plugins=plugin)
+    
+    # model = CustomModule() # your PyTorch model
     model = RenaissanceTransformer(_config)
+    # model = fabric.setup_module(model) # quantizes the layers
+    
+    precision = BitsandbytesPrecision(mode="nf4-dq")
+    # trainer = Trainer(plugins=precision)
+    
+    
     
     # Create name for directory to log results
     load_path = _config['load_path']
@@ -141,10 +160,11 @@ def main(_config):
     trainer = pl.Trainer(
         devices= _config["num_gpus"],
         num_nodes=_config["num_nodes"],
-        precision=_config["precision"],
+        # precision=_config["precision"],
         accelerator = 'gpu',
         strategy='ddp_find_unused_parameters_true',
         # strategy='ddp',
+        plugins=precision,
         deterministic='warn',
         max_epochs=_config["max_epoch"], #if max_steps is None else 1000,
         max_steps=max_steps,
