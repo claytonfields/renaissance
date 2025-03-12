@@ -1,6 +1,6 @@
 import os
 import copy
-import pytorch_lightning as pl
+import lightning as pl
 # import os
 import sys
 # os.environ["NCCL_DEBUG"] = "INFO"
@@ -40,7 +40,11 @@ def main(_config):
     model = RenaissanceTransformer(_config)
     # model = fabric.setup_module(model) # quantizes the layers
     
-    precision = BitsandbytesPrecision(mode="nf4-dq")
+    # precision = BitsandbytesPrecision(mode="nf4-dq")
+    # precision = BitsandbytesPrecision(mode="int8")
+    # precision = BitsandbytesPrecision(mode="int8-training")
+    precision = 16
+    # precision = BitsandbytesPrecision(mode="int8-training", dtype=torch.float16, ignore_modules={"lm_head"})
     # trainer = Trainer(plugins=precision)
     
     
@@ -128,19 +132,19 @@ def main(_config):
     
     
     os.makedirs(_config["log_dir"], exist_ok=True)
-    checkpoint_callback = pl.callbacks.ModelCheckpoint(
+    checkpoint_callback = pl.pytorch.callbacks.ModelCheckpoint(
         save_top_k=1,
         verbose=True,
         monitor="val/the_metric",
         mode="max",
         save_last=True,
     )
-    logger = pl.loggers.TensorBoardLogger(
+    logger = pl.pytorch.loggers.TensorBoardLogger(
         _config["log_dir"],
         name=result_dir
     )
 
-    lr_callback = pl.callbacks.LearningRateMonitor(logging_interval="step")
+    lr_callback = pl.pytorch.callbacks.LearningRateMonitor(logging_interval="step")
     callbacks = [checkpoint_callback, lr_callback]
 
     num_gpus = (
@@ -160,11 +164,11 @@ def main(_config):
     trainer = pl.Trainer(
         devices= _config["num_gpus"],
         num_nodes=_config["num_nodes"],
-        # precision=_config["precision"],
-        accelerator = 'gpu',
+        precision=_config["precision"],
+        # accelerator = 'gpu',
         strategy='ddp_find_unused_parameters_true',
         # strategy='ddp',
-        plugins=precision,
+        # plugins=precision,
         deterministic='warn',
         max_epochs=_config["max_epoch"], #if max_steps is None else 1000,
         max_steps=max_steps,

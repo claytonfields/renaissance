@@ -2,7 +2,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import pytorch_lightning as pl
+import lightning as pl
 
 from transformers.models.bert.modeling_bert import BertConfig#, BertModel, BertEmbeddings
 from transformers.models.vit.modeling_vit import ViTEmbeddings, ViTConfig
