@@ -81,7 +81,10 @@ class RenaissanceTrainer:
         self._eval_epoch(phase="test", dataloader=self.val_dataloader)
 
     def save_checkpoint(self, path: str):
-        self.accelerator.save_state(path)
+        if self.accelerator.is_main_process:
+            unwrapped = self.accelerator.unwrap_model(self.model)
+            unwrapped.save_pretrained(path)
+        self.accelerator.save_state(os.path.join(path, "training_state"))
 
     # ------------------------------------------------------------------
     # Internal

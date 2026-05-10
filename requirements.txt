@@ -1,5 +1,7 @@
 pytorch_lightning
 transformers
+huggingface_hub
+safetensors
 Pillow
 tqdm
 ipdb

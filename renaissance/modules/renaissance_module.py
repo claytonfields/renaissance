@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 
@@ -381,6 +382,37 @@ class RenaissanceTransformer(nn.Module):
             ret.update(objectives.compute_cifar10(self, batch))
             
         return ret
+
+    def save_pretrained(self, path: str) -> None:
+        """Write config.json + model.safetensors to *path*."""
+        from renaissance.hub import RenaissanceHubConfig
+        from safetensors.torch import save_file
+
+        os.makedirs(path, exist_ok=True)
+        hub_cfg = RenaissanceHubConfig.from_flat_config(self.config)
+        hub_cfg.save_pretrained(path)
+        state_dict = {k: v.contiguous().cpu() for k, v in self.state_dict().items()}
+        save_file(state_dict, os.path.join(path, "model.safetensors"))
+
+    @classmethod
+    def from_pretrained(cls, path_or_repo_id: str) -> "RenaissanceTransformer":
+        """Reconstruct model from a local directory or Hub repo."""
+        from renaissance.hub import RenaissanceHubConfig
+        from safetensors.torch import load_file
+
+        hub_cfg = RenaissanceHubConfig.from_pretrained(path_or_repo_id)
+        flat_config = hub_cfg.to_flat_config()
+        model = cls(flat_config)
+
+        if os.path.isdir(path_or_repo_id):
+            weights_path = os.path.join(path_or_repo_id, "model.safetensors")
+        else:
+            from huggingface_hub import hf_hub_download
+            weights_path = hf_hub_download(path_or_repo_id, "model.safetensors")
+
+        state_dict = load_file(weights_path)
+        model.load_state_dict(state_dict, strict=False)
+        return model
 
     @property
     def device(self):

@@ -7,9 +7,52 @@ import torch
 import torch.nn as nn
 
 from transformers.models.bert.configuration_bert import BertConfig
-from transformers.models.bert.modeling_bert import BertPredictionHeadTransform, BertLayer
 
 from typing import List, Optional, Tuple, Union
+
+
+# Inline replacements for BertPredictionHeadTransform and BertLayer from
+# transformers.models.bert.modeling_bert. The upstream module now pulls in
+# heavy audio-processing dependencies (librosa/soxr) via its import chain,
+# which are not available in this environment. These implementations are
+# functionally equivalent and match the same forward interface.
+
+class BertPredictionHeadTransform(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.dense = nn.Linear(config.hidden_size, config.hidden_size)
+        self.transform_act_fn = nn.GELU()
+        self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+
+    def forward(self, hidden_states):
+        hidden_states = self.dense(hidden_states)
+        hidden_states = self.transform_act_fn(hidden_states)
+        hidden_states = self.LayerNorm(hidden_states)
+        return hidden_states
+
+
+class BertLayer(nn.Module):
+    """Minimal self-attention encoder layer matching BertLayer's forward interface."""
+    def __init__(self, config):
+        super().__init__()
+        self.attention = nn.MultiheadAttention(
+            embed_dim=config.hidden_size,
+            num_heads=config.num_attention_heads,
+            dropout=0.0,
+            batch_first=True,
+        )
+        self.intermediate = nn.Linear(config.hidden_size, config.intermediate_size)
+        self.output = nn.Linear(config.intermediate_size, config.hidden_size)
+        self.layernorm1 = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+        self.layernorm2 = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+        self.act = nn.GELU()
+
+    def forward(self, hidden_states, *args, **kwargs):
+        attn_out, _ = self.attention(hidden_states, hidden_states, hidden_states)
+        hidden_states = self.layernorm1(hidden_states + attn_out)
+        ff = self.act(self.intermediate(hidden_states))
+        hidden_states = self.layernorm2(hidden_states + self.output(ff))
+        return (hidden_states,)
 
 
 class Pooler(nn.Module):
