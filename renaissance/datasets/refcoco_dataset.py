@@ -133,8 +133,15 @@ class RefcocoDataset(BaseDataset):
     
     
     def collate(self, batch, mlm_collator=None):
-        targets = []
-        for b in batch:
-            targets.append(b['target'])
-        targets = torch.tensor(targets)
-        return (batch, targets)
+        targets = torch.tensor([b['target'] for b in batch])
+        images = torch.cat([b['image'][0] for b in batch], dim=0)  # (BS*num_regions, 3, H, W)
+        text_ids = torch.cat([b['text_ids'].long() for b in batch], dim=0)
+        text_labels = torch.cat([b['text_labels'].long() for b in batch], dim=0)
+        text_masks = torch.cat([b['text_masks'].long() for b in batch], dim=0)
+        return {
+            'image': [images],
+            'text_ids': text_ids,
+            'text_labels': text_labels,
+            'text_masks': text_masks,
+            'target': targets,
+        }

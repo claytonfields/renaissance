@@ -4,7 +4,7 @@ Pillow
 tqdm
 ipdb
 numpy
-einop
+einops
 pyarrow
 sacred
 pandas

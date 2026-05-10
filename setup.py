@@ -1,16 +1,13 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="meter",
+    name="renaissance",
     packages=find_packages(
         exclude=[".dfc", ".vscode", "dataset", "notebooks", "result", "scripts"]
     ),
-    version="0.1.0",
+    version="1.1.0",
     license="MIT",
-    description="METER: Multimodal End-to-end TransformER",
-    author="Microsoft Corporation",
-    author_email="zdou0830@gmail.com",
-    url="https://github.com/zdou0830/METER",
+    description="Renaissance: A Multimodal Transformer Modeling Platform",
     keywords=["vision and language pretraining"],
-    install_requires=["torch", "pytorch_lightning"],
+    install_requires=["torch", "lightning"],
 )

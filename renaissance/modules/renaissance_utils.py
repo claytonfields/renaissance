@@ -434,7 +434,13 @@ def set_schedule(pl_module):
         "norm2.bias",
         "norm2.weight",
     ]
-    head_names = ["vqa_classifier", "nlvr2_classifier", "mlm_score", "itm_score", "snli_classifier"]
+    head_names = [
+        "vqa_classifier", "nlvr2_classifier", "mlm_score", "itm_score", "snli_classifier",
+        "ref_classifier", "ref2_classifier", "mrpc_classifier", "rte_classifier",
+        "wnli_classifier", "sst2_classifier", "qqp_classifier", "qnli_classifier",
+        "mnli_classifier", "cola_classifier", "cifar10_classifier",
+        "image_classification_pooler", "text_classification_pooler",
+    ]
     cross_modal_names = ['cross_modal']
     lr_mult_head = pl_module.hparams.config["lr_mult_head"]
     lr_mult_cross_modal = pl_module.hparams.config["lr_mult_cross_modal"]

@@ -87,42 +87,30 @@ def compute_itm(pl_module, batch):
 
     return ret
 
-## Complete this method for batching
-#  Must also decide on how to organize batch in dataset and dataloader
-#  
 def compute_ref(pl_module, batch):
-    batch_size = pl_module.hparams.config['per_gpu_batchsize']
-    targets = batch[1]
-    batch = batch[0]
-    logit_list = []
-    for i,b in enumerate(batch):
+    targets = batch["target"]
+    batch_size = len(targets)
+    num_regions = batch["image"][0].shape[0] // batch_size
 
-        infer_dict = pl_module.infer(b)
-        logits = pl_module.ref_classifier(infer_dict['cls_feats'])
-        logit_list.append(logits.reshape(1,-1))
-    
-        # print('Sanity Check')
-            
-    logit_tensor = torch.cat(logit_list)
-    # target_tensor = torch.tensor(targets)#.to('cuda')
-    loss = F.cross_entropy(logit_tensor, targets)
-    
-    # losses.append(loss.item())                                                       
+    infer_dict = pl_module.infer(batch)
+    # cls_feats: (batch_size * num_regions, hidden_size)
+    logits = pl_module.ref_classifier(infer_dict["cls_feats"])  # (BS*num_regions, 1)
+    logits = logits.view(batch_size, num_regions)  # (BS, num_regions)
+
+    loss = F.cross_entropy(logits, targets)
+
     ret = {
-        "ref_loss" : loss,
-        "ref_logits" : logit_tensor,
-        "ref_targets" : targets
+        "ref_loss": loss,
+        "ref_logits": logits,
+        "ref_targets": targets,
     }
-        
+
     phase = "train" if pl_module.training else "val"
     loss = getattr(pl_module, f"{phase}_ref_loss")(ret["ref_loss"])
-    acc = getattr(pl_module, f"{phase}_ref_accuracy")(
-        ret["ref_logits"], ret["ref_targets"]
-    )
+    acc = getattr(pl_module, f"{phase}_ref_accuracy")(ret["ref_logits"], ret["ref_targets"])
     pl_module.log(f"ref/{phase}/loss", loss, batch_size=batch_size, sync_dist=True)
     pl_module.log(f"ref/{phase}/accuracy", acc, batch_size=batch_size, sync_dist=True)
-    # pl_module.log(f"ref/{phase}/score", score)
-    
+
     return ret
 
 # def compute_ref2(pl_module, batch):
@@ -157,7 +145,7 @@ def compute_ref2(pl_module, batch):
     cls_features = pl_module.infer(batch)['cls_feats']#.unsqueeze(dim=1)
     preds = pl_module.ref2_classifier(cls_features)
     
-    loss = generalized_box_iou(preds, targets).diag().mean()
+    loss = (1 - generalized_box_iou(preds, targets).diag()).mean()
     
     # losses.append(loss.item())                                                       
     ret = {
@@ -378,7 +366,7 @@ def compute_irtr(pl_module, batch):
 
 @torch.no_grad()
 def compute_irtr_recall(pl_module):
-    text_dset = pl_module.trainer.batchmodule.dms[0].make_no_false_val_dset()
+    text_dset = pl_module.trainer.datamodule.dms[0].make_no_false_val_dset()
     text_dset.tokenizer = pl_module.trainer.datamodule.dms[0].tokenizer
     text_loader = torch.utils.data.DataLoader(
         text_dset,

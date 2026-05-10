@@ -448,7 +448,7 @@ class TwoTowerEncoder(nn.Module):
             
         # Freeze Parameters for self.image_encoder
         if config['freeze_image_encoder']:
-            for param in self.image_encoder.parameters(self):
+            for param in self.image_encoder.parameters():
                 param.requires_grad = False
         
         # Initialize text_encoder
@@ -515,7 +515,7 @@ class TwoTowerEncoder(nn.Module):
         self.fusion_encoder.apply(init_weights)
         
         if config['freeze_cross_modal_layers']:
-            for param in self.fusion_encoder.parameters(self):
+            for param in self.fusion_encoder.parameters():
                 param.requires_grad = False
         
         # Token Type Embeddings

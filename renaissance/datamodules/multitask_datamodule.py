@@ -57,8 +57,9 @@ class MTDataModule(LightningDataModule):
         loader = DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
-            # sampler=self.train_sampler,
+            shuffle=True,
             num_workers=self.num_workers,
+            pin_memory=True,
             collate_fn=self.collate,
         )
         return loader
@@ -67,8 +68,8 @@ class MTDataModule(LightningDataModule):
         loader = DataLoader(
             self.val_dataset,
             batch_size=batch_size if batch_size is not None else self.batch_size,
-            # sampler=self.val_sampler,
             num_workers=self.num_workers,
+            pin_memory=True,
             collate_fn=self.collate,
         )
         return loader
@@ -77,8 +78,8 @@ class MTDataModule(LightningDataModule):
         loader = DataLoader(
             self.test_dataset,
             batch_size=self.batch_size,
-            # sampler=self.test_sampler,
             num_workers=self.num_workers,
+            pin_memory=True,
             collate_fn=self.collate,
         )
         return loader
