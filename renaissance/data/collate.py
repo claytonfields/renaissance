@@ -1,19 +1,25 @@
 """
 Batch-level collator for the modern data layer.
 
-Takes a list of per-item dicts (as produced by `Dataset.__getitem__` after
-`with_transform`) and produces the batch dict the existing model encoders
-expect:
+Takes a list of per-item dicts (from `Dataset.__getitem__` after
+`with_transform`) and produces the batch dict the existing encoders expect.
 
-- `image`: list[Tensor[B, 3, H, W]]  (single-view list for legacy compat)
+Standard single-image schema (`image_keys=("image",)`):
+- `image`: list[Tensor[B, 3, H, W]]  (single-view list, legacy compat)
 - `text`: list[str] of length B
 - `text_ids`, `text_masks`, `text_labels`: Tensor[B, L]
 - `text_ids_mlm`, `text_labels_mlm`: Tensor[B, L]  (when `do_mlm=True`)
 - `false_image_0`: list[Tensor[B, 3, H, W]]       (when `do_itm=True`)
 
-ITM negatives are produced via an in-batch image permutation rather than per-
-item random sampling. MLM masking uses `DataCollatorForLanguageModeling`.
+NLVR2-style two-image schema (`image_keys=("image_0", "image_1")`):
+- `image_0`, `image_1`: each a list[Tensor[B, 3, H, W]]
+- text fields as above
+
+ITM negatives only fire when `do_itm=True` and use the first key in
+`image_keys` as the source.
 """
+
+from typing import Tuple
 
 import torch
 
@@ -26,11 +32,13 @@ class VLPCollator:
         mlm_prob: float = 0.15,
         do_mlm: bool = True,
         do_itm: bool = True,
+        image_keys: Tuple[str, ...] = ("image",),
     ):
         self.tokenizer = tokenizer
         self.max_text_len = max_text_len
         self.do_mlm = do_mlm
         self.do_itm = do_itm
+        self.image_keys = tuple(image_keys)
         if do_mlm:
             # Imported lazily: `transformers.data.data_collator` pulls in a TF
             # module that breaks in environments where TF + numpy are
@@ -48,8 +56,13 @@ class VLPCollator:
             self.mlm_collator = None
 
     def __call__(self, examples):
-        images = torch.stack([ex["image"] for ex in examples])
+        batch = {}
+
+        for k in self.image_keys:
+            batch[k] = [torch.stack([ex[k] for ex in examples])]
+
         texts = [ex["text"] for ex in examples]
+        batch["text"] = texts
 
         enc = self.tokenizer(
             texts,
@@ -59,14 +72,9 @@ class VLPCollator:
             return_special_tokens_mask=True,
             return_tensors="pt",
         )
-
-        batch = {
-            "image": [images],
-            "text": texts,
-            "text_ids": enc["input_ids"],
-            "text_masks": enc["attention_mask"],
-            "text_labels": torch.full_like(enc["input_ids"], -100),
-        }
+        batch["text_ids"] = enc["input_ids"]
+        batch["text_masks"] = enc["attention_mask"]
+        batch["text_labels"] = torch.full_like(enc["input_ids"], -100)
 
         if self.do_mlm:
             mlm_inputs = [
@@ -82,13 +90,15 @@ class VLPCollator:
             batch["text_labels_mlm"] = mlm_out["labels"]
 
         if self.do_itm:
-            perm = torch.randperm(images.size(0))
-            batch["false_image_0"] = [images[perm].clone()]
+            primary = self.image_keys[0]
+            primary_tensor = batch[primary][0]
+            perm = torch.randperm(primary_tensor.size(0))
+            batch[f"false_{primary}_0"] = [primary_tensor[perm].clone()]
 
-        # Pass-through for any task-specific columns (qid, labels, bbox, ...)
+        skip = set(self.image_keys) | {"text"}
         for ex in examples:
             for k, v in ex.items():
-                if k in ("image", "text"):
+                if k in skip:
                     continue
                 batch.setdefault(k, []).append(v)
 
