@@ -26,12 +26,12 @@ class VQAv2Dataset(BaseDataset):
         text = self.get_text(index)["text"]
 
         index, question_index = self.index_mapper[index]
-        qid = self.table["question_id"][index][question_index].as_py()
+        qid = self.table[index]["question_id"][question_index]
 
         if self.split != "test":
-            answers = self.table["answers"][index][question_index].as_py()
-            labels = self.table["answer_labels"][index][question_index].as_py()
-            scores = self.table["answer_scores"][index][question_index].as_py()
+            answers = self.table[index]["answers"][question_index]
+            labels = self.table[index]["answer_labels"][question_index]
+            scores = self.table[index]["answer_scores"][question_index]
         else:
             answers = list()
             labels = list()

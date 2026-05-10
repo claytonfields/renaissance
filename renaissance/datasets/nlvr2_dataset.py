@@ -39,7 +39,7 @@ class NLVR2Dataset(BaseDataset):
                 index = random.randint(0, len(self.index_mapper) - 1)
 
         index, question_index = self.index_mapper[index]
-        answers = self.table["answers"][index][question_index].as_py()
+        answers = self.table[index]["answers"][question_index]
         answers = answers == "True"
 
         return {

@@ -27,7 +27,7 @@ class SNLIDataset(BaseDataset):
 
         index, question_index = self.index_mapper[index]
 
-        labels = self.table["labels"][index][question_index].as_py()
+        labels = self.table[index]["labels"][question_index]
 
         return {
             "image": image_tensor,

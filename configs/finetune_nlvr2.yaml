@@ -1,0 +1,96 @@
+experiment:
+  exp_name: finetune_nlvr2
+  seed: 0
+  load_path: ""   # set to pretrained checkpoint path
+  test_only: false
+  log_dir: result
+
+model:
+  model_type: two-tower
+  image_encoder: facebook/deit-tiny-patch16-224
+  text_encoder: google/electra-small-discriminator
+  image_size: 288
+  original_image_size: 224
+  patch_size: 16
+  cross_layer_hidden_size: 256
+  num_cross_layers: 6
+  num_cross_layer_heads: 4
+  cross_layer_mlp_ratio: 4
+  cross_layer_drop_rate: 0.1
+  image_encoder_hidden_size: 192
+  image_encoder_num_heads: 3
+  image_encoder_num_layers: 12
+  image_encoder_mlp_ratio: 4
+  image_encoder_drop_rate: 0.1
+  image_encoder_embedding_size: 128
+  text_encoder_hidden_size: 256
+  text_encoder_num_heads: 4
+  text_encoder_num_layers: 12
+  text_encoder_mlp_ratio: 4
+  text_encoder_drop_rate: 0.1
+  text_encoder_embedding_size: 64
+  max_text_len: 40
+  vocab_size: 30522
+  freeze_image_encoder: false
+  freeze_text_encoder: false
+  freeze_cross_modal_layers: false
+
+task:
+  loss_names:
+    itm: 0
+    mlm: 0
+    nlvr2: 1
+    vqa: 0
+    vcr: 0
+    vcr_qar: 0
+    irtr: 0
+    contras: 0
+    snli: 0
+    ref: 0
+    ref2: 0
+    mrpc: 0
+    rte: 0
+    wnli: 0
+    sst2: 0
+    qqp: 0
+    qnli: 0
+    mnli: 0
+    cola: 0
+    mpp: 0
+    cifar10: 0
+  draw_false_image: 0
+  draw_false_text: 0
+  get_recall_metric: false
+  vqav2_label_size: 3129
+  max_bb: 20
+  ref_res_head_layers: 2
+
+data:
+  datasets:
+    - nlvr2
+  data_root: data/arrow/
+  train_transform_keys:
+    - imagenet
+  val_transform_keys:
+    - imagenet
+  batch_size: 128
+  per_gpu_batchsize: 32
+  eval_batch_size: 32
+  num_workers: 8
+
+training:
+  optim_type: adamw
+  learning_rate: 1.0e-5
+  weight_decay: 0.01
+  decay_power: cosine
+  max_epoch: 10
+  max_steps: 25000
+  warmup_steps: 0.1
+  end_lr: 0.0
+  lr_mult_head: 5.0
+  lr_mult_cross_modal: 5.0
+  precision: 32
+  num_gpus: 1
+  num_nodes: 1
+  val_check_interval: 1.0
+  fast_dev_run: false

@@ -6,7 +6,7 @@ import os
 
 from PIL import Image
 from ..transforms import keys_to_transforms
-from datasets import load_dataset
+from datasets import load_dataset, Dataset, concatenate_datasets
 from torch.utils.data._utils.collate import default_collate
 
 
@@ -73,29 +73,34 @@ class BaseDataset(torch.utils.data.Dataset):
         # Use local files with pyarrow for data processing and loading
         else:
             if len(names) != 0:
-                tables = [
-                    pa.ipc.RecordBatchFileReader(
-                        pa.memory_map(f"{data_dir}/{name}.arrow", "r")
-                    ).read_all()
-                    for name in names
-                    if os.path.isfile(f"{data_dir}/{name}.arrow")
-                ]
-    
-                self.table_names = list()
-                for i, name in enumerate(names):
-                    self.table_names += [name] * len(tables[i])
-    
-                self.table = pa.concat_tables(tables, mode='default')
+                loaded = []
+                for name in names:
+                    path = f"{data_dir}/{name}.arrow"
+                    if os.path.isfile(path):
+                        pa_table = pa.ipc.RecordBatchFileReader(
+                            pa.memory_map(path, "r")
+                        ).read_all()
+                        loaded.append((name, Dataset(pa_table)))
+
+                self.table_names = []
+                for name, ds in loaded:
+                    self.table_names += [name] * len(ds)
+
+                ds_list = [ds for _, ds in loaded]
+                self.table = (
+                    concatenate_datasets(ds_list) if len(ds_list) > 1 else ds_list[0]
+                )
+
                 if text_column_name != "":
                     self.text_column_name = text_column_name
-                    self.all_texts = self.table[text_column_name].to_pandas().tolist()
+                    self.all_texts = self.table[text_column_name]
                     if type(self.all_texts[0][0]) == str:
                         self.all_texts = (
                             [list(set(texts)) for texts in self.all_texts]
                             if remove_duplicate
                             else self.all_texts
                         )
-                    else: #snli
+                    else:  # snli — list of (idx, sentence) tuples
                         self.all_texts = (
                             [[t[1].strip() for t in texts] for texts in self.all_texts]
                         )
@@ -125,11 +130,8 @@ class BaseDataset(torch.utils.data.Dataset):
 
     def get_raw_image(self, index, image_key="image"):
         index, caption_index = self.index_mapper[index]
-        image_bytes = io.BytesIO(self.table[image_key][index].as_py())
+        image_bytes = io.BytesIO(self.table[index][image_key])
         image_bytes.seek(0)
-        # if self.clip_transform:
-        #     return Image.open(image_bytes).convert("RGBA")
-        # else:
         return Image.open(image_bytes).convert("RGB")
 
     def get_image(self, index, image_key="image"):

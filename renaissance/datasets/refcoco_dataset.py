@@ -3,7 +3,6 @@ import io
 from PIL import Image
 import torch
 import numpy as np
-import pyarrow as pa
 import random
 import transformers
 
@@ -30,9 +29,9 @@ class RefcocoDataset(BaseDataset):
         max_bb = self.max_bb
         image_index, ref_index = self.index_mapper[index]
         try:
-            label = self.table["labels"][image_index].as_py()
+            label = self.table[image_index]["labels"]
             image = np.array(self.get_raw_image(index))
-            bboxes = self.table['bboxes'][image_index].as_py()
+            bboxes = self.table[image_index]['bboxes']
         except IndexError:
             print("Hello World")
             print("Index: ", index)
@@ -124,12 +123,7 @@ class RefcocoDataset(BaseDataset):
         return return_dict
     
     def filter_table(self):
-        df = self.table.to_pandas()
-        def check_len(item):
-            return item.size <= self.max_bb
-        sub = df[df['bboxes'].apply(check_len)]
-        sub.reset_index(inplace=True, drop=True)
-        self.table = pa.Table.from_pandas(sub)
+        self.table = self.table.filter(lambda ex: len(ex["bboxes"]) <= self.max_bb)
     
     
     def collate(self, batch, mlm_collator=None):

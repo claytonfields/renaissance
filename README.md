@@ -1,110 +1,128 @@
-# Renaissance: A Multimodal Transformr Modeling Platform
+# Renaissance
 
-Reanissance is a straight-forward modeling platform that allows the user to train and test a variety of vision-language model configurations with minimal programming requirements. The novel feature of this platform is that models from the Huggingface hub can be easily plugged into text and vision transformer modules. This allows users to easily test and train a huge variety of novel models with relatively little programming.   
+A multimodal vision-language modeling platform built on HuggingFace Transformers and Accelerate. Plug any HF encoder into a one-tower or two-tower architecture and pretrain / fine-tune on standard VLP benchmarks with a single command.
 
-## Model Types
-
-Renaissance currently supports two types of encoder-only models: the one-tower encoder and the two-tower encoder. 
-
-The one-tower encoder consists of an embedding layer, an encoder module and a output layer. The encoder module can be a drawn from number of transformer encoders available on the huggingface hub. Currently only BERT-style word-piece text embeddings and image patch embeddings are available. 
-
-![alt text](one-tower.png)
-
-The tow-tower encoder consists of a text-encoder, an image-encoder and a cross-modal fusion encoder
-followed by an output layer. The text-encoder and the image-encoder can be drawn from a number of models available on huggingface. The fusion encoder is always manually configured and trained from scratch.
-
-![alt text](two-tower.png)
-
-
-## Install
+## Quick install
 
 ```bash
 pip install -r requirements.txt
 pip install -e .
 ```
 
-## Pre-trained Checkpoints
-
-Here are the pre-trained models:
-
-
-
-## Dataset Preparation
-
-Dataset preperation and usage is described in DATA.md.
-
-## Quiick Start Guide
-
-To get the most out of this program users will need to adjust the model settings in the renaissance/config.py settings. CONFIGURING_MODELS.md provides a detailed explaination of how to use the config file. Below we have provided some simple examples using only the command line.
-
-### Pretrain A One-Tower Model
-There are two pretraining tasks available, masked language modeling (mlm) and image-text matching (itm). They can be run seperately or combined. The examples below run them together, to run them individually replace task_mlm_itm with task_mlm for masked lnaguage modeling or task itm for image_text matching. 
+## Five-command quickstart
 
 ```bash
-python run.py with task_mlm_itm encoder=<ENCODER> max_steps=<TRAINING_STEPS> num_gpus=<NUM_GPUS> num_nodes=<NUM_NODES> per_gpu_batchsize=<BS_FITS_YOUR_GPU> batch_size=<BATCH_SIZE> data_root=<ARROW_ROOT>
+# 1. Prepare data (see docs/data-preparation.md)
+python -c "from renaissance.utils.write_coco_karpathy import make_arrow; make_arrow('data/coco/', 'data/arrow/')"
+
+# 2. Pretrain two-tower (DeiT-Tiny + ELECTRA-Small)
+python run.py configs/pretrain_two_tower.yaml \
+  data.data_root=data/arrow/ training.num_gpus=1
+
+# 3. Fine-tune on NLVR2
+python run.py configs/finetune_nlvr2.yaml \
+  experiment.load_path=result/pretrain_two_tower_seed0_is224_ps16_bs256_pgbs32_ts100000/model.safetensors \
+  data.data_root=data/arrow/
+
+# 4. Evaluate
+python -m renaissance.eval \
+  --checkpoint result/finetune_nlvr2_seed0_is288_ps16_bs128_pgbs32_ts25000/ \
+  --task nlvr2 --split val --data_root data/arrow/
+
+# 5. Push to Hub
+python -c "
+from renaissance.modules.renaissance_module import RenaissanceTransformer
+from renaissance.hub import push_to_hub
+model = RenaissanceTransformer.from_pretrained('result/finetune_nlvr2_...')
+push_to_hub(model, 'myuser/renaissance-nlvr2')
+"
 ```
-Here is an example. The command below will train a one-tower model with DINO-Small as the encoder. It will train for 50k steps and will use gradient accumulation to achieve the batch size of 256.
+
+## Architecture
+
+Renaissance supports two encoder configurations:
+
+**One-tower** — a single HF transformer backbone shared for both text and image. Text uses BERT-style word-piece embeddings; images use ViT patch embeddings. Both streams are concatenated and fed through the shared encoder.
+
+**Two-tower** — separate HF text and vision encoders whose outputs are fused by a learned cross-modal encoder (`LxmertCrossModalEncoder`). The fusion encoder is always trained from scratch; the backbone encoders can be frozen or fine-tuned.
+
+## Documentation
+
+| Document | Contents |
+|----------|----------|
+| [docs/data-preparation.md](docs/data-preparation.md) | Dataset downloads, Arrow conversion, directory layout |
+| [docs/configuration.md](docs/configuration.md) | All config fields, defaults, YAML structure, CLI overrides |
+| [docs/training.md](docs/training.md) | Distributed training, gradient accumulation, mixed precision, resuming |
+| [docs/benchmarks.md](docs/benchmarks.md) | Expected metric values on standard val splits |
+
+## Running experiments
+
+All training is driven by `run.py` with a YAML config file and optional CLI dot-path overrides:
 
 ```bash
-python3 run.py with task_mlm_itm encoder=facebook/dino-vits16 max_steps=50000 num_gpus=1 num_nodes=1 per_gpu_batchsize=32 batch_size=256 data_root=data/arrow/
+# Pretrain one-tower
+python run.py configs/pretrain_one_tower.yaml \
+  model.encoder=facebook/dino-vits16 \
+  training.max_steps=50000
+
+# Pretrain two-tower
+python run.py configs/pretrain_two_tower.yaml \
+  data.data_root=data/arrow/ \
+  training.num_gpus=4
+
+# Fine-tune on VQAv2
+python run.py configs/finetune_vqa.yaml \
+  experiment.load_path=<CHECKPOINT> \
+  model.image_size=288
+
+# Test only
+python run.py configs/finetune_vqa.yaml \
+  experiment.load_path=<CHECKPOINT> \
+  experiment.test_only=true
 ```
 
+Gradient accumulation is computed automatically:
+`grad_steps = batch_size / (per_gpu_batchsize × num_gpus × num_nodes)`
 
+Results and TensorBoard logs are written to:
+`result/<exp_name>_seed<N>_is<img>_ps<patch>_bs<bs>_pgbs<pgbs>_ts<steps>/`
 
-### Pretrain A Two-Tower Model
+## Checkpoints
+
+Checkpoints are stored in safetensors format with a companion `config.json`:
+
+```
+result/
+└── my_experiment/
+    ├── config.json          # model hyperparameters (RenaissanceHubConfig)
+    ├── model.safetensors    # model weights
+    └── training_state/      # optimizer + scheduler + RNG (for resuming)
+```
+
+Load a checkpoint programmatically:
+
+```python
+from renaissance.modules.renaissance_module import RenaissanceTransformer
+model = RenaissanceTransformer.from_pretrained("result/my_experiment/")
+```
+
+## Evaluation
+
 ```bash
-python run.py with task_mlm_itm image_encoder=<IMAGE_ENCODER> text_encoder=<TEXT_ENCODER> cross_layer_hidden_size=<CROSS_LAYER_HIDDEN_SIZE> num_cross_layers=<NUM_CROSS_LAYER> max_steps=<TRAINING_STEPS> num_gpus=<NUM_GPUS> num_nodes=<NUM_NODES> per_gpu_batchsize=<BS_FITS_YOUR_GPU> batch_size=<BATCH_SIZE> data_root=<ARROW_ROOT>
+python -m renaissance.eval \
+  --checkpoint result/my_experiment/ \
+  --task snli \
+  --split val \
+  --data_root data/arrow/ \
+  --output results.json
 ```
 
-Here is an example. The command below will train a two-tower model with DeiT-Tiny as the image encoder, ELECTRA-Small as the text-encoder, and a six layer cross-modal encoder with a hidden size of 256. It will train for 50k steps and will use gradient accumulation to achieve the batch size of 256.
+Supported tasks: `mlm`, `itm`, `vqa`, `nlvr2`, `snli`, `ref`, `ref2`, `irtr`, `mrpc`.
 
-```bash
-python3 run.py with task_mlm_itm image_encoder=facebook/deit-tiny-patch16-224 text_encoder=google/electra-small-discriminator cross_layer_hidden_size=256 num_cross_layers=6 max_steps=50000 num_gpus=1 num_nodes=1 per_gpu_batchsize=32 batch_size=256 data_root=data/arrow/
-``` 
+## Examples
 
-## Finetuning and Evaluation
-
-### NLVR2
-
-```bash
-export MASTER_ADDR=$DIST_0_IP
-export MASTER_PORT=$DIST_0_PORT
-export NODE_RANK=$DIST_RANK
-python run.py with  task_finetune_nlvr2  load_path=<PRETRAINED_MODEL> image_encoder=<IMAGE_ENCODER> text_encoder=<TEXT_ENCODER> cross_layer_hidden_size=<CROSS_LAYER_HIDDEN_SIZE> num_cross_layers=<NUM_CROSS_LAYER>  image_size=<IMAGE_SIZE> per_gpu_batchsize=<BS_FITS_YOUR_GPU> num_gpus=<NUM_GPUS> num_nodes=<NUM_NODES> data_root=<ARROW_ROOT>
-```
-
-Here is an example:
-```bash
-python3 run.py with task_mlm_itm load_path=... image_encoder=facebook/deit-tiny-patch16-224 text_encoder=google/electra-small-discriminator cross_layer_hidden_size=256 image_size=288 num_cross_layers=6 per_gpu_batchsize=32 num_gpus=1 num_nodes=1 data_root=data/arrow/
-```
-
-### VQAv2
-
-```bash
-python run.py with task_finetune_vqa load_path=<PRETRAINED_MODEL> image_encoder=<IMAGE_ENCODER> text_encoder=<TEXT_ENCODER> cross_layer_hidden_size=<CROSS_LAYER_HIDDEN_SIZE> num_cross_layers=<NUM_CROSS_LAYER>  image_size=<IMAGE_SIZE> per_gpu_batchsize=<BS_FITS_YOUR_GPU> num_gpus=<NUM_GPUS> num_nodes=<NUM_NODES> data_root=<ARROW_ROOT>
-```
-
-Here is an example:
-```bash
-python run.py with task_finetune_vqa load_path=... image_encoder=facebook/deit-tiny-patch16-224 text_encoder=google/electra-small-discriminator cross_layer_hidden_size=256 image_size=288 num_cross_layers=6 per_gpu_batchsize=32 num_gpus=1 num_nodes=1 data_root=data/arrow/
-```
-
-### SNLI-VE
-
-```bash
-python run.py with task_finetune_snli load_path=<PRETRAINED_MODEL> image_encoder=<IMAGE_ENCODER> text_encoder=<TEXT_ENCODER> cross_layer_hidden_size=<CROSS_LAYER_HIDDEN_SIZE> num_cross_layers=<NUM_CROSS_LAYER>  image_size=<IMAGE_SIZE> per_gpu_batchsize=<BS_FITS_YOUR_GPU> num_gpus=<NUM_GPUS> num_nodes=<NUM_NODES> data_root=<ARROW_ROOT>
-```
-
-Here is an example:
-```bash
-python run.py with task_finetune_snli load_path=... image_encoder=facebook/deit-tiny-patch16-224 text_encoder=google/electra-small-discriminator cross_layer_hidden_size=256 image_size=288 num_cross_layers=6 per_gpu_batchsize=32 num_gpus=1 num_nodes=1 data_root=data/arrow/
-
-
-## Citation
-
-```
-```
+See [`examples/pretrain_two_tower.ipynb`](examples/pretrain_two_tower.ipynb) for an end-to-end walkthrough using synthetic data on a single CPU/GPU.
 
 ## Acknowledgements
 
-The code is based on [ViLT](https://github.com/dandelin/ViLT) and [METER](https://github.com/zdou0830/METER) licensed under [Apache 2.0](https://github.com/dandelin/ViLT/blob/master/LICENSE) and some of the code is borrowed from [CLIP](https://github.com/openai/CLIP) and also borrows heavily from the Hugging Face model hub.
+Built on top of [ViLT](https://github.com/dandelin/ViLT) and [METER](https://github.com/zdou0830/METER) (Apache 2.0). Encoder architectures from [HuggingFace Transformers](https://github.com/huggingface/transformers). Cross-modal fusion layer adapted from [LXMERT](https://github.com/airsplay/lxmert).

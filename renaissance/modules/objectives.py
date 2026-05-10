@@ -16,13 +16,13 @@ from .dist_utils import all_gather
 
 
 def compute_mlm(pl_module, batch):
-    batch_size = pl_module.hparams.config['per_gpu_batchsize']
+    batch_size = pl_module.config['per_gpu_batchsize']
     infer = pl_module.infer(batch, mask_text=True, mask_image=False)
     mlm_logits = pl_module.mlm_score(infer["text_feats"])
     mlm_labels = infer["text_labels"]
 
     mlm_loss = F.cross_entropy(
-        mlm_logits.view(-1, pl_module.hparams.config["vocab_size"]),
+        mlm_logits.view(-1, pl_module.config["vocab_size"]),
         mlm_labels.view(-1),
         ignore_index=-100,
     )
@@ -45,7 +45,7 @@ def compute_mlm(pl_module, batch):
     return ret
 
 def compute_itm(pl_module, batch):
-    batch_size = pl_module.hparams.config['per_gpu_batchsize']
+    batch_size = pl_module.config['per_gpu_batchsize']
     pos_len = len(batch["text"]) // 2
     neg_len = len(batch["text"]) - pos_len
     itm_labels = torch.cat([torch.ones(pos_len), torch.zeros(neg_len)]).to(
@@ -114,7 +114,7 @@ def compute_ref(pl_module, batch):
     return ret
 
 # def compute_ref2(pl_module, batch):
-#     batch_size = pl_module.hparams.config['per_gpu_batchsize']
+#     batch_size = pl_module.config['per_gpu_batchsize']
 #     targets = batch['target']
 #     cls_features = pl_module.infer(batch)['cls_feats'].unsqueeze(dim=1)
 #     logits = pl_module.ref2_classifier(cls_features, batch['bboxes'])
@@ -140,7 +140,7 @@ def compute_ref(pl_module, batch):
 #     return ret
 
 def compute_ref2(pl_module, batch):
-    batch_size = pl_module.hparams.config['per_gpu_batchsize']
+    batch_size = pl_module.config['per_gpu_batchsize']
     targets = batch['target']
     cls_features = pl_module.infer(batch)['cls_feats']#.unsqueeze(dim=1)
     preds = pl_module.ref2_classifier(cls_features)
@@ -183,7 +183,7 @@ def compute_snli(pl_module, batch):
     }
 
     phase = "train" if pl_module.training else "val"
-    batch_size = pl_module.hparams.config['per_gpu_batchsize']
+    batch_size = pl_module.config['per_gpu_batchsize']
 
     if phase == "train":
         loss = getattr(pl_module, f"{phase}_snli_loss")(ret["snli_loss"])
@@ -225,7 +225,7 @@ def compute_vqa(pl_module, batch):
     infer = pl_module.infer(batch, mask_text=False, mask_image=False)
     vqa_logits = pl_module.vqa_classifier(infer["cls_feats"])
     vqa_targets = torch.zeros(
-        len(vqa_logits), pl_module.hparams.config["vqav2_label_size"]
+        len(vqa_logits), pl_module.config["vqav2_label_size"]
     ).to(pl_module.device)
 
     vqa_labels = batch["vqa_labels"]
@@ -323,7 +323,7 @@ def compute_irtr(pl_module, batch):
     is_training_phase = pl_module.training
 
     _bs, _c, _h, _w = batch["image"][0].shape
-    false_len = pl_module.hparams.config["draw_false_text"]
+    false_len = pl_module.config["draw_false_text"]
     text_ids = torch.stack(
         [batch[f"false_text_{i}_ids"] for i in range(false_len)], dim=1
     )
@@ -371,7 +371,7 @@ def compute_irtr_recall(pl_module):
     text_loader = torch.utils.data.DataLoader(
         text_dset,
         batch_size=64,
-        num_workers=pl_module.hparams.config["num_workers"],
+        num_workers=pl_module.config["num_workers"],
         pin_memory=True,
         collate_fn=functools.partial(
             text_dset.collate,
@@ -387,7 +387,7 @@ def compute_irtr_recall(pl_module):
     image_loader = torch.utils.data.DataLoader(
         image_dset,
         batch_size=1,
-        num_workers=pl_module.hparams.config["num_workers"],
+        num_workers=pl_module.config["num_workers"],
         sampler=dist_sampler,
         pin_memory=True,
         collate_fn=functools.partial(

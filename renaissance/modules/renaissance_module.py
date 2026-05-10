@@ -1,37 +1,29 @@
-import math
+import os
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import lightning as pl
 
-from transformers.models.bert.modeling_bert import BertConfig#, BertModel, BertEmbeddings
-from transformers.models.vit.modeling_vit import ViTEmbeddings, ViTConfig
-from transformers.models.electra.modeling_electra import  ElectraConfig#,ElectraEmbeddings
-from .embeddings import ElectraEmbeddings
-# from transformers.model.vit import 
-# from .bert_model import BertCrossLayer
 from . import heads, objectives, renaissance_utils
-from transformers import AutoConfig, AutoModel#, AutoModelForSequenceClassification
-from .fusion_encoder import LxmertCrossModalEncoder
+from transformers import AutoConfig, AutoModel
 from .one_tower_encoder import OneTowerEncoder
 from .two_tower_encoder import TwoTowerEncoder
 
-class RenaissanceTransformer(pl.LightningModule):
+
+class RenaissanceTransformer(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.save_hyperparameters()
+        self.config = config
         
         # ===================== Base Architecture ===================== #
         self.model_type = config['model_type']
         # Adjust dimensions for fine-tuning
-        self.fine_tune = (self.hparams.config["load_path"] != ""
-            and not self.hparams.config["test_only"])
-        self.test_only = (self.hparams.config["load_path"] != "" 
-            and self.hparams.config["test_only"])
+        self.fine_tune = (self.config["load_path"] != ""
+            and not self.config["test_only"])
+        self.test_only = (self.config["load_path"] != "" 
+            and self.config["test_only"])
         
         
         if self.fine_tune or self.test_only:
-            ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
+            ckpt = torch.load(self.config["load_path"], map_location="cpu")
             state_dict = ckpt["state_dict"]
             self.original_max_text_len = ckpt['hyper_parameters']['config']['max_text_len']
             self.new_max_text_len = config['max_text_len']
@@ -76,10 +68,10 @@ class RenaissanceTransformer(pl.LightningModule):
             elif self.pooler_type == 'double':
                 hs = 2*self.hidden_size
         else:
-            hs = 2*self.hparams.config["cross_layer_hidden_size"]
+            hs = 2*self.config["cross_layer_hidden_size"]
         
         # Masked Language Modeling
-        if self.hparams.config["loss_names"]["mlm"] > 0:
+        if self.config["loss_names"]["mlm"] > 0:
             self.mlm_score = heads.MLMHead(config, hidden_size=self.hidden_size)
             self.mlm_score.apply(objectives.init_weights)
         
@@ -92,8 +84,8 @@ class RenaissanceTransformer(pl.LightningModule):
         # ===================== Downstream  ===================== #
         
         # Initialize Visual Question Answering V2 Classifier
-        if self.hparams.config["loss_names"]["vqa"] > 0:
-            vs = self.hparams.config["vqav2_label_size"]
+        if self.config["loss_names"]["vqa"] > 0:
+            vs = self.config["vqav2_label_size"]
             self.vqa_classifier = heads.MultiModalClassificationHead(
                 hidden_size=hs, 
                 num_labels=vs
@@ -108,7 +100,7 @@ class RenaissanceTransformer(pl.LightningModule):
             
 
         # Initialize NLVR2 Classifier
-        if self.hparams.config["loss_names"]["nlvr2"] > 0:
+        if self.config["loss_names"]["nlvr2"] > 0:
             self.nlvr2_classifier = heads.NLVR2ClassificationHead(
                 hidden_size=hs, 
                 num_labels=2
@@ -117,7 +109,7 @@ class RenaissanceTransformer(pl.LightningModule):
             self.encoder.adjust_type_embeds_for_nlvr2()
 
         # Initialize SNLI-VE Classifier
-        if self.hparams.config["loss_names"]["snli"] > 0:
+        if self.config["loss_names"]["snli"] > 0:
             self.snli_classifier = heads.MultiModalClassificationHead(
                 hidden_size=hs, 
                 num_labels=3
@@ -126,7 +118,7 @@ class RenaissanceTransformer(pl.LightningModule):
             
         # Initialize Image-Text Recall Classifier
         # Possible error for two tower model below
-        if self.hparams.config["loss_names"]["irtr"] > 0:
+        if self.config["loss_names"]["irtr"] > 0:
             self.rank_output = nn.Linear(self.cross_layer_hs, 1)
             self.rank_output.weight.data = self.itm_score.fc.weight.data[1:, :]
             self.rank_output.bias.data = self.itm_score.fc.bias.data[1:]
@@ -135,7 +127,7 @@ class RenaissanceTransformer(pl.LightningModule):
                 p.requires_grad = False
         
         # Initialize Reference Resolution Classifier
-        if self.hparams.config["loss_names"]['ref'] > 0:
+        if self.config["loss_names"]['ref'] > 0:
             self.ref_classifier = heads.MultiModalClassificationHead(
                 hidden_size=hs, 
                 num_labels=1
@@ -143,7 +135,7 @@ class RenaissanceTransformer(pl.LightningModule):
             self.ref_classifier.apply(objectives.init_weights)
         
         # Initialize Reference Resolution 2 Classifier
-        if self.hparams.config["loss_names"]['ref2'] > 0:
+        if self.config["loss_names"]['ref2'] > 0:
             self.ref2_classifier = heads.MultiModalClassificationHead(
                 hidden_size=hs, 
                 num_labels=4
@@ -161,7 +153,7 @@ class RenaissanceTransformer(pl.LightningModule):
         self.text_only = False
      
         # MRPC Text Classifier
-        if self.hparams.config["loss_names"]['mrpc'] > 0:
+        if self.config["loss_names"]['mrpc'] > 0:
             # self.text_only = True
             # hidden_size = self.text_hs
             # num_labels = 2
@@ -173,7 +165,7 @@ class RenaissanceTransformer(pl.LightningModule):
             
         
         # rte Text Classifier
-        if self.hparams.config["loss_names"]['rte'] > 0:
+        if self.config["loss_names"]['rte'] > 0:
             # self.text_only = True
             # hidden_size = sel
             # num_labels = 2
@@ -184,7 +176,7 @@ class RenaissanceTransformer(pl.LightningModule):
             self.rte_classifier.apply(objectives.init_weights)
         
         # wnli Text Classifier
-        if self.hparams.config["loss_names"]['wnli'] > 0:
+        if self.config["loss_names"]['wnli'] > 0:
             # self.text_only = True
             self.wnli_classifier = heads.UniModalClassificationHead(
                 hidden_size=self.text_hs, 
@@ -193,7 +185,7 @@ class RenaissanceTransformer(pl.LightningModule):
             self.wnli_classifier.apply(objectives.init_weights)
             
         # sst2 Text Classifier
-        if self.hparams.config["loss_names"]['sst2'] > 0:
+        if self.config["loss_names"]['sst2'] > 0:
             # self.text_only = True
             self.sst2_classifier = heads.UniModalClassificationHead(
                 hidden_size=self.text_hs, 
@@ -202,7 +194,7 @@ class RenaissanceTransformer(pl.LightningModule):
             self.sst2_classifier.apply(objectives.init_weights)
             
         # qqp Text Classifier
-        if self.hparams.config["loss_names"]['qqp'] > 0:
+        if self.config["loss_names"]['qqp'] > 0:
             # self.text_only = True
             self.qqp_classifier = heads.UniModalClassificationHead(
                 hidden_size=self.text_hs, 
@@ -211,7 +203,7 @@ class RenaissanceTransformer(pl.LightningModule):
             self.qqp_classifier.apply(objectives.init_weights)
             
         # qnli Text Classifier
-        if self.hparams.config["loss_names"]['qnli'] > 0:
+        if self.config["loss_names"]['qnli'] > 0:
             # self.text_only = True
             self.qnli_classifier = heads.UniModalClassificationHead(
                 hidden_size=self.text_hs, 
@@ -220,7 +212,7 @@ class RenaissanceTransformer(pl.LightningModule):
             self.qnli_classifier.apply(objectives.init_weights)
             
         # mnli Text Classifier
-        if self.hparams.config["loss_names"]['mnli'] > 0:
+        if self.config["loss_names"]['mnli'] > 0:
             # self.text_only = True
             self.mnli_classifier = heads.UniModalClassificationHead(
                 hidden_size=self.text_hs, 
@@ -228,7 +220,7 @@ class RenaissanceTransformer(pl.LightningModule):
             )
             self.mnli_classifier.apply(objectives.init_weights)
         # cola Text Classifier
-        if self.hparams.config["loss_names"]['cola'] > 0:
+        if self.config["loss_names"]['cola'] > 0:
             # self.text_only = True
             self.cola_classifier = heads.UniModalClassificationHead(
                 hidden_size=self.text_hs, 
@@ -251,7 +243,7 @@ class RenaissanceTransformer(pl.LightningModule):
             self.image_hs = config['image_encoder_hidden_size']
         
         # CIFAR-10 Image Classifier
-        if self.hparams.config["loss_names"]['cifar10'] > 0:
+        if self.config["loss_names"]['cifar10'] > 0:
             self.image_only = True
             self.cifar10_classifier = heads.UniModalClassificationHead(
                 hidden_size=self.image_hs, 
@@ -266,11 +258,10 @@ class RenaissanceTransformer(pl.LightningModule):
         
         renaissance_utils.set_metrics(self)
         self.current_tasks = list()
+        self._log_buffer: dict = {}
 
         # Load Downstream (test_only = True)
         if self.test_only:
-            # ckpt = torch.load(self.hparams.config["load_path"], map_location="cpu")
-            # state_dict = ckpt["state_dict"]
             self.load_state_dict(state_dict, strict=False)
             
     def infer(self,
@@ -392,38 +383,43 @@ class RenaissanceTransformer(pl.LightningModule):
             
         return ret
 
-    def training_step(self, batch, batch_idx):
-        renaissance_utils.set_task(self)
-        output = self(batch)
-        total_loss = sum([v for k, v in output.items() if "loss" in k])
+    def save_pretrained(self, path: str) -> None:
+        """Write config.json + model.safetensors to *path*."""
+        from renaissance.hub import RenaissanceHubConfig
+        from safetensors.torch import save_file
 
-        return total_loss
+        os.makedirs(path, exist_ok=True)
+        hub_cfg = RenaissanceHubConfig.from_flat_config(self.config)
+        hub_cfg.save_pretrained(path)
+        state_dict = {k: v.contiguous().cpu() for k, v in self.state_dict().items()}
+        save_file(state_dict, os.path.join(path, "model.safetensors"))
 
-    def on_train_epoch_end(self):
-        renaissance_utils.epoch_wrapup(self)
+    @classmethod
+    def from_pretrained(cls, path_or_repo_id: str) -> "RenaissanceTransformer":
+        """Reconstruct model from a local directory or Hub repo."""
+        from renaissance.hub import RenaissanceHubConfig
+        from safetensors.torch import load_file
 
-    def validation_step(self, batch, batch_idx):
-        renaissance_utils.set_task(self)
-        output = self(batch)
+        hub_cfg = RenaissanceHubConfig.from_pretrained(path_or_repo_id)
+        flat_config = hub_cfg.to_flat_config()
+        model = cls(flat_config)
 
-    def on_validation_epoch_end(self):
-        renaissance_utils.epoch_wrapup(self)
+        if os.path.isdir(path_or_repo_id):
+            weights_path = os.path.join(path_or_repo_id, "model.safetensors")
+        else:
+            from huggingface_hub import hf_hub_download
+            weights_path = hf_hub_download(path_or_repo_id, "model.safetensors")
 
-    def test_step(self, batch, batch_idx):
-        renaissance_utils.set_task(self)
-        output = self(batch)
-        ret = dict()
+        state_dict = load_file(weights_path)
+        model.load_state_dict(state_dict, strict=False)
+        return model
 
-        if self.hparams.config["loss_names"]["vqa"] > 0:
-            ret.update(objectives.vqa_test_step(self, batch, output))
+    @property
+    def device(self):
+        return next(self.parameters()).device
 
-        return ret
-
-    def on_test_epoch_end(self):
-        model_name = self.hparams.config["load_path"].split("/")[-1][:-5]
-        # if self.hparams.config["loss_names"]["vqa"] > 0:
-        #     objectives.vqa_test_wrapup(outs, model_name)
-        renaissance_utils.epoch_wrapup(self)
-
-    def configure_optimizers(self):
-        return renaissance_utils.set_schedule(self)
+    def log(self, name, value, **kwargs):
+        """Buffer step-level metrics; the Trainer flushes these to TensorBoard."""
+        if torch.is_tensor(value):
+            value = value.item()
+        self._log_buffer[name] = value
