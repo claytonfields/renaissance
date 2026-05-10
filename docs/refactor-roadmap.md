@@ -72,6 +72,68 @@ Step 1 (smoke-test harness) is complete. The remaining steps are ordered to mini
 [3] HF Accelerate
         ↓
 [4] New Interface
+        ↓
+[5] Model Hub Integration
+        ↓
+[6] Evaluation & Benchmarking Suite
+        ↓
+[7] Documentation & Release
 ```
 
 Each step keeps the smoke tests green as a regression guard. Add integration tests at the end of Steps 2 and 3 before moving on.
+
+---
+
+## Step 5 — Model Hub Integration
+
+**Goal:** Make pretrained checkpoints loadable from the HuggingFace Hub via a standard `from_pretrained` pattern, and enable pushing fine-tuned models back to the Hub.
+
+**Why fifth:** Depends on the Accelerate-based trainer (Step 3) for checkpoint format and the typed config system (Step 4) for serializing model configuration alongside weights. Both must be stable before a public checkpoint format is locked in.
+
+**Tasks:**
+
+1. Subclass `PreTrainedModel` (or implement the `push_to_hub` / `save_pretrained` / `from_pretrained` interface) in `RenaissanceTransformer`.
+2. Define a `RenaissanceConfig` class that subclasses `PretrainedConfig` and serializes all model hyperparameters to `config.json`.
+3. Implement `save_pretrained(path)` to write `config.json` + `pytorch_model.bin` (or sharded weights).
+4. Implement `from_pretrained(repo_id_or_path)` that reconstructs the full model from config and loads weights.
+5. Add a `push_to_hub` helper (wraps `huggingface_hub.HfApi`) for publishing checkpoints.
+6. Write a test that round-trips: save → load → assert parameter equality and identical forward pass output.
+
+**Watch out for:** The two-tower encoder loads sub-models from their own HF repos at init time. `from_pretrained` must either re-download those backbones or store their weights inline — decide on one strategy and document it.
+
+---
+
+## Step 6 — Evaluation & Benchmarking Suite
+
+**Goal:** Provide a unified, reproducible evaluation harness for all downstream tasks, decoupled from training, that reports standard benchmark metrics (VQA accuracy, NLVR2 accuracy, SNLI-VE accuracy, IRTR R@1/R@5/R@10, RefCOCO accuracy@0.5 IoU).
+
+**Why sixth:** Evaluation code currently lives inside `test_step` in the Lightning module and is tangled with training infrastructure. Once training and checkpointing are clean (Steps 3–5), the eval harness can be written as a standalone script that loads any checkpoint and evaluates it on a specified split.
+
+**Tasks:**
+
+1. Create `renaissance/eval.py` with an `evaluate(model, dataloader, task)` function that returns a metrics dict.
+2. Port all `*_epoch_end` metric aggregation logic from `renaissance_module.py` into task-specific `Evaluator` classes.
+3. Add a CLI entry point (`python -m renaissance.eval --checkpoint <path> --task vqa --split val --data_root <path>`) that prints results to stdout and optionally writes a JSON report.
+4. Write deterministic eval tests using fixed synthetic batches that assert metric values match expected outputs (tests inputs → expected logits → expected metric).
+5. Document expected numbers for each task on the standard val splits in `docs/benchmarks.md`.
+
+**Watch out for:** IRTR evaluation requires computing similarity scores over the entire val set (not per-batch) — it needs to be implemented as a two-pass accumulation, not a streaming metric.
+
+---
+
+## Step 7 — Documentation & Release
+
+**Goal:** Produce complete end-user documentation, a worked example notebook, and a clean `v1.1.0` release tag so the project is reproducible from scratch by someone new to the codebase.
+
+**Why last:** Docs accurately reflect the final system. Writing them before Steps 2–6 are done means rewriting them as the interface changes.
+
+**Tasks:**
+
+1. Rewrite `README.md`: installation, quickstart (pretrain + finetune in 5 commands), link to `docs/`.
+2. Write `docs/data-preparation.md` (replaces `DATA.md`) covering HF Datasets loading and any custom conversion still required.
+3. Write `docs/configuration.md` documenting all config fields, defaults, and YAML examples.
+4. Write `docs/training.md` covering distributed training, gradient accumulation, mixed precision, and resuming from checkpoints.
+5. Create `examples/pretrain_two_tower.ipynb` — end-to-end walkthrough on a small dataset.
+6. Tag `v1.1.0` on `main` after all prior steps are merged and the full test suite passes.
+
+**Watch out for:** Keep example notebooks runnable on a single GPU with small synthetic or publicly available data so they can be executed in CI or by a reviewer without a large cluster.
