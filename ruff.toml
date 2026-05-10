@@ -1,0 +1,18 @@
+line-length = 120
+target-version = "py39"
+
+exclude = [
+    "renaissance/config_legacy.py",
+    "renaissance/utils/legacy",
+    "renaissance/utils/pandas_write_refcoco.py",
+    "dev",
+    "examples",
+    "result",
+    "data",
+]
+
+[lint]
+# Start narrow: real bugs only (syntax, undefined names, invalid raises).
+# Style rules (F401 unused-import, F541 empty f-string, F841 unused local)
+# are deferred until the data-layer rewrite lands.
+select = ["E9", "F63", "F7", "F82"]
