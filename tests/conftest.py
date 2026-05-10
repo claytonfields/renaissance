@@ -1,6 +1,5 @@
 import pytest
 import torch
-import lightning.pytorch as pl
 
 # ---------------------------------------------------------------------------
 # Batch constants — kept tiny so tests run fast on CPU
@@ -22,15 +21,6 @@ ALL_LOSS_NAMES = {
     "mrpc": 0, "rte": 0, "wnli": 0, "sst2": 0, "qqp": 0, "qnli": 0,
     "mnli": 0, "cola": 0, "cifar10": 0,
 }
-
-
-# ---------------------------------------------------------------------------
-# Silence pl_module.log — objective functions call self.log() which requires
-# an attached Lightning Trainer. Patch it away for unit testing.
-# ---------------------------------------------------------------------------
-@pytest.fixture(autouse=True)
-def silence_lightning_log(monkeypatch):
-    monkeypatch.setattr(pl.LightningModule, "log", lambda *a, **kw: None)
 
 
 # ---------------------------------------------------------------------------
