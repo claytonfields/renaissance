@@ -1,18 +1,23 @@
-pytorch_lightning
-transformers
-huggingface_hub
-safetensors
-Pillow
-tqdm
-ipdb
-numpy
-einops
-pyarrow
-sacred
-pandas
-timm
-ftfy
-torchvision
+# Core ML
 torch
+torchvision
+transformers
 datasets
+accelerate
+safetensors
+huggingface_hub
+torchmetrics>=0.12
+
+# Config + experiment runner
+omegaconf
+
+# Data layer (legacy — slated for removal in the data rewrite)
+lightning
+pyarrow
+pandas
+
+# Utilities
+einops
+numpy
+Pillow
 tensorboard
