@@ -1,0 +1,86 @@
+experiment:
+  exp_name: pretrain_one_tower
+  seed: 0
+  load_path: ""
+  test_only: false
+  log_dir: result
+
+model:
+  model_type: one-tower
+  encoder: google/electra-small-discriminator
+  pooler_type: double
+  random_init_encoder: false
+  encoder_manual_configuration: false
+  hidden_size: 192
+  num_heads: 4
+  num_layers: 12
+  mlp_ratio: 4
+  drop_rate: 0.1
+  embedding_size: 96
+  image_size: 224
+  original_image_size: 224
+  patch_size: 16
+  max_text_len: 40
+  vocab_size: 30522
+
+task:
+  loss_names:
+    itm: 1
+    mlm: 1
+    mpp: 0
+    vqa: 0
+    vcr: 0
+    vcr_qar: 0
+    nlvr2: 0
+    irtr: 0
+    contras: 0
+    snli: 0
+    ref: 0
+    ref2: 0
+    mrpc: 0
+    rte: 0
+    wnli: 0
+    sst2: 0
+    qqp: 0
+    qnli: 0
+    mnli: 0
+    cola: 0
+    cifar10: 0
+  mlm_prob: 0.15
+  draw_false_image: 1
+  draw_false_text: 0
+  get_recall_metric: false
+  vqav2_label_size: 3129
+  max_bb: 20
+  ref_res_head_layers: 2
+
+data:
+  datasets:
+    - coco
+    - vg
+  data_root: data/arrow/
+  train_transform_keys:
+    - imagenet
+  val_transform_keys:
+    - imagenet
+  batch_size: 256
+  per_gpu_batchsize: 32
+  eval_batch_size: 32
+  num_workers: 12
+
+training:
+  optim_type: adamw
+  learning_rate: 1.0e-5
+  weight_decay: 0.01
+  decay_power: 1
+  max_epoch: 100
+  max_steps: 100000
+  warmup_steps: 10000
+  end_lr: 0.0
+  lr_mult_head: 5.0
+  lr_mult_cross_modal: 5.0
+  precision: 32
+  num_gpus: 1
+  num_nodes: 1
+  val_check_interval: 1.0
+  fast_dev_run: false

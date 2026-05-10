@@ -1,30 +1,57 @@
+"""
+Renaissance training / evaluation entry point.
+
+Usage:
+    python run.py configs/pretrain_two_tower.yaml
+    python run.py configs/pretrain_two_tower.yaml training.max_steps=50000
+    python run.py configs/finetune_vqa.yaml experiment.test_only=true
+"""
+
 import os
-import copy
 import sys
 import torch
+from omegaconf import OmegaConf
 
-from renaissance.config import ex
+from renaissance.config_schema import from_omegaconf
 from renaissance.modules import RenaissanceTransformer
 from renaissance.datamodules.multitask_datamodule import MTDataModule
 from renaissance.trainer import RenaissanceTrainer
 
 
-@ex.automain
-def main(_config):
-    _config = copy.deepcopy(_config)
+def _build_log_dir(cfg: dict) -> str:
+    load_path = cfg.get("load_path", "")
+    exp_name = cfg["exp_name"]
+    seed = cfg.get("seed", 0)
+    if not load_path:
+        return (
+            f"{exp_name}_seed{seed}"
+            f"_is{cfg['image_size']}_ps{cfg['patch_size']}"
+            f"_bs{cfg['batch_size']}_pgbs{cfg['per_gpu_batchsize']}"
+            f"_ts{cfg['max_steps']}"
+        )
+    ckpt_name = os.path.splitext(os.path.basename(load_path))[0]
+    return f"{exp_name}_seed{seed}_from_{ckpt_name}"
 
-    if hasattr(torch, "manual_seed") and "seed" in _config:
-        torch.manual_seed(_config["seed"])
 
-    dm = MTDataModule(_config, dist=True)
-    model = RenaissanceTransformer(_config)
+def main():
+    args = sys.argv[1:]
+    if not args or args[0].startswith("-"):
+        print("Usage: python run.py <config.yaml> [key=value ...]", file=sys.stderr)
+        sys.exit(1)
 
-    load_path = _config["load_path"]
-    exp_name = _config["exp_name"]
+    config_path, overrides = args[0], args[1:]
+
+    base_cfg = OmegaConf.load(config_path)
+    cli_cfg = OmegaConf.from_dotlist(overrides) if overrides else OmegaConf.create({})
+    omega_cfg = OmegaConf.merge(base_cfg, cli_cfg)
+
+    _config = from_omegaconf(omega_cfg)
+
     seed = _config.get("seed", 0)
+    torch.manual_seed(seed)
 
     print("\n\nRunning Renaissance vision-language platform", file=sys.stderr)
-    print(f"Task: {exp_name}", file=sys.stderr)
+    print(f"Task: {_config['exp_name']}", file=sys.stderr)
     print(f"Model type: {_config['model_type']}", file=sys.stderr)
     if _config["model_type"] == "one-tower":
         print(f"  encoder: {_config['encoder']}", file=sys.stderr)
@@ -33,23 +60,16 @@ def main(_config):
         print(f"  text_encoder:  {_config['text_encoder']}", file=sys.stderr)
     print(f"  lr={_config['learning_rate']}  max_steps={_config['max_steps']}\n\n", file=sys.stderr)
 
-    if not load_path:
-        result_dir = (
-            f"{exp_name}_seed{seed}"
-            f"_is{_config['image_size']}_ps{_config['patch_size']}"
-            f"_bs{_config['batch_size']}_pgbs{_config['per_gpu_batchsize']}"
-            f"_ts{_config['max_steps']}"
-        )
-    else:
-        ckpt_name = os.path.splitext(os.path.basename(load_path))[0]
-        result_dir = f"{exp_name}_seed{seed}_from_{ckpt_name}"
-
+    result_dir = _build_log_dir(_config)
     log_dir = os.path.join(_config["log_dir"], result_dir)
     _config["log_dir"] = log_dir
 
+    dm = MTDataModule(_config, dist=True)
+    model = RenaissanceTransformer(_config)
+
     dm.setup("fit")
 
-    if not _config["test_only"]:
+    if not _config.get("test_only", False):
         trainer = RenaissanceTrainer(
             model,
             _config,
@@ -65,3 +85,7 @@ def main(_config):
             train_dataloader=dm.test_dataloader(),
         )
         trainer.test()
+
+
+if __name__ == "__main__":
+    main()
