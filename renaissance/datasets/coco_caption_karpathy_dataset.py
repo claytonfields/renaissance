@@ -23,7 +23,7 @@ class CocoCaptionKarpathyDataset(BaseDataset):
 
         if "test" in self.split:
             _index, _question_index = self.index_mapper[index]
-            iid = self.table["image_id"][_index].as_py()
+            iid = self.table[_index]["image_id"]
             iid = int(iid.split(".")[0].split("_")[-1])
             suite.update({"iid": iid})
 

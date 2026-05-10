@@ -3,7 +3,6 @@ import io
 from PIL import Image
 import torch
 import numpy as np
-import pyarrow as pa
 import random
 import transformers
 from torch.utils.data._utils.collate import default_collate
@@ -30,14 +29,14 @@ class Refcoco2Dataset(BaseDataset):
         max_bb = self.max_bb
         image_index, ref_index = self.index_mapper[index]
         try:
-            label = self.table["labels"][image_index].as_py()
+            label = self.table[image_index]["labels"]
             raw_image = np.array(self.get_raw_image(index))
             image = self.processor(
-                            raw_image, 
+                            raw_image,
                             return_tensors='pt',
                             size={'height':self.image_size, 'width':self.image_size}
                         )['pixel_values'][0]
-            bboxes = self.table['bboxes'][image_index].as_py()
+            bboxes = self.table[image_index]['bboxes']
         except IndexError:
             print("Hello World")
             print("Index: ", index)
