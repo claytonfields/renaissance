@@ -77,7 +77,13 @@ Step 1 (smoke-test harness) is complete. The remaining steps are ordered to mini
         ↓
 [6] Evaluation & Benchmarking Suite
         ↓
-[7] Documentation & Release
+[7] Documentation & Release (v1.1.0 tag)
+        ↓
+[8] CI/CD Pipeline
+        ↓
+[9] Performance & Efficiency Optimizations
+        ↓
+[10] Extended Architecture Support
 ```
 
 Each step keeps the smoke tests green as a regression guard. Add integration tests at the end of Steps 2 and 3 before moving on.
@@ -137,3 +143,59 @@ Each step keeps the smoke tests green as a regression guard. Add integration tes
 6. Tag `v1.1.0` on `main` after all prior steps are merged and the full test suite passes.
 
 **Watch out for:** Keep example notebooks runnable on a single GPU with small synthetic or publicly available data so they can be executed in CI or by a reviewer without a large cluster.
+
+---
+
+## Step 8 — CI/CD Pipeline
+
+**Goal:** Run the full test suite automatically on every push and pull request so regressions are caught before merging, without requiring a GPU.
+
+**Why eighth:** CI is only worth setting up once the test suite (Steps 1, 2, 3) and the package structure (Steps 4–7) are stable. Adding CI to a moving target means constant workflow breakage.
+
+**Tasks:**
+
+1. Add `.github/workflows/ci.yml` that runs `pytest tests/` on every push and PR against `main` and `dev-interface`.
+2. Pin a CPU-only PyTorch wheel in the CI environment to keep runner time under 5 minutes.
+3. Add a `lint` job: `ruff check .` + `ruff format --check .` (or `black` + `flake8` if already in use).
+4. Add a `type-check` job: `mypy renaissance/` with a minimal `mypy.ini` (strict on new files, lenient on legacy).
+5. Cache the HuggingFace model config downloads (`.cache/huggingface`) across CI runs so `AutoConfig.from_pretrained` doesn't re-fetch every run.
+6. Add a `docs-build` job that validates all links in `docs/` are not broken (`markdown-link-check` or similar).
+
+**Watch out for:** The smoke tests download small HF configs (~few KB) at fixture time — ensure the CI runner has outbound internet or pre-cache the configs in the repo under `tests/fixtures/`.
+
+---
+
+## Step 9 — Performance & Efficiency Optimizations
+
+**Goal:** Make training and inference faster and more memory-efficient without changing model behavior, enabling larger batch sizes and longer sequences on the same hardware.
+
+**Why ninth:** Optimizations are safest to apply after the architecture and training loop are locked in (Steps 2–4) and the eval harness (Step 6) exists to verify that numbers don't regress. Applying them earlier risks re-doing work if the underlying code changes.
+
+**Tasks:**
+
+1. **Flash Attention:** Replace standard `nn.MultiheadAttention` / HF attention layers with `flash_attn` where supported. Gate behind a config flag (`use_flash_attention: bool`) so the fallback path stays testable on CPU.
+2. **Gradient checkpointing:** Enable `model.gradient_checkpointing_enable()` for the text and image encoder towers; expose as a `gradient_checkpointing: bool` config key.
+3. **`torch.compile`:** Wrap the model with `torch.compile(model, mode="reduce-overhead")` behind a flag; measure throughput delta and document in `docs/benchmarks.md`.
+4. **Parameter-efficient fine-tuning (LoRA/adapters):** Integrate `peft` library to allow fine-tuning with LoRA adapters on the encoder towers. Expose `use_lora: bool`, `lora_r`, `lora_alpha` config keys.
+5. **Mixed precision audit:** Confirm `bfloat16` works end-to-end (not just `float16`) and add a CI smoke run with `mixed_precision="bf16"`.
+6. Benchmark each optimization in isolation on a standard config and document the throughput / memory numbers in `docs/benchmarks.md`.
+
+**Watch out for:** Flash Attention requires CUDA compute capability ≥ 8.0 (Ampere+). The fallback path must remain correct and tested on older GPUs and CPU. LoRA adapters interact with the Hub integration (Step 5) — `save_pretrained` must serialize adapter weights separately from base weights.
+
+---
+
+## Step 10 — Extended Architecture Support
+
+**Goal:** Broaden the set of supported encoder backbones to include modern LLM-scale text encoders and CLIP-family vision encoders, enabling experiments at a larger scale than the original METER-era models.
+
+**Why tenth:** Architecture extensions are additive — they slot into the existing two-tower encoder pattern without changing the training loop, data layer, or interface. Doing this last means the full infrastructure (CI, Hub integration, eval harness) is in place to validate new architectures immediately.
+
+**Tasks:**
+
+1. **LLM text encoders:** Extend `TwoTowerEncoder` to support decoder-only models (LLaMA, Mistral, Phi) as the text tower by mean-pooling the last hidden state instead of using a CLS token. Gate on `text_encoder_pooling: "cls" | "mean" | "last"` config key.
+2. **CLIP vision encoders:** Add support for `openai/clip-vit-*` image encoders; handle the CLIP-specific `CLIPVisionModel` output format in the projection layer.
+3. **Contrastive pretraining (CLIP-style):** Implement `compute_contras` for symmetric InfoNCE loss as an alternative or complement to ITM. The `contras` loss key already exists in `loss_names` — wire it up.
+4. **Cross-modal architecture variants:** Add a `cross_modal_fusion: "lxmert" | "co-attention" | "concat"` config option for experimenting with simpler fusion strategies alongside the existing LxmertXLayer approach.
+5. Write architecture integration tests for each new encoder type that verify output shapes and finite losses end-to-end using the smoke-test pattern.
+
+**Watch out for:** Decoder-only LLMs use causal attention masks; passing bidirectional text through them requires either removing the causal mask or using an encoder-only wrapper. Make the distinction explicit in config and documentation.
