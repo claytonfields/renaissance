@@ -166,6 +166,7 @@ def _load_refcoco_family(
             text_column="question",
             multi_caption=False,
             seed=seed,
+            bbox_column="bbox",
         )
     )
     return ds
@@ -175,7 +176,10 @@ def load_refcoco(split, seed=None):
     """RefCOCO from `lmms-lab/RefCOCO`. Splits: val, test, testA, testB.
 
     Schema: ``image``, ``question`` (referring expression), ``answer`` (list),
-    ``bbox`` ([x, y, w, h]), ``segmentation``, ``file_name``.
+    ``bbox``, ``segmentation``, ``file_name``. The Hub ``bbox`` is COCO-format
+    ``[x, y, w, h]`` in original-image pixel coords; the transform rescales it
+    to normalized ``[x1, y1, x2, y2]`` in ``[0, 1]`` so it survives the
+    collator's image resize.
     """
     return _load_refcoco_family(
         "lmms-lab/RefCOCO", split,

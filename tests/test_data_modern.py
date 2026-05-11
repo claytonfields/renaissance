@@ -247,7 +247,9 @@ def synthetic_refcoco_ds():
     })
     ds = Dataset.from_list(rows, features=features)
     ds = ds.with_transform(
-        make_vlp_transform(text_column="question", multi_caption=False)
+        make_vlp_transform(
+            text_column="question", multi_caption=False, bbox_column="bbox"
+        )
     )
     return ds
 
@@ -259,9 +261,18 @@ def test_refcoco_pipeline(synthetic_refcoco_ds, tokenizer):
 
     assert batch["image"][0].shape == (BS, 3, IMAGE_SIZE, IMAGE_SIZE)
     assert batch["text_ids"].shape == (BS, TEXT_LEN)
-    # Bbox passed through as a list of length-4 sequences.
+    # Bbox emitted as normalized xyxy in [0, 1]; source images are 40x60 PNGs
+    # and the row-i raw bbox is [i, i+1, 10, 20] (xywh).
     assert len(batch["bbox"]) == BS
-    assert all(len(bb) == 4 for bb in batch["bbox"])
+    for i, bb in enumerate(batch["bbox"]):
+        assert len(bb) == 4
+        x1, y1, x2, y2 = bb
+        assert 0.0 <= x1 <= x2 <= 1.0
+        assert 0.0 <= y1 <= y2 <= 1.0
+        assert x1 == pytest.approx(i / 40)
+        assert y1 == pytest.approx((i + 1) / 60)
+        assert x2 == pytest.approx((i + 10) / 40)
+        assert y2 == pytest.approx((i + 21) / 60)
     assert batch["file_name"][0].startswith("COCO_")
 
 

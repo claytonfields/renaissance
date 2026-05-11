@@ -58,6 +58,8 @@ def make_vlp_transform(
     multi_caption: bool = True,
     seed: Optional[int] = None,
     pass_through: bool = True,
+    bbox_column: Optional[str] = None,
+    bbox_output: str = "bbox",
 ):
     """Return a `with_transform` callable that processes a batch dict.
 
@@ -85,6 +87,15 @@ def make_vlp_transform(
         If True (default), pass through any non-image, non-text columns
         unchanged. Set False for the interleave path where downstream code
         wants only `{image, text}`.
+    bbox_column
+        If set, the source column holding a COCO-format ``[x, y, w, h]``
+        bbox in original-image pixel coordinates. The transform reads
+        ``(W, H)`` from the first image column and emits a normalized
+        ``[x1, y1, x2, y2]`` bbox in ``[0, 1]`` at ``bbox_output``. Scale-
+        invariant against the collator's image resize. The source column
+        is dropped from ``pass_through``.
+    bbox_output
+        Output key for the rescaled bbox. Default ``"bbox"``.
     """
     if image_columns is None:
         image_columns = {"image": "image"}
@@ -94,8 +105,11 @@ def make_vlp_transform(
     def transform(batch):
         out = {}
 
+        pil_by_dst = {}
         for src, dst in image_columns.items():
-            out[dst] = [_to_pil(img) for img in batch[src]]
+            pils = [_to_pil(img) for img in batch[src]]
+            pil_by_dst[dst] = pils
+            out[dst] = pils
 
         if multi_caption:
             out[text_output] = [rng.choice(caps) for caps in batch[text_column]]
@@ -104,8 +118,18 @@ def make_vlp_transform(
                 t if isinstance(t, str) else t[0] for t in batch[text_column]
             ]
 
+        if bbox_column is not None:
+            ref_dst = next(iter(image_columns.values()))
+            ref_pils = pil_by_dst[ref_dst]
+            out[bbox_output] = [
+                _normalize_bbox_xywh_to_xyxy(b, pil.size)
+                for b, pil in zip(batch[bbox_column], ref_pils)
+            ]
+
         if pass_through:
             skip_keys = set(image_columns.keys()) | {text_column}
+            if bbox_column is not None:
+                skip_keys.add(bbox_column)
             for k, v in batch.items():
                 if k in skip_keys:
                     continue
@@ -113,3 +137,13 @@ def make_vlp_transform(
         return out
 
     return transform
+
+
+def _normalize_bbox_xywh_to_xyxy(bbox, image_size):
+    """Convert ``[x, y, w, h]`` pixel-coord bbox to normalized ``[x1, y1, x2, y2]``.
+
+    ``image_size`` is the PIL ``(width, height)`` tuple.
+    """
+    x, y, w, h = (float(v) for v in bbox)
+    W, H = image_size
+    return [x / W, y / H, (x + w) / W, (y + h) / H]
