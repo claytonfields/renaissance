@@ -141,10 +141,13 @@ def compute_ref(pl_module, batch):
 
 def compute_ref2(pl_module, batch):
     batch_size = pl_module.config['per_gpu_batchsize']
-    targets = batch['target']
+    targets = batch['bbox']
+    if not torch.is_tensor(targets):
+        targets = torch.tensor(targets, dtype=torch.float32)
+    targets = targets.to(pl_module.device).float()
     cls_features = pl_module.infer(batch)['cls_feats']#.unsqueeze(dim=1)
     preds = pl_module.ref2_classifier(cls_features)
-    
+
     loss = (1 - generalized_box_iou(preds, targets).diag()).mean()
     
     # losses.append(loss.item())                                                       
