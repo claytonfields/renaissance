@@ -103,6 +103,12 @@ def _kwargs_for(name: str, split: str, config: Dict[str, Any]) -> Dict[str, Any]
         base["split"] = "train"  # VG has only train
         return base
 
+    if name == "vqa":
+        if "answer_vocab" in extra:
+            base["answer_vocab"] = extra["answer_vocab"]
+        base["split"] = split
+        return base
+
     # Standard image-text datasets take a `split`.
     base["split"] = split
     return base

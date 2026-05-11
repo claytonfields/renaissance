@@ -56,6 +56,7 @@ def load_flickr30k(
 def load_vqav2(
     split: str,
     hub_id: str = "lmms-lab/VQAv2",
+    answer_vocab: Optional[str] = None,
     seed: Optional[int] = None,
 ):
     """VQAv2 from `lmms-lab/VQAv2`.
@@ -64,10 +65,18 @@ def load_vqav2(
     does not host the train split — for pretraining you still need the
     original VQAv2 train set from another source.
 
-    Schema: ``image`` (PIL), ``question`` (str), ``question_id`` (int),
-    ``multiple_choice_answer`` (str), ``answers`` (list of 10 annotations),
-    ``image_id`` (int).
+    Source schema: ``image`` (PIL), ``question`` (str), ``question_id``
+    (int), ``multiple_choice_answer`` (str), ``answers`` (10 annotator
+    answers), ``image_id`` (int).
+
+    Output schema after transform: the above (renamed ``question`` → ``text``,
+    ``question_id`` → ``qid``) plus ``vqa_labels`` / ``vqa_scores`` — the
+    parallel label-index / soft-score lists ``objectives.compute_vqa``
+    expects. ``answer_vocab`` is a path to a JSON list of answer strings;
+    defaults to the bundled 3129-answer vocab.
     """
+    from .vqa import answers_to_labels_scores, load_vqa_answer_vocab
+
     if split == "val":
         split = "validation"
     if split not in ("validation", "test", "testdev"):
@@ -77,14 +86,31 @@ def load_vqav2(
 
     ds = load_dataset(hub_id, split=split)
     ds = ds.cast_column("image", DSImage(decode=True))
-    ds = ds.with_transform(
-        make_vlp_transform(
-            image_columns={"image": "image"},
-            text_column="question",
-            multi_caption=False,
-            seed=seed,
-        )
+    _, ans2label = load_vqa_answer_vocab(answer_vocab)
+
+    base_transform = make_vlp_transform(
+        image_columns={"image": "image"},
+        text_column="question",
+        multi_caption=False,
+        seed=seed,
     )
+    has_answers = "answers" in ds.column_names  # absent on the test split
+
+    def transform(batch):
+        out = base_transform(batch)
+        if "question_id" in out:
+            out["qid"] = list(out["question_id"])
+        if has_answers:
+            labels, scores = [], []
+            for ann in batch["answers"]:
+                ls, ss = answers_to_labels_scores(ann, ans2label)
+                labels.append(ls)
+                scores.append(ss)
+            out["vqa_labels"] = labels
+            out["vqa_scores"] = scores
+        return out
+
+    ds = ds.with_transform(transform)
     return ds
 
 

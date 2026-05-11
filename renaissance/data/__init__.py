@@ -23,6 +23,12 @@ from .loaders import (
 )
 from .runner import build_collator, build_dataloader, build_dataset
 from .transforms import make_image_transform, make_vlp_transform
+from .vqa import (
+    answers_to_labels_scores,
+    build_vqa_answer_vocab,
+    get_vqa_score,
+    load_vqa_answer_vocab,
+)
 
 __all__ = [
     "VLPCollator",
@@ -44,4 +50,8 @@ __all__ = [
     "build_dataset",
     "build_collator",
     "build_dataloader",
+    "load_vqa_answer_vocab",
+    "build_vqa_answer_vocab",
+    "answers_to_labels_scores",
+    "get_vqa_score",
 ]

@@ -5,6 +5,7 @@ setup(
     packages=find_packages(
         exclude=[".dfc", ".vscode", "dataset", "notebooks", "result", "scripts", "tests"]
     ),
+    package_data={"renaissance.data": ["*.json"]},
     version="1.2.0.dev0",
     license="MIT",
     description="Renaissance: A Multimodal Transformer Modeling Platform",
