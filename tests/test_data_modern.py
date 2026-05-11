@@ -331,6 +331,8 @@ def test_cc3m_streaming_pipeline(tokenizer):
         "jpg": Value("binary"),
         "txt": Value("string"),
     })
+    from renaissance.data.loaders import _WDS_OUT_FEATURES
+
     base = Dataset.from_list(_wds_rows(BS * 2), features=features)
     ds = base.to_iterable_dataset()
 
@@ -339,7 +341,13 @@ def test_cc3m_streaming_pipeline(tokenizer):
         text_column="txt",
         multi_caption=False,
     )
-    ds = ds.map(transform, batched=True, remove_columns=["__key__"])
+    # Mirrors load_cc3m: drop all source columns from the output, declare
+    # explicit features so downstream feature encoding doesn't trip.
+    ds = ds.map(
+        transform, batched=True,
+        remove_columns=["__key__", "jpg", "txt"],
+        features=_WDS_OUT_FEATURES,
+    )
 
     collator = VLPCollator(tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False, image_size=IMAGE_SIZE)
     loader = DataLoader(ds, batch_size=BS, collate_fn=collator)
@@ -349,8 +357,10 @@ def test_cc3m_streaming_pipeline(tokenizer):
     assert batch["text_ids"].shape == (BS, TEXT_LEN)
     assert len(batch["text"]) == BS
     assert batch["text"][0].startswith("a cc3m-style caption number")
-    # __key__ was removed via remove_columns; no pass-through.
+    # Source columns dropped; only image+text remain.
     assert "__key__" not in batch
+    assert "jpg" not in batch
+    assert "txt" not in batch
 
 
 def test_raw_bytes_image_handled():
@@ -391,10 +401,13 @@ def synthetic_vg_ds():
                 for j in range(4)
             ],
         })
+    # `[{...}]` (list-of-struct) rather than `Sequence({...})` — the latter
+    # is the struct-of-arrays form and `Dataset.from_list` with list-of-dict
+    # rows doesn't round-trip cleanly through it on newer `datasets`.
     features = Features({
         "image": DSImage(),
         "image_id": Value("int64"),
-        "regions": Sequence({
+        "regions": [{
             "region_id": Value("int64"),
             "image_id": Value("int64"),
             "phrase": Value("string"),
@@ -402,7 +415,7 @@ def synthetic_vg_ds():
             "y": Value("int64"),
             "width": Value("int64"),
             "height": Value("int64"),
-        }),
+        }],
     })
     ds = Dataset.from_list(rows, features=features)
     # Same logic the loader runs.
