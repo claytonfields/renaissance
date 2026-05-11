@@ -14,7 +14,6 @@ from omegaconf import OmegaConf
 
 from renaissance.config_schema import from_omegaconf
 from renaissance.modules import RenaissanceTransformer
-from renaissance.datamodules.multitask_datamodule import MTDataModule
 from renaissance.trainer import RenaissanceTrainer
 
 
@@ -64,26 +63,35 @@ def main():
     log_dir = os.path.join(_config["log_dir"], result_dir)
     _config["log_dir"] = log_dir
 
-    dm = MTDataModule(_config, dist=True)
+    backend = _config.get("backend", "legacy")
+    test_only = _config.get("test_only", False)
+
+    if backend == "modern":
+        from renaissance.data.runner import build_dataloader
+
+        train_loader = None if test_only else build_dataloader(_config, split="train")
+        val_loader = build_dataloader(_config, split="test" if test_only else "val")
+    elif backend == "legacy":
+        from renaissance.datamodules.multitask_datamodule import MTDataModule
+
+        dm = MTDataModule(_config, dist=True)
+        dm.setup("fit")
+        train_loader = None if test_only else dm.train_dataloader()
+        val_loader = dm.test_dataloader() if test_only else dm.val_dataloader()
+    else:
+        raise ValueError(f"data.backend must be 'legacy' or 'modern', got {backend!r}")
+
     model = RenaissanceTransformer(_config)
 
-    dm.setup("fit")
-
-    if not _config.get("test_only", False):
+    if not test_only:
         trainer = RenaissanceTrainer(
-            model,
-            _config,
-            train_dataloader=dm.train_dataloader(),
-            val_dataloader=dm.val_dataloader(),
+            model, _config,
+            train_dataloader=train_loader, val_dataloader=val_loader,
         )
         trainer.fit()
         print(f"\nResults in: {log_dir}\n")
     else:
-        trainer = RenaissanceTrainer(
-            model,
-            _config,
-            train_dataloader=dm.test_dataloader(),
-        )
+        trainer = RenaissanceTrainer(model, _config, train_dataloader=val_loader)
         trainer.test()
 
 

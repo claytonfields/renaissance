@@ -120,6 +120,13 @@ class DataConfig:
     eval_batch_size: int = 32
     num_workers: int = 12
 
+    # "legacy" → renaissance/datamodules + renaissance/datasets (pyarrow IPC)
+    # "modern" → renaissance/data (HF Hub-first)
+    backend: str = "legacy"
+    # Per-dataset extra kwargs for the modern runner (e.g. {"sbu": {"path": "..."},
+    # "glue": {"task": "mrpc"}, "vg": {"config": "region_descriptions_v1.2.0"}}).
+    dataset_kwargs: Dict[str, Any] = field(default_factory=dict)
+
 
 @dataclass
 class TrainingConfig:
