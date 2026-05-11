@@ -199,9 +199,8 @@ def _normalize_for_interleave(ds, name: str, seed: int) -> IterableDataset:
     """
     if isinstance(ds, IterableDataset):
         cols = ds.column_names or []
-        remove = [c for c in cols if c not in ("image", "text")]
-        if remove:
-            ds = ds.map(lambda b: b, batched=True, remove_columns=remove)
+        if cols and any(c not in ("image", "text") for c in cols):
+            ds = ds.select_columns(["image", "text"])
         return ds
 
     if name not in _INTERLEAVE_TRANSFORM_SPECS:
@@ -217,17 +216,17 @@ def _normalize_for_interleave(ds, name: str, seed: int) -> IterableDataset:
     )
 
     ds = ds.with_format(None).to_iterable_dataset()
-    # Drop source columns that the transform doesn't re-emit. `image` and
-    # `text` are produced by the transform and the fn output wins over the
-    # input dict, so they survive. Listing them here would strip them
-    # post-merge.
+    # Drop source columns that the transform doesn't re-emit; `select_columns`
+    # afterwards guarantees the iterated rows are exactly {image, text}
+    # regardless of `datasets`-version quirks.
     drop = [c for c in ds.column_names if c not in ("image", "text")]
-    return ds.map(
+    ds = ds.map(
         transform,
         batched=True,
         remove_columns=drop or None,
         features=Features({"image": DSImage(), "text": DSValue("string")}),
     )
+    return ds.select_columns(["image", "text"])
 
 
 def build_interleaved_dataloader(

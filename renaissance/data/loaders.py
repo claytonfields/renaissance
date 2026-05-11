@@ -195,17 +195,20 @@ def _load_wds_captioning(
         text_column="txt",
         multi_caption=False,
         seed=seed,
+        pass_through=False,
     )
     if streaming:
         # IterableDataset doesn't support `.with_transform`; use `.map` instead.
-        # Drop ALL source columns from the output — even though the transform
-        # consumes jpg/txt and re-emits image/text, leaving any input column
-        # in the output trips up feature encoding downstream.
+        # Drop ALL source columns and declare explicit features; then
+        # `select_columns` guarantees the iterated rows are exactly
+        # {image, text} regardless of `datasets`-version quirks in how
+        # `remove_columns` interacts with `features`.
         ds = ds.map(
             transform, batched=True,
             remove_columns=["__key__", "jpg", "txt"],
             features=_WDS_OUT_FEATURES,
         )
+        ds = ds.select_columns(["image", "text"])
     else:
         ds = ds.with_transform(transform)
     return ds
@@ -377,12 +380,14 @@ def load_sbu(
         text_column="txt",
         multi_caption=False,
         seed=seed,
+        pass_through=False,
     )
     ds = ds.map(
         transform, batched=True,
         remove_columns=["__key__", "jpg", "txt"],
         features=_WDS_OUT_FEATURES,
     )
+    ds = ds.select_columns(["image", "text"])
     return ds
 
 

@@ -340,14 +340,16 @@ def test_cc3m_streaming_pipeline(tokenizer):
         image_columns={"jpg": "image"},
         text_column="txt",
         multi_caption=False,
+        pass_through=False,
     )
-    # Mirrors load_cc3m: drop all source columns from the output, declare
-    # explicit features so downstream feature encoding doesn't trip.
+    # Mirrors load_cc3m: declare explicit features, then select_columns to
+    # guarantee {image, text} regardless of datasets-version quirks.
     ds = ds.map(
         transform, batched=True,
         remove_columns=["__key__", "jpg", "txt"],
         features=_WDS_OUT_FEATURES,
     )
+    ds = ds.select_columns(["image", "text"])
 
     collator = VLPCollator(tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False, image_size=IMAGE_SIZE)
     loader = DataLoader(ds, batch_size=BS, collate_fn=collator)
@@ -357,7 +359,6 @@ def test_cc3m_streaming_pipeline(tokenizer):
     assert batch["text_ids"].shape == (BS, TEXT_LEN)
     assert len(batch["text"]) == BS
     assert batch["text"][0].startswith("a cc3m-style caption number")
-    # Source columns dropped; only image+text remain.
     assert "__key__" not in batch
     assert "jpg" not in batch
     assert "txt" not in batch
