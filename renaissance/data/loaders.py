@@ -13,15 +13,20 @@ stay thin.
 
 from typing import Optional
 
+from datasets import Features
 from datasets import Image as DSImage
+from datasets import Value as DSValue
 from datasets import load_dataset
+
+# Features declaration for streaming WDS .map output. Explicit so HF doesn't
+# fall back to Arrow type inference on PIL.Image (which fails).
+_WDS_OUT_FEATURES = Features({"image": DSImage(), "text": DSValue("string")})
 
 from .transforms import make_vlp_transform
 
 
 def load_flickr30k(
     split: str,
-    image_size: int,
     hub_id: str = "nlphuji/flickr30k",
     seed: Optional[int] = None,
 ):
@@ -39,7 +44,6 @@ def load_flickr30k(
     ds = ds.cast_column("image", DSImage(decode=True))
     ds = ds.with_transform(
         make_vlp_transform(
-            image_size,
             image_columns={"image": "image"},
             text_column="caption",
             multi_caption=True,
@@ -51,7 +55,6 @@ def load_flickr30k(
 
 def load_vqav2(
     split: str,
-    image_size: int,
     hub_id: str = "lmms-lab/VQAv2",
     seed: Optional[int] = None,
 ):
@@ -76,7 +79,6 @@ def load_vqav2(
     ds = ds.cast_column("image", DSImage(decode=True))
     ds = ds.with_transform(
         make_vlp_transform(
-            image_size,
             image_columns={"image": "image"},
             text_column="question",
             multi_caption=False,
@@ -88,7 +90,6 @@ def load_vqav2(
 
 def load_nlvr2(
     split: str,
-    image_size: int,
     hub_id: str = "lmms-lab/NLVR2",
     seed: Optional[int] = None,
 ):
@@ -112,7 +113,6 @@ def load_nlvr2(
     ds = ds.cast_column("right_image", DSImage(decode=True))
     ds = ds.with_transform(
         make_vlp_transform(
-            image_size,
             image_columns={"left_image": "image_0", "right_image": "image_1"},
             text_column="sentence",
             multi_caption=False,
@@ -125,7 +125,6 @@ def load_nlvr2(
 def _load_refcoco_family(
     hub_id: str,
     split: str,
-    image_size: int,
     allowed_splits,
     seed: Optional[int] = None,
 ):
@@ -137,7 +136,6 @@ def _load_refcoco_family(
     ds = ds.cast_column("image", DSImage(decode=True))
     ds = ds.with_transform(
         make_vlp_transform(
-            image_size,
             image_columns={"image": "image"},
             text_column="question",
             multi_caption=False,
@@ -147,32 +145,32 @@ def _load_refcoco_family(
     return ds
 
 
-def load_refcoco(split, image_size, seed=None):
+def load_refcoco(split, seed=None):
     """RefCOCO from `lmms-lab/RefCOCO`. Splits: val, test, testA, testB.
 
     Schema: ``image``, ``question`` (referring expression), ``answer`` (list),
     ``bbox`` ([x, y, w, h]), ``segmentation``, ``file_name``.
     """
     return _load_refcoco_family(
-        "lmms-lab/RefCOCO", split, image_size,
+        "lmms-lab/RefCOCO", split,
         allowed_splits={"val", "test", "testA", "testB"},
         seed=seed,
     )
 
 
-def load_refcocoplus(split, image_size, seed=None):
+def load_refcocoplus(split, seed=None):
     """RefCOCO+ from `lmms-lab/RefCOCOplus`. Splits: val, testA, testB."""
     return _load_refcoco_family(
-        "lmms-lab/RefCOCOplus", split, image_size,
+        "lmms-lab/RefCOCOplus", split,
         allowed_splits={"val", "testA", "testB"},
         seed=seed,
     )
 
 
-def load_refcocog(split, image_size, seed=None):
+def load_refcocog(split, seed=None):
     """RefCOCOg from `lmms-lab/RefCOCOg`. Splits: val, test."""
     return _load_refcoco_family(
-        "lmms-lab/RefCOCOg", split, image_size,
+        "lmms-lab/RefCOCOg", split,
         allowed_splits={"val", "test"},
         seed=seed,
     )
@@ -181,7 +179,6 @@ def load_refcocog(split, image_size, seed=None):
 def _load_wds_captioning(
     hub_id: str,
     split: str,
-    image_size: int,
     streaming: bool,
     seed: Optional[int],
 ):
@@ -189,11 +186,11 @@ def _load_wds_captioning(
     `pixparse/cc12m-wds`).
 
     Schema in the source: ``{"__key__": str, "jpg": bytes, "txt": str}``.
-    Output schema after transform: ``{"image": Tensor[3, H, W], "text": str}``.
+    Output schema after transform: ``{"image": PIL.Image, "text": str}``;
+    the collator handles the PIL→Tensor conversion at batch time.
     """
     ds = load_dataset(hub_id, split=split, streaming=streaming)
     transform = make_vlp_transform(
-        image_size,
         image_columns={"jpg": "image"},
         text_column="txt",
         multi_caption=False,
@@ -201,15 +198,20 @@ def _load_wds_captioning(
     )
     if streaming:
         # IterableDataset doesn't support `.with_transform`; use `.map` instead.
-        # `remove_columns` drops `__key__` which would otherwise pass through.
-        ds = ds.map(transform, batched=True, remove_columns=["__key__"])
+        # Drop ALL source columns from the output — even though the transform
+        # consumes jpg/txt and re-emits image/text, leaving any input column
+        # in the output trips up feature encoding downstream.
+        ds = ds.map(
+            transform, batched=True,
+            remove_columns=["__key__", "jpg", "txt"],
+            features=_WDS_OUT_FEATURES,
+        )
     else:
         ds = ds.with_transform(transform)
     return ds
 
 
 def load_cc3m(
-    image_size: int,
     split: str = "train",
     hub_id: str = "pixparse/cc3m-wds",
     streaming: bool = True,
@@ -231,11 +233,10 @@ def load_cc3m(
         raise ValueError(f"split must be one of train/val, got {split!r}")
     if split == "val":
         split = "validation"
-    return _load_wds_captioning(hub_id, split, image_size, streaming, seed)
+    return _load_wds_captioning(hub_id, split, streaming, seed)
 
 
 def load_cc12m(
-    image_size: int,
     split: str = "train",
     hub_id: str = "pixparse/cc12m-wds",
     streaming: bool = True,
@@ -248,12 +249,11 @@ def load_cc12m(
     """
     if split != "train":
         raise ValueError(f"split must be one of train, got {split!r}")
-    return _load_wds_captioning(hub_id, split, image_size, streaming, seed)
+    return _load_wds_captioning(hub_id, split, streaming, seed)
 
 
 def load_coco_karpathy(
     split: str,
-    image_size: int,
     hub_id: str = "namkha1032/coco-karpathy",
     seed: Optional[int] = None,
 ):
@@ -282,7 +282,6 @@ def load_coco_karpathy(
     ds = ds.cast_column("image", DSImage(decode=True))
     ds = ds.with_transform(
         make_vlp_transform(
-            image_size,
             image_columns={"image": "image"},
             text_column="captions",
             multi_caption=True,
@@ -293,7 +292,6 @@ def load_coco_karpathy(
 
 
 def load_visual_genome(
-    image_size: int,
     split: str = "train",
     config: str = "region_descriptions_v1.2.0",
     hub_id: str = "ranjaykrishna/visual_genome",
@@ -337,7 +335,6 @@ def load_visual_genome(
     ds = ds.cast_column("image", DSImage(decode=True))
     ds = ds.with_transform(
         make_vlp_transform(
-            image_size,
             image_columns={"image": "image"},
             text_column="caption",
             multi_caption=True,
@@ -348,7 +345,6 @@ def load_visual_genome(
 
 
 def load_sbu(
-    image_size: int,
     path: str,
     seed: Optional[int] = None,
 ):
@@ -377,19 +373,21 @@ def load_sbu(
         "webdataset", data_files={"train": tars}, split="train", streaming=True
     )
     transform = make_vlp_transform(
-        image_size,
         image_columns={"jpg": "image"},
         text_column="txt",
         multi_caption=False,
         seed=seed,
     )
-    ds = ds.map(transform, batched=True, remove_columns=["__key__"])
+    ds = ds.map(
+        transform, batched=True,
+        remove_columns=["__key__", "jpg", "txt"],
+        features=_WDS_OUT_FEATURES,
+    )
     return ds
 
 
 def load_snli_ve(
     split: str,
-    image_size: int,
     hub_id: str = "HuggingFaceM4/SNLI-VE",
     seed: Optional[int] = None,
 ):
@@ -419,7 +417,6 @@ def load_snli_ve(
     ds = ds.cast_column("image", DSImage(decode=True))
     ds = ds.with_transform(
         make_vlp_transform(
-            image_size,
             image_columns={"image": "image"},
             text_column="hypothesis",
             multi_caption=False,

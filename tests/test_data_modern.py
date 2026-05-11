@@ -64,6 +64,7 @@ def _mlm_collator_or_skip(tokenizer, **kwargs):
     """Local env has TF/numpy mismatch in `transformers.data.data_collator`.
     CI installs no TF and runs fine."""
     try:
+        kwargs.setdefault("image_size", IMAGE_SIZE)
         return VLPCollator(tokenizer, max_text_len=TEXT_LEN, do_mlm=True, **kwargs)
     except (ImportError, AttributeError, RuntimeError) as e:
         pytest.skip(f"DataCollatorForLanguageModeling unavailable: {e}")
@@ -95,15 +96,16 @@ def synthetic_flickr_ds():
     })
     ds = Dataset.from_list(rows, features=features)
     ds = ds.with_transform(
-        make_vlp_transform(IMAGE_SIZE, text_column="caption", multi_caption=True, seed=0)
+        make_vlp_transform(text_column="caption", multi_caption=True, seed=0)
     )
     return ds
 
 
-def test_flickr_transform_yields_tensor_image_and_string_text(synthetic_flickr_ds):
+def test_flickr_transform_yields_pil_image_and_string_text(synthetic_flickr_ds):
+    """Dataset-level transform now returns PIL; collator does the
+    PIL→Tensor conversion at batch time."""
     row = synthetic_flickr_ds[0]
-    assert isinstance(row["image"], torch.Tensor)
-    assert row["image"].shape == (3, IMAGE_SIZE, IMAGE_SIZE)
+    assert isinstance(row["image"], Image.Image)
     assert isinstance(row["text"], str)
     assert row["text"].startswith("a synthetic caption number 0.")
 
@@ -121,7 +123,7 @@ def test_flickr_collator_shapes(synthetic_flickr_ds, tokenizer):
 
 
 def test_flickr_collator_passes_through_task_fields(synthetic_flickr_ds, tokenizer):
-    collator = VLPCollator(tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False)
+    collator = VLPCollator(tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False, image_size=IMAGE_SIZE)
     loader = DataLoader(synthetic_flickr_ds, batch_size=BS, collate_fn=collator)
     batch = next(iter(loader))
 
@@ -156,13 +158,13 @@ def synthetic_vqav2_ds():
     })
     ds = Dataset.from_list(rows, features=features)
     ds = ds.with_transform(
-        make_vlp_transform(IMAGE_SIZE, text_column="question", multi_caption=False)
+        make_vlp_transform(text_column="question", multi_caption=False)
     )
     return ds
 
 
 def test_vqav2_pipeline(synthetic_vqav2_ds, tokenizer):
-    collator = VLPCollator(tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False)
+    collator = VLPCollator(tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False, image_size=IMAGE_SIZE)
     loader = DataLoader(synthetic_vqav2_ds, batch_size=BS, collate_fn=collator)
     batch = next(iter(loader))
 
@@ -196,7 +198,6 @@ def synthetic_nlvr2_ds():
     ds = Dataset.from_list(rows, features=features)
     ds = ds.with_transform(
         make_vlp_transform(
-            IMAGE_SIZE,
             image_columns={"left_image": "image_0", "right_image": "image_1"},
             text_column="sentence",
             multi_caption=False,
@@ -208,7 +209,7 @@ def synthetic_nlvr2_ds():
 def test_nlvr2_pipeline(synthetic_nlvr2_ds, tokenizer):
     collator = VLPCollator(
         tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False,
-        image_keys=("image_0", "image_1"),
+        image_keys=("image_0", "image_1"), image_size=IMAGE_SIZE,
     )
     loader = DataLoader(synthetic_nlvr2_ds, batch_size=BS, collate_fn=collator)
     batch = next(iter(loader))
@@ -246,13 +247,13 @@ def synthetic_refcoco_ds():
     })
     ds = Dataset.from_list(rows, features=features)
     ds = ds.with_transform(
-        make_vlp_transform(IMAGE_SIZE, text_column="question", multi_caption=False)
+        make_vlp_transform(text_column="question", multi_caption=False)
     )
     return ds
 
 
 def test_refcoco_pipeline(synthetic_refcoco_ds, tokenizer):
-    collator = VLPCollator(tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False)
+    collator = VLPCollator(tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False, image_size=IMAGE_SIZE)
     loader = DataLoader(synthetic_refcoco_ds, batch_size=BS, collate_fn=collator)
     batch = next(iter(loader))
 
@@ -287,13 +288,13 @@ def synthetic_coco_ds():
     })
     ds = Dataset.from_list(rows, features=features)
     ds = ds.with_transform(
-        make_vlp_transform(IMAGE_SIZE, text_column="captions", multi_caption=True, seed=0)
+        make_vlp_transform(text_column="captions", multi_caption=True, seed=0)
     )
     return ds
 
 
 def test_coco_pipeline(synthetic_coco_ds, tokenizer):
-    collator = VLPCollator(tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False)
+    collator = VLPCollator(tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False, image_size=IMAGE_SIZE)
     loader = DataLoader(synthetic_coco_ds, batch_size=BS, collate_fn=collator)
     batch = next(iter(loader))
 
@@ -334,14 +335,13 @@ def test_cc3m_streaming_pipeline(tokenizer):
     ds = base.to_iterable_dataset()
 
     transform = make_vlp_transform(
-        IMAGE_SIZE,
         image_columns={"jpg": "image"},
         text_column="txt",
         multi_caption=False,
     )
     ds = ds.map(transform, batched=True, remove_columns=["__key__"])
 
-    collator = VLPCollator(tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False)
+    collator = VLPCollator(tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False, image_size=IMAGE_SIZE)
     loader = DataLoader(ds, batch_size=BS, collate_fn=collator)
     batch = next(iter(loader))
 
@@ -416,13 +416,13 @@ def synthetic_vg_ds():
         return {"caption": captions}
     ds = ds.map(_extract_phrases, batched=True, remove_columns=["regions"])
     ds = ds.with_transform(
-        make_vlp_transform(IMAGE_SIZE, text_column="caption", multi_caption=True, seed=0)
+        make_vlp_transform(text_column="caption", multi_caption=True, seed=0)
     )
     return ds
 
 
 def test_vg_pipeline(synthetic_vg_ds, tokenizer):
-    collator = VLPCollator(tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False)
+    collator = VLPCollator(tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False, image_size=IMAGE_SIZE)
     loader = DataLoader(synthetic_vg_ds, batch_size=BS, collate_fn=collator)
     batch = next(iter(loader))
 
@@ -457,13 +457,13 @@ def synthetic_snli_ve_ds():
     })
     ds = Dataset.from_list(rows, features=features)
     ds = ds.with_transform(
-        make_vlp_transform(IMAGE_SIZE, text_column="hypothesis", multi_caption=False)
+        make_vlp_transform(text_column="hypothesis", multi_caption=False)
     )
     return ds
 
 
 def test_snli_ve_pipeline(synthetic_snli_ve_ds, tokenizer):
-    collator = VLPCollator(tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False)
+    collator = VLPCollator(tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False, image_size=IMAGE_SIZE)
     loader = DataLoader(synthetic_snli_ve_ds, batch_size=BS, collate_fn=collator)
     batch = next(iter(loader))
 
@@ -562,14 +562,14 @@ def test_text_only_collator_ignores_itm_flag(tokenizer):
 )
 def test_loader_rejects_bad_split(loader, bad_split):
     with pytest.raises(ValueError, match="split must be one of"):
-        loader(split=bad_split, image_size=IMAGE_SIZE)
+        loader(split=bad_split)
 
 
 def test_load_sbu_rejects_empty_path(tmp_path):
     """SBU has no Hub mirror; require local img2dataset output and fail
     loudly when the directory is empty."""
     with pytest.raises(FileNotFoundError, match="No .tar WebDataset shards"):
-        load_sbu(image_size=IMAGE_SIZE, path=str(tmp_path))
+        load_sbu(path=str(tmp_path))
 
 
 def test_load_glue_rejects_bad_task():

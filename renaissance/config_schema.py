@@ -126,6 +126,11 @@ class DataConfig:
     # Per-dataset extra kwargs for the modern runner (e.g. {"sbu": {"path": "..."},
     # "glue": {"task": "mrpc"}, "vg": {"config": "region_descriptions_v1.2.0"}}).
     dataset_kwargs: Dict[str, Any] = field(default_factory=dict)
+    # Multi-dataset interleave (modern backend only). When `datasets` has more
+    # than one entry, the runner uses `datasets.interleave_datasets` with these
+    # weights and the given stopping strategy.
+    dataset_probs: Optional[List[float]] = None
+    stopping_strategy: str = "first_exhausted"
 
 
 @dataclass

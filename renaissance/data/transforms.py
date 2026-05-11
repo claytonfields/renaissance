@@ -1,13 +1,18 @@
 """
-Per-item transforms applied via `Dataset.with_transform`.
+Per-item transforms applied via `Dataset.with_transform` (single-dataset
+path) or `.map` (multi-dataset interleave path).
 
-Two pieces:
-- `make_image_transform`: torchvision pipeline (resize → ToTensor → normalize).
-- `make_vlp_transform`: the callable handed to `with_transform`. Converts one
-  or more image columns to tensors and reduces the text column to a single
-  string per row (random caption pick when `multi_caption=True`).
-  Tokenization happens later in `VLPCollator` so changing tokenizers doesn't
-  invalidate any `.map` cache.
+The transform produces PIL images and selected captions only — final
+image tensorization happens in `VLPCollator.__call__` so the dataset
+schema stays Arrow-compatible. This matches modern HF/PyTorch practice
+and unblocks `interleave_datasets`, which can't deal with Tensor columns
+during feature inference.
+
+- `make_image_transform`: torchvision pipeline (resize → ToTensor →
+  normalize). Used by the collator at batch time, not by datasets.
+- `make_vlp_transform`: the callable handed to `with_transform`. Picks
+  one caption per row for multi-caption datasets and renames image/text
+  columns. Image values stay PIL.
 """
 
 import random
@@ -47,19 +52,21 @@ def _to_pil(img):
 
 
 def make_vlp_transform(
-    image_size: int,
     image_columns: Optional[Mapping[str, str]] = None,
     text_column: str = "caption",
     text_output: str = "text",
     multi_caption: bool = True,
     seed: Optional[int] = None,
+    pass_through: bool = True,
 ):
     """Return a `with_transform` callable that processes a batch dict.
 
+    Output image columns hold PIL images, not tensors — the collator does
+    the final tensor conversion. This keeps the dataset schema
+    Arrow-compatible, which is required for `interleave_datasets`.
+
     Parameters
     ----------
-    image_size
-        Resize target (square).
     image_columns
         Mapping of source column name → output column name. Defaults to
         ``{"image": "image"}``. NLVR2 uses
@@ -74,18 +81,21 @@ def make_vlp_transform(
         ``text_column`` is assumed to hold a single string per row.
     seed
         Optional seed for the caption-picking RNG.
+    pass_through
+        If True (default), pass through any non-image, non-text columns
+        unchanged. Set False for the interleave path where downstream code
+        wants only `{image, text}`.
     """
     if image_columns is None:
         image_columns = {"image": "image"}
 
-    image_tf = make_image_transform(image_size)
     rng = random.Random(seed)
 
     def transform(batch):
         out = {}
 
         for src, dst in image_columns.items():
-            out[dst] = [image_tf(_to_pil(img)) for img in batch[src]]
+            out[dst] = [_to_pil(img) for img in batch[src]]
 
         if multi_caption:
             out[text_output] = [rng.choice(caps) for caps in batch[text_column]]
@@ -94,11 +104,12 @@ def make_vlp_transform(
                 t if isinstance(t, str) else t[0] for t in batch[text_column]
             ]
 
-        skip_keys = set(image_columns.keys()) | {text_column}
-        for k, v in batch.items():
-            if k in skip_keys:
-                continue
-            out[k] = v
+        if pass_through:
+            skip_keys = set(image_columns.keys()) | {text_column}
+            for k, v in batch.items():
+                if k in skip_keys:
+                    continue
+                out[k] = v
         return out
 
     return transform

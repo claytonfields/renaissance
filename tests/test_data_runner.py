@@ -101,7 +101,7 @@ def test_unknown_dataset_raises():
 
 def test_kwargs_standard_dataset():
     kw = _kwargs_for("coco", "val", _base_config())
-    assert kw == {"image_size": IMAGE_SIZE, "seed": 0, "split": "val"}
+    assert kw == {"seed": 0, "split": "val"}
 
 
 def test_kwargs_cc3m_includes_streaming():
@@ -132,10 +132,9 @@ def test_kwargs_glue_requires_task():
         _kwargs_for("glue", "train", _base_config())
 
 
-def test_kwargs_glue_drops_image_size():
+def test_kwargs_glue_passes_task_and_split():
     cfg = _base_config(dataset_kwargs={"glue": {"task": "mrpc"}})
     kw = _kwargs_for("glue", "validation", cfg)
-    assert "image_size" not in kw
     assert kw["task"] == "mrpc"
     assert kw["split"] == "validation"
 
@@ -183,7 +182,7 @@ def _synthetic_caption_ds():
     from renaissance.data.transforms import make_vlp_transform
     ds = Dataset.from_list(rows, features=features)
     return ds.with_transform(
-        make_vlp_transform(IMAGE_SIZE, text_column="caption", multi_caption=True, seed=0)
+        make_vlp_transform(text_column="caption", multi_caption=True, seed=0)
     )
 
 
@@ -206,7 +205,155 @@ def test_build_dataloader_end_to_end(monkeypatch):
     assert isinstance(batch["text"], list) and len(batch["text"]) == BS
 
 
-def test_build_dataloader_rejects_multi_dataset():
-    cfg = _base_config(datasets=["coco", "vg"])
-    with pytest.raises(NotImplementedError, match="single dataset"):
+def test_build_dataloader_rejects_empty_datasets():
+    cfg = _base_config(datasets=[])
+    with pytest.raises(ValueError, match="at least one dataset"):
         build_dataloader(cfg, split="train")
+
+
+# ---------------------------------------------------------------------------
+# Multi-dataset interleave
+# ---------------------------------------------------------------------------
+
+def _synthetic_streaming_wds():
+    """Mimic CC3M output (post-loader): IterableDataset of {image: Tensor, text}."""
+    features = Features({
+        "__key__": Value("string"),
+        "jpg": Value("binary"),
+        "txt": Value("string"),
+    })
+    rows = [
+        {
+            "__key__": f"cc3m/shard0/{i:09d}",
+            "jpg": _png_bytes((i * 40 % 255, 50, 150)),
+            "txt": f"a cc3m caption {i}",
+        }
+        for i in range(BS * 2)
+    ]
+    from renaissance.data.loaders import _WDS_OUT_FEATURES
+    from renaissance.data.transforms import make_vlp_transform
+    base = Dataset.from_list(rows, features=features)
+    ds = base.to_iterable_dataset()
+    transform = make_vlp_transform(
+        image_columns={"jpg": "image"},
+        text_column="txt", multi_caption=False,
+    )
+    return ds.map(
+        transform, batched=True,
+        remove_columns=["__key__", "jpg", "txt"],
+        features=_WDS_OUT_FEATURES,
+    )
+
+
+def test_interleave_with_two_map_datasets(monkeypatch):
+    """Interleave two map-style synthetic datasets (Flickr30k shape).
+    Verify normalization yields a uniform `{image, text}` stream that
+    flows through the collator."""
+    ds_a = _synthetic_caption_ds()
+    ds_b = _synthetic_caption_ds()
+
+    def fake_build_dataset(name, split, config):
+        return (ds_a if name == "f30k" else ds_b), ("image",)
+
+    monkeypatch.setattr("renaissance.data.runner.build_dataset", fake_build_dataset)
+
+    cfg = _base_config(
+        datasets=["f30k", "vg"],  # both use `caption` column
+        loss_names={"mlm": 0, "itm": 0},
+    )
+    loader = build_dataloader(cfg, split="train")
+    batch = next(iter(loader))
+
+    assert batch["image"][0].shape == (BS, 3, IMAGE_SIZE, IMAGE_SIZE)
+    assert batch["text_ids"].shape == (BS, TEXT_LEN)
+    assert isinstance(batch["text"], list) and len(batch["text"]) == BS
+
+
+def test_interleave_mixes_map_and_streaming(monkeypatch):
+    """Map-style (caption) + streaming (CC3M WDS) — interleave should
+    produce a unified iterable. This is the realistic pretraining shape
+    (e.g. coco + vg + cc3m)."""
+    map_ds = _synthetic_caption_ds()
+    stream_ds = _synthetic_streaming_wds()
+
+    def fake_build_dataset(name, split, config):
+        if name == "f30k":
+            return map_ds, ("image",)
+        return stream_ds, ("image",)
+
+    monkeypatch.setattr("renaissance.data.runner.build_dataset", fake_build_dataset)
+
+    cfg = _base_config(
+        datasets=["f30k", "cc3m"],
+        loss_names={"mlm": 0, "itm": 0},
+        dataset_probs=[0.5, 0.5],
+        stopping_strategy="first_exhausted",
+    )
+    loader = build_dataloader(cfg, split="train")
+    batch = next(iter(loader))
+
+    assert batch["image"][0].shape == (BS, 3, IMAGE_SIZE, IMAGE_SIZE)
+    assert batch["text_ids"].shape == (BS, TEXT_LEN)
+
+
+def test_interleave_strips_task_specific_columns(monkeypatch):
+    """After interleave, pass-through columns like img_id should be gone —
+    the normalized stream is image+text only."""
+    ds = _synthetic_caption_ds()  # has img_id, sentids, filename pass-through
+
+    monkeypatch.setattr(
+        "renaissance.data.runner.build_dataset",
+        lambda name, split, config: (ds, ("image",)),
+    )
+
+    cfg = _base_config(
+        datasets=["f30k", "vg"],
+        loss_names={"mlm": 0, "itm": 0},
+    )
+    loader = build_dataloader(cfg, split="train")
+    batch = next(iter(loader))
+
+    assert "img_id" not in batch
+    assert "sentids" not in batch
+    assert "filename" not in batch
+
+
+def test_interleave_rejects_mismatched_probabilities(monkeypatch):
+    monkeypatch.setattr(
+        "renaissance.data.runner.build_dataset",
+        lambda name, split, config: (_synthetic_caption_ds(), ("image",)),
+    )
+    cfg = _base_config(
+        datasets=["f30k", "vg"],
+        dataset_probs=[1.0],  # wrong length
+        loss_names={"mlm": 0, "itm": 0},
+    )
+    with pytest.raises(ValueError, match="dataset_probs has 1 entries"):
+        build_dataloader(cfg, split="train")
+
+
+def test_interleave_rejects_multi_image_dataset(monkeypatch):
+    """NLVR2 has image_keys=('image_0','image_1') — can't participate
+    in single-image interleave."""
+    monkeypatch.setattr(
+        "renaissance.data.runner.build_dataset",
+        lambda name, split, config: (
+            _synthetic_caption_ds(),
+            ("image_0", "image_1") if name == "nlvr2" else ("image",),
+        ),
+    )
+    cfg = _base_config(
+        datasets=["f30k", "nlvr2"],
+        loss_names={"mlm": 0, "itm": 0},
+    )
+    with pytest.raises(ValueError, match="cannot be interleaved"):
+        build_dataloader(cfg, split="train")
+
+
+def test_interleave_rejects_unsupported_map_dataset(monkeypatch):
+    """A map-style dataset without an entry in _INTERLEAVE_TRANSFORM_SPECS
+    can't be normalized. Use a fake name to trigger this branch."""
+    from renaissance.data.runner import _normalize_for_interleave
+    ds = _synthetic_caption_ds()
+    with pytest.raises(ValueError, match="no transform spec"):
+        _normalize_for_interleave(ds, "fake_name", seed=0)

@@ -12,7 +12,9 @@ Dispatch uses the same short dataset names as the legacy `MTDataModule`
 
 from typing import Any, Dict, Tuple
 
-from datasets import IterableDataset
+from datasets import Features, IterableDataset, interleave_datasets
+from datasets import Image as DSImage
+from datasets import Value as DSValue
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
 
@@ -32,6 +34,7 @@ from .loaders import (
     load_visual_genome,
     load_vqav2,
 )
+from .transforms import make_vlp_transform
 
 # Maps a dataset short-name to (loader_fn, image_keys_tuple).
 # Loaders are called with kwargs assembled from the flat config dict.
@@ -62,9 +65,9 @@ def _tokenizer_name(config: Dict[str, Any]) -> str:
 
 
 def _kwargs_for(name: str, split: str, config: Dict[str, Any]) -> Dict[str, Any]:
-    """Assemble the kwargs to pass to a loader. CC3M/CC12M and SBU take
-    positional-style image_size + special args; everything else is uniform."""
-    base = {"image_size": config["image_size"], "seed": config.get("seed", 0)}
+    """Assemble the kwargs to pass to a loader. Image tensorization now
+    happens in the collator, so loaders no longer take `image_size`."""
+    base = {"seed": config.get("seed", 0)}
     extra = config.get("dataset_kwargs", {}).get(name, {})
 
     if name in ("cc3m", "cc12m", "gcc"):
@@ -90,7 +93,6 @@ def _kwargs_for(name: str, split: str, config: Dict[str, Any]) -> Dict[str, Any]
                 "load_glue requires data.dataset_kwargs.glue.task "
                 "(one of mrpc, rte, mnli, sst2, cola, qnli, qqp, wnli, stsb)."
             )
-        base.pop("image_size", None)  # GLUE is text-only
         base["task"] = extra["task"]
         base["split"] = split
         return base
@@ -123,7 +125,7 @@ def build_collator(config: Dict[str, Any], image_keys: Tuple[str, ...]) -> VLPCo
 
     Reads:
     - text_encoder / encoder (whichever matches model_type) for tokenizer
-    - max_text_len, mlm_prob
+    - max_text_len, mlm_prob, image_size
     - loss_names.mlm and loss_names.itm to gate MLM masking and ITM negatives
     """
     tokenizer = AutoTokenizer.from_pretrained(_tokenizer_name(config))
@@ -135,23 +137,131 @@ def build_collator(config: Dict[str, Any], image_keys: Tuple[str, ...]) -> VLPCo
         do_mlm=bool(loss_names.get("mlm", 0)),
         do_itm=bool(loss_names.get("itm", 0)),
         image_keys=image_keys,
+        image_size=config["image_size"] if image_keys else None,
     )
 
 
 def build_dataloader(config: Dict[str, Any], split: str) -> DataLoader:
-    """Top-level builder used by run.py. Single-dataset only — multi-dataset
-    interleave (replacement for the legacy ConcatDataset path) is a follow-up.
+    """Top-level builder used by run.py.
+
+    - 1 dataset: pass through, all task-specific columns preserved.
+    - >1 datasets: use `datasets.interleave_datasets` after normalizing each
+      to a {image, text}-only IterableDataset. Multi-image (NLVR2) and
+      text-only (GLUE) datasets cannot participate.
     """
-    datasets = config.get("datasets", [])
-    if len(datasets) != 1:
-        raise NotImplementedError(
-            f"modern backend currently supports a single dataset; got {datasets!r}. "
-            "Multi-dataset interleave via datasets.interleave_datasets is a TODO."
+    datasets_arg = config.get("datasets", [])
+    if not datasets_arg:
+        raise ValueError("config.datasets must contain at least one dataset")
+
+    if len(datasets_arg) == 1:
+        name = datasets_arg[0]
+        ds, image_keys = build_dataset(name, split, config)
+        collator = build_collator(config, image_keys)
+        return _wrap_dataloader(ds, collator, config, split)
+
+    return build_interleaved_dataloader(config, split)
+
+
+# ---------------------------------------------------------------------------
+# Multi-dataset interleave
+# ---------------------------------------------------------------------------
+
+# Per-dataset transform configuration when participating in interleave. Mirrors
+# the args that each loader passes to `make_vlp_transform`. Datasets not listed
+# here are unsupported for interleave (NLVR2: multi-image; GLUE: text-only;
+# streaming WDS loaders: already apply their transform via .map).
+_INTERLEAVE_TRANSFORM_SPECS: Dict[str, Dict[str, Any]] = {
+    "coco":           dict(text_column="captions", multi_caption=True),
+    "coco_karpathy":  dict(text_column="captions", multi_caption=True),
+    "f30k":           dict(text_column="caption",  multi_caption=True),
+    "vg":             dict(text_column="caption",  multi_caption=True),
+    "vqa":            dict(text_column="question", multi_caption=False),
+    "snli":           dict(text_column="hypothesis", multi_caption=False),
+    "refcoco":        dict(text_column="question", multi_caption=False),
+    "refcocoplus":    dict(text_column="question", multi_caption=False),
+    "refcocog":       dict(text_column="question", multi_caption=False),
+}
+
+
+def _normalize_for_interleave(ds, name: str, seed: int) -> IterableDataset:
+    """Convert one dataset to an IterableDataset whose iteration yields
+    `{image, text}` only — image is PIL, text is str (no tensors so the
+    schema stays Arrow-compatible for interleave_datasets feature inference).
+
+    Map-style loaders attach the transform via `with_transform`, which doesn't
+    survive `.to_iterable_dataset()`. We clear it with `with_format(None)`,
+    convert to iterable, and re-apply the transform via `.map` with
+    `pass_through=False` so the output schema is uniform across all
+    participants.
+
+    Streaming loaders (CC3M, CC12M, SBU) already produce `{image, text}` via
+    `.map`; we just trim any stray columns.
+    """
+    if isinstance(ds, IterableDataset):
+        cols = ds.column_names or []
+        remove = [c for c in cols if c not in ("image", "text")]
+        if remove:
+            ds = ds.map(lambda b: b, batched=True, remove_columns=remove)
+        return ds
+
+    if name not in _INTERLEAVE_TRANSFORM_SPECS:
+        raise ValueError(
+            f"Dataset {name!r} cannot be interleaved — no transform spec. "
+            "Only single-image caption-style datasets are interleavable; "
+            "NLVR2 and GLUE have incompatible schemas."
         )
-    name = datasets[0]
-    ds, image_keys = build_dataset(name, split, config)
-    collator = build_collator(config, image_keys)
-    return _wrap_dataloader(ds, collator, config, split)
+    transform = make_vlp_transform(
+        seed=seed,
+        pass_through=False,
+        **_INTERLEAVE_TRANSFORM_SPECS[name],
+    )
+
+    ds = ds.with_format(None).to_iterable_dataset()
+    # Drop source columns that the transform doesn't re-emit. `image` and
+    # `text` are produced by the transform and the fn output wins over the
+    # input dict, so they survive. Listing them here would strip them
+    # post-merge.
+    drop = [c for c in ds.column_names if c not in ("image", "text")]
+    return ds.map(
+        transform,
+        batched=True,
+        remove_columns=drop or None,
+        features=Features({"image": DSImage(), "text": DSValue("string")}),
+    )
+
+
+def build_interleaved_dataloader(
+    config: Dict[str, Any], split: str,
+) -> DataLoader:
+    names = config["datasets"]
+    probs = config.get("dataset_probs")
+    stopping = config.get("stopping_strategy", "first_exhausted")
+    seed = config.get("seed", 0)
+
+    if probs is not None and len(probs) != len(names):
+        raise ValueError(
+            f"dataset_probs has {len(probs)} entries but datasets has "
+            f"{len(names)} — must match."
+        )
+
+    iterables = []
+    for name in names:
+        ds, image_keys = build_dataset(name, split, config)
+        if image_keys != ("image",):
+            raise ValueError(
+                f"Dataset {name!r} with image_keys={image_keys} cannot be "
+                "interleaved (multi-image or text-only datasets aren't compatible)."
+            )
+        iterables.append(_normalize_for_interleave(ds, name, seed))
+
+    interleaved = interleave_datasets(
+        iterables,
+        probabilities=probs,
+        stopping_strategy=stopping,
+        seed=seed,
+    )
+    collator = build_collator(config, image_keys=("image",))
+    return _wrap_dataloader(interleaved, collator, config, split)
 
 
 def _wrap_dataloader(ds, collator, config: Dict[str, Any], split: str) -> DataLoader:

@@ -24,9 +24,11 @@ ITM negatives only fire when `do_itm=True` AND `image_keys` is non-empty;
 they use the first key in `image_keys` as the source.
 """
 
-from typing import Tuple
+from typing import Optional, Tuple
 
 import torch
+
+from .transforms import _to_pil, make_image_transform
 
 
 class VLPCollator:
@@ -38,12 +40,22 @@ class VLPCollator:
         do_mlm: bool = True,
         do_itm: bool = True,
         image_keys: Tuple[str, ...] = ("image",),
+        image_size: Optional[int] = None,
     ):
         self.tokenizer = tokenizer
         self.max_text_len = max_text_len
         self.do_mlm = do_mlm
         self.do_itm = do_itm
         self.image_keys = tuple(image_keys)
+        self.image_size = image_size
+        # Final image transform applied at batch time. None is allowed only
+        # for fully text-only collators (image_keys=()).
+        if image_keys and image_size is None:
+            raise ValueError(
+                "image_size must be set when image_keys is non-empty. "
+                "Pass image_size=N to VLPCollator."
+            )
+        self.image_transform = make_image_transform(image_size) if image_size else None
         if do_mlm:
             # Imported lazily: `transformers.data.data_collator` pulls in a TF
             # module that breaks in environments where TF + numpy are
@@ -64,7 +76,15 @@ class VLPCollator:
         batch = {}
 
         for k in self.image_keys:
-            batch[k] = [torch.stack([ex[k] for ex in examples])]
+            tensors = []
+            for ex in examples:
+                img = ex[k]
+                if isinstance(img, torch.Tensor):
+                    # Already tensorized upstream (legacy code path).
+                    tensors.append(img)
+                else:
+                    tensors.append(self.image_transform(_to_pil(img)))
+            batch[k] = [torch.stack(tensors)]
 
         texts = [ex["text"] for ex in examples]
         text_pairs = (
