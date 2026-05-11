@@ -18,7 +18,7 @@ from transformers.models.lxmert.modeling_lxmert import LxmertXLayer
 from transformers.models.lxmert.configuration_lxmert import LxmertConfig
 from transformers.models.bert import BertConfig
 from transformers.activations import ACT2FN
-from transformers.modeling_utils import (
+from transformers.pytorch_utils import (
     apply_chunking_to_forward,
     find_pruneable_heads_and_indices,
     prune_linear_layer,
