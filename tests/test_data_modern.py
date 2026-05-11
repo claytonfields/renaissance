@@ -14,7 +14,7 @@ import io
 
 import pytest
 import torch
-from datasets import Dataset, Features
+from datasets import Dataset, Features, IterableDataset
 from datasets import Image as DSImage
 from datasets import Sequence, Value
 from PIL import Image
@@ -23,6 +23,8 @@ from transformers import AutoTokenizer
 
 from renaissance.data import (
     VLPCollator,
+    load_cc3m,
+    load_cc12m,
     load_flickr30k,
     load_nlvr2,
     load_refcoco,
@@ -258,6 +260,64 @@ def test_refcoco_pipeline(synthetic_refcoco_ds, tokenizer):
 
 
 # ---------------------------------------------------------------------------
+# CC3M / CC12M (WebDataset, streaming)
+# ---------------------------------------------------------------------------
+
+def _wds_rows(n, prefix="cc3m"):
+    """Mimic a pixparse/cc3m-wds row: {__key__, jpg (bytes), txt}."""
+    return [
+        {
+            "__key__": f"{prefix}/shard0/{i:09d}",
+            "jpg": _png_bytes((i * 40 % 255, 50, 150)),
+            "txt": f"a {prefix}-style caption number {i}",
+        }
+        for i in range(n)
+    ]
+
+
+def test_cc3m_streaming_pipeline(tokenizer):
+    # Build an IterableDataset to match what load_cc3m(streaming=True) returns.
+    # `to_iterable_dataset()` sidesteps `from_generator`, which would otherwise
+    # break in environments with a dill version that's out of sync with HF
+    # datasets.
+    features = Features({
+        "__key__": Value("string"),
+        "jpg": Value("binary"),
+        "txt": Value("string"),
+    })
+    base = Dataset.from_list(_wds_rows(BS * 2), features=features)
+    ds = base.to_iterable_dataset()
+
+    transform = make_vlp_transform(
+        IMAGE_SIZE,
+        image_columns={"jpg": "image"},
+        text_column="txt",
+        multi_caption=False,
+    )
+    ds = ds.map(transform, batched=True, remove_columns=["__key__"])
+
+    collator = VLPCollator(tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False)
+    loader = DataLoader(ds, batch_size=BS, collate_fn=collator)
+    batch = next(iter(loader))
+
+    assert batch["image"][0].shape == (BS, 3, IMAGE_SIZE, IMAGE_SIZE)
+    assert batch["text_ids"].shape == (BS, TEXT_LEN)
+    assert len(batch["text"]) == BS
+    assert batch["text"][0].startswith("a cc3m-style caption number")
+    # __key__ was removed via remove_columns; no pass-through.
+    assert "__key__" not in batch
+
+
+def test_raw_bytes_image_handled():
+    """_to_pil should accept raw bytes (WebDataset image format) directly."""
+    from renaissance.data.transforms import _to_pil
+
+    img = _to_pil(_png_bytes((10, 20, 30)))
+    assert isinstance(img, Image.Image)
+    assert img.mode == "RGB"
+
+
+# ---------------------------------------------------------------------------
 # Loader signature smoke checks (don't actually hit the Hub)
 # ---------------------------------------------------------------------------
 
@@ -270,6 +330,8 @@ def test_refcoco_pipeline(synthetic_refcoco_ds, tokenizer):
         (load_refcoco, "bogus"),
         (load_refcocoplus, "bogus"),
         (load_refcocog, "bogus"),
+        (load_cc3m, "bogus"),
+        (load_cc12m, "bogus"),
     ],
 )
 def test_loader_rejects_bad_split(loader, bad_split):

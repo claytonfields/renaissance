@@ -37,6 +37,9 @@ def _to_pil(img):
         return Image.fromarray(img).convert("RGB")
     if isinstance(img, torch.Tensor):
         return T.ToPILImage()(img).convert("RGB")
+    if isinstance(img, (bytes, bytearray)):
+        from io import BytesIO
+        return Image.open(BytesIO(img)).convert("RGB")
     if isinstance(img, dict) and "bytes" in img:
         from io import BytesIO
         return Image.open(BytesIO(img["bytes"])).convert("RGB")

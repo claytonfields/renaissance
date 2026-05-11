@@ -176,3 +176,76 @@ def load_refcocog(split, image_size, seed=None):
         allowed_splits={"val", "test"},
         seed=seed,
     )
+
+
+def _load_wds_captioning(
+    hub_id: str,
+    split: str,
+    image_size: int,
+    streaming: bool,
+    seed: Optional[int],
+):
+    """Shared loader for WebDataset-format caption datasets (`pixparse/cc3m-wds`,
+    `pixparse/cc12m-wds`).
+
+    Schema in the source: ``{"__key__": str, "jpg": bytes, "txt": str}``.
+    Output schema after transform: ``{"image": Tensor[3, H, W], "text": str}``.
+    """
+    ds = load_dataset(hub_id, split=split, streaming=streaming)
+    transform = make_vlp_transform(
+        image_size,
+        image_columns={"jpg": "image"},
+        text_column="txt",
+        multi_caption=False,
+        seed=seed,
+    )
+    if streaming:
+        # IterableDataset doesn't support `.with_transform`; use `.map` instead.
+        # `remove_columns` drops `__key__` which would otherwise pass through.
+        ds = ds.map(transform, batched=True, remove_columns=["__key__"])
+    else:
+        ds = ds.with_transform(transform)
+    return ds
+
+
+def load_cc3m(
+    image_size: int,
+    split: str = "train",
+    hub_id: str = "pixparse/cc3m-wds",
+    streaming: bool = True,
+    seed: Optional[int] = None,
+):
+    """CC3M from `pixparse/cc3m-wds` (WebDataset format, ~281 GB).
+
+    Streaming is the default and the realistic mode — CC3M is meant to be
+    iterated, not random-accessed. Pass ``streaming=False`` only if you have
+    a local pre-downloaded mirror.
+
+    Splits: ``train`` (~2.9 M), ``val`` (~13 K).
+
+    Caveat: the `pixparse` mirror redistributes CC3M images, which sits in a
+    legal grey zone with Google's original terms. Fine for research; check
+    before publishing checkpoints trained on it.
+    """
+    if split not in ("train", "val", "validation"):
+        raise ValueError(f"split must be one of train/val, got {split!r}")
+    if split == "val":
+        split = "validation"
+    return _load_wds_captioning(hub_id, split, image_size, streaming, seed)
+
+
+def load_cc12m(
+    image_size: int,
+    split: str = "train",
+    hub_id: str = "pixparse/cc12m-wds",
+    streaming: bool = True,
+    seed: Optional[int] = None,
+):
+    """CC12M from `pixparse/cc12m-wds` (WebDataset format).
+
+    Single ``train`` split. Same WDS schema and streaming considerations as
+    CC3M.
+    """
+    if split != "train":
+        raise ValueError(f"split must be one of train, got {split!r}")
+    return _load_wds_captioning(hub_id, split, image_size, streaming, seed)

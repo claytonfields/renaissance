@@ -7,6 +7,8 @@ once all datasets are ported the legacy directories will be deleted.
 
 from .collate import VLPCollator
 from .loaders import (
+    load_cc3m,
+    load_cc12m,
     load_flickr30k,
     load_nlvr2,
     load_refcoco,
@@ -26,4 +28,6 @@ __all__ = [
     "load_refcoco",
     "load_refcocoplus",
     "load_refcocog",
+    "load_cc3m",
+    "load_cc12m",
 ]
