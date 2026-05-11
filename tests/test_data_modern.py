@@ -27,10 +27,14 @@ from renaissance.data import (
     load_cc12m,
     load_coco_karpathy,
     load_flickr30k,
+    load_glue,
     load_nlvr2,
     load_refcoco,
     load_refcocog,
     load_refcocoplus,
+    load_sbu,
+    load_snli_ve,
+    load_visual_genome,
     load_vqav2,
     make_vlp_transform,
 )
@@ -359,6 +363,184 @@ def test_raw_bytes_image_handled():
 
 
 # ---------------------------------------------------------------------------
+# Visual Genome (region descriptions → multi-caption)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def synthetic_vg_ds():
+    """Mirror of ranjaykrishna/visual_genome (region_descriptions config).
+    Each row has an `image` and a `regions` list-of-structs containing
+    `phrase` and bbox info. We replicate the .map(extract_phrases) step
+    inline so the test focuses on the transform + collator part of the
+    pipeline."""
+    rows = []
+    for i in range(BS):
+        rows.append({
+            "image": _img_field(i),
+            "image_id": 1000 + i,
+            "regions": [
+                {
+                    "region_id": 10 * i + j,
+                    "image_id": 1000 + i,
+                    "phrase": f"a vg phrase {i}.{j}",
+                    "x": j,
+                    "y": j,
+                    "width": 10,
+                    "height": 10,
+                }
+                for j in range(4)
+            ],
+        })
+    features = Features({
+        "image": DSImage(),
+        "image_id": Value("int64"),
+        "regions": Sequence({
+            "region_id": Value("int64"),
+            "image_id": Value("int64"),
+            "phrase": Value("string"),
+            "x": Value("int64"),
+            "y": Value("int64"),
+            "width": Value("int64"),
+            "height": Value("int64"),
+        }),
+    })
+    ds = Dataset.from_list(rows, features=features)
+    # Same logic the loader runs.
+    def _extract_phrases(batch):
+        captions = []
+        for regions in batch["regions"]:
+            if isinstance(regions, dict):
+                captions.append(list(regions["phrase"]))
+            else:
+                captions.append([r["phrase"] for r in regions])
+        return {"caption": captions}
+    ds = ds.map(_extract_phrases, batched=True, remove_columns=["regions"])
+    ds = ds.with_transform(
+        make_vlp_transform(IMAGE_SIZE, text_column="caption", multi_caption=True, seed=0)
+    )
+    return ds
+
+
+def test_vg_pipeline(synthetic_vg_ds, tokenizer):
+    collator = VLPCollator(tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False)
+    loader = DataLoader(synthetic_vg_ds, batch_size=BS, collate_fn=collator)
+    batch = next(iter(loader))
+
+    assert batch["image"][0].shape == (BS, 3, IMAGE_SIZE, IMAGE_SIZE)
+    assert batch["text_ids"].shape == (BS, TEXT_LEN)
+    assert batch["text"][0].startswith("a vg phrase 0.")
+    assert batch["image_id"] == [1000, 1001, 1002, 1003]
+
+
+# ---------------------------------------------------------------------------
+# SNLI-VE (image-premise + hypothesis text + label)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def synthetic_snli_ve_ds():
+    rows = []
+    labels = ["entailment", "neutral", "contradiction", "entailment"]
+    for i in range(BS):
+        rows.append({
+            "image": _img_field(i),
+            "filename": f"{2000 + i}.jpg",
+            "premise": f"premise about image {i}",
+            "hypothesis": f"hypothesis number {i}",
+            "label": labels[i],
+        })
+    features = Features({
+        "image": DSImage(),
+        "filename": Value("string"),
+        "premise": Value("string"),
+        "hypothesis": Value("string"),
+        "label": Value("string"),
+    })
+    ds = Dataset.from_list(rows, features=features)
+    ds = ds.with_transform(
+        make_vlp_transform(IMAGE_SIZE, text_column="hypothesis", multi_caption=False)
+    )
+    return ds
+
+
+def test_snli_ve_pipeline(synthetic_snli_ve_ds, tokenizer):
+    collator = VLPCollator(tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False)
+    loader = DataLoader(synthetic_snli_ve_ds, batch_size=BS, collate_fn=collator)
+    batch = next(iter(loader))
+
+    assert batch["image"][0].shape == (BS, 3, IMAGE_SIZE, IMAGE_SIZE)
+    assert batch["text_ids"].shape == (BS, TEXT_LEN)
+    assert batch["text"][0].startswith("hypothesis number")
+    assert batch["label"][0] == "entailment"
+    # `premise` passed through but unused as input text.
+    assert "premise" in batch and len(batch["premise"]) == BS
+
+
+# ---------------------------------------------------------------------------
+# GLUE (text-only) — exercises image_keys=() and text_pair handling
+# ---------------------------------------------------------------------------
+
+def test_glue_paired_pipeline(tokenizer):
+    """MRPC-style: text + text_pair → tokenizer pair encoding."""
+    rows = [
+        {"text": "the dog runs.", "text_pair": "a dog is running.", "label": 1, "idx": 0},
+        {"text": "cats sleep.", "text_pair": "the cat is asleep.", "label": 1, "idx": 1},
+        {"text": "the sky is blue.", "text_pair": "blue is the sky.", "label": 1, "idx": 2},
+        {"text": "i ate an apple.", "text_pair": "a banana was eaten.", "label": 0, "idx": 3},
+    ]
+    ds = Dataset.from_list(rows)
+
+    collator = VLPCollator(
+        tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False,
+        image_keys=(),
+    )
+    loader = DataLoader(ds, batch_size=BS, collate_fn=collator)
+    batch = next(iter(loader))
+
+    assert "image" not in batch
+    assert "false_image_0" not in batch
+    assert batch["text_ids"].shape == (BS, TEXT_LEN)
+    assert batch["text_masks"].shape == (BS, TEXT_LEN)
+    assert batch["text_pair"][0] == "a dog is running."
+    assert batch["label"] == [1, 1, 1, 0]
+    assert batch["idx"] == [0, 1, 2, 3]
+
+
+def test_glue_single_sentence_pipeline(tokenizer):
+    """SST2/CoLA-style: single text, no text_pair."""
+    rows = [
+        {"text": "this movie is great.", "label": 1, "idx": 0},
+        {"text": "the food was terrible.", "label": 0, "idx": 1},
+        {"text": "an amazing performance.", "label": 1, "idx": 2},
+        {"text": "boring and slow.", "label": 0, "idx": 3},
+    ]
+    ds = Dataset.from_list(rows)
+
+    collator = VLPCollator(
+        tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False,
+        image_keys=(),
+    )
+    loader = DataLoader(ds, batch_size=BS, collate_fn=collator)
+    batch = next(iter(loader))
+
+    assert "text_pair" not in batch
+    assert batch["text_ids"].shape == (BS, TEXT_LEN)
+    assert batch["label"] == [1, 0, 1, 0]
+
+
+def test_text_only_collator_ignores_itm_flag(tokenizer):
+    """do_itm=True with image_keys=() should silently no-op rather than crash."""
+    rows = [{"text": "hello world.", "label": 0}] * BS
+    ds = Dataset.from_list(rows)
+    collator = VLPCollator(
+        tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=True,
+        image_keys=(),
+    )
+    loader = DataLoader(ds, batch_size=BS, collate_fn=collator)
+    batch = next(iter(loader))
+    assert "false_image_0" not in batch
+
+
+# ---------------------------------------------------------------------------
 # Loader signature smoke checks (don't actually hit the Hub)
 # ---------------------------------------------------------------------------
 
@@ -374,8 +556,27 @@ def test_raw_bytes_image_handled():
         (load_cc3m, "bogus"),
         (load_cc12m, "bogus"),
         (load_coco_karpathy, "bogus"),
+        (load_visual_genome, "bogus"),
+        (load_snli_ve, "bogus"),
     ],
 )
 def test_loader_rejects_bad_split(loader, bad_split):
     with pytest.raises(ValueError, match="split must be one of"):
         loader(split=bad_split, image_size=IMAGE_SIZE)
+
+
+def test_load_sbu_rejects_empty_path(tmp_path):
+    """SBU has no Hub mirror; require local img2dataset output and fail
+    loudly when the directory is empty."""
+    with pytest.raises(FileNotFoundError, match="No .tar WebDataset shards"):
+        load_sbu(image_size=IMAGE_SIZE, path=str(tmp_path))
+
+
+def test_load_glue_rejects_bad_task():
+    with pytest.raises(ValueError, match="task must be one of"):
+        load_glue(task="bogus", split="train")
+
+
+def test_load_glue_rejects_bad_split():
+    with pytest.raises(ValueError, match="split must be one of"):
+        load_glue(task="mrpc", split="bogus")

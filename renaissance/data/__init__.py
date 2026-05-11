@@ -11,10 +11,14 @@ from .loaders import (
     load_cc12m,
     load_coco_karpathy,
     load_flickr30k,
+    load_glue,
     load_nlvr2,
     load_refcoco,
     load_refcocog,
     load_refcocoplus,
+    load_sbu,
+    load_snli_ve,
+    load_visual_genome,
     load_vqav2,
 )
 from .transforms import make_image_transform, make_vlp_transform
@@ -32,4 +36,8 @@ __all__ = [
     "load_cc3m",
     "load_cc12m",
     "load_coco_karpathy",
+    "load_visual_genome",
+    "load_sbu",
+    "load_snli_ve",
+    "load_glue",
 ]

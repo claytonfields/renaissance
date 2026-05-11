@@ -15,8 +15,13 @@ NLVR2-style two-image schema (`image_keys=("image_0", "image_1")`):
 - `image_0`, `image_1`: each a list[Tensor[B, 3, H, W]]
 - text fields as above
 
-ITM negatives only fire when `do_itm=True` and use the first key in
-`image_keys` as the source.
+Text-only schema for GLUE (`image_keys=()`):
+- No image fields produced; ITM silently no-ops.
+- If examples carry a `text_pair` field, the tokenizer encodes
+  `(text, text_pair)` as a pair (sentence A / sentence B).
+
+ITM negatives only fire when `do_itm=True` AND `image_keys` is non-empty;
+they use the first key in `image_keys` as the source.
 """
 
 from typing import Tuple
@@ -62,16 +67,35 @@ class VLPCollator:
             batch[k] = [torch.stack([ex[k] for ex in examples])]
 
         texts = [ex["text"] for ex in examples]
-        batch["text"] = texts
-
-        enc = self.tokenizer(
-            texts,
-            padding="max_length",
-            truncation=True,
-            max_length=self.max_text_len,
-            return_special_tokens_mask=True,
-            return_tensors="pt",
+        text_pairs = (
+            [ex["text_pair"] for ex in examples]
+            if examples and "text_pair" in examples[0]
+            else None
         )
+
+        if text_pairs is not None:
+            enc = self.tokenizer(
+                texts,
+                text_pair=text_pairs,
+                padding="max_length",
+                truncation=True,
+                max_length=self.max_text_len,
+                return_special_tokens_mask=True,
+                return_tensors="pt",
+            )
+        else:
+            enc = self.tokenizer(
+                texts,
+                padding="max_length",
+                truncation=True,
+                max_length=self.max_text_len,
+                return_special_tokens_mask=True,
+                return_tensors="pt",
+            )
+
+        batch["text"] = texts
+        if text_pairs is not None:
+            batch["text_pair"] = text_pairs
         batch["text_ids"] = enc["input_ids"]
         batch["text_masks"] = enc["attention_mask"]
         batch["text_labels"] = torch.full_like(enc["input_ids"], -100)
@@ -89,13 +113,13 @@ class VLPCollator:
             batch["text_ids_mlm"] = mlm_out["input_ids"]
             batch["text_labels_mlm"] = mlm_out["labels"]
 
-        if self.do_itm:
+        if self.do_itm and self.image_keys:
             primary = self.image_keys[0]
             primary_tensor = batch[primary][0]
             perm = torch.randperm(primary_tensor.size(0))
             batch[f"false_{primary}_0"] = [primary_tensor[perm].clone()]
 
-        skip = set(self.image_keys) | {"text"}
+        skip = set(self.image_keys) | {"text", "text_pair"}
         for ex in examples:
             for k, v in ex.items():
                 if k in skip:

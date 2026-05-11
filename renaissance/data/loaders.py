@@ -290,3 +290,215 @@ def load_coco_karpathy(
         )
     )
     return ds
+
+
+def load_visual_genome(
+    image_size: int,
+    split: str = "train",
+    config: str = "region_descriptions_v1.2.0",
+    hub_id: str = "ranjaykrishna/visual_genome",
+    seed: Optional[int] = None,
+):
+    """Visual Genome region descriptions from `ranjaykrishna/visual_genome`.
+
+    Single ``train`` split (~108 K images). The ``regions`` column is a list
+    of per-image bounding-box descriptions; we extract ``regions[].phrase``
+    into a ``caption`` column and feed that through the multi-caption
+    transform (one phrase sampled per row per epoch).
+
+    Other configs available (``objects_v1.2.0``, ``attributes_v1.2.0``,
+    ``relationships_v1.2.0``, ``question_answers_v1.2.0``) — pass via
+    ``config``.
+    """
+    if split != "train":
+        raise ValueError(
+            f"split must be one of train (the only split available), got {split!r}"
+        )
+
+    ds = load_dataset(hub_id, config, split=split)
+
+    def _extract_phrases(batch):
+        # `Sequence(struct)` features are exposed as struct-of-arrays
+        # (a dict of lists) in batched .map. `[struct]` features are
+        # exposed as list-of-dicts. Handle both.
+        captions = []
+        for regions in batch["regions"]:
+            if isinstance(regions, dict):
+                captions.append(list(regions["phrase"]))
+            else:
+                captions.append([r["phrase"] for r in regions])
+        return {"caption": captions}
+
+    ds = ds.map(
+        _extract_phrases,
+        batched=True,
+        remove_columns=["regions"],
+    )
+    ds = ds.cast_column("image", DSImage(decode=True))
+    ds = ds.with_transform(
+        make_vlp_transform(
+            image_size,
+            image_columns={"image": "image"},
+            text_column="caption",
+            multi_caption=True,
+            seed=seed,
+        )
+    )
+    return ds
+
+
+def load_sbu(
+    image_size: int,
+    path: str,
+    seed: Optional[int] = None,
+):
+    """SBU Captions from a local img2dataset WebDataset mirror.
+
+    No usable Hub mirror exists: `vicenteor/sbu_captions` is URL-only and
+    most Flickr URLs are dead. Pre-download with img2dataset:
+
+        img2dataset --url_list sbu_urls.tsv --input_format tsv \\
+                    --url_col 0 --caption_col 1 \\
+                    --output_folder sbu_wds --output_format webdataset \\
+                    --image_size 256 --processes_count 16 --thread_count 32
+
+    Then pass the output directory as ``path``. Loads via streaming WDS so
+    the dataset behaves like CC3M downstream.
+    """
+    import glob
+
+    tars = sorted(glob.glob(f"{path}/*.tar"))
+    if not tars:
+        raise FileNotFoundError(
+            f"No .tar WebDataset shards found in {path!r}. "
+            "Run img2dataset against the SBU URL list first."
+        )
+    ds = load_dataset(
+        "webdataset", data_files={"train": tars}, split="train", streaming=True
+    )
+    transform = make_vlp_transform(
+        image_size,
+        image_columns={"jpg": "image"},
+        text_column="txt",
+        multi_caption=False,
+        seed=seed,
+    )
+    ds = ds.map(transform, batched=True, remove_columns=["__key__"])
+    return ds
+
+
+def load_snli_ve(
+    split: str,
+    image_size: int,
+    hub_id: str = "HuggingFaceM4/SNLI-VE",
+    seed: Optional[int] = None,
+):
+    """SNLI-VE from `HuggingFaceM4/SNLI-VE`.
+
+    Splits: ``train``, ``val``, ``test``.
+
+    Requires ``trust_remote_code=True`` (custom loading script) and a local
+    copy of ``flickr30k-images.tar.gz`` (the script joins SNLI text labels
+    with locally-stored Flickr30k images). See the dataset card for archive
+    download instructions.
+
+    Schema in source: ``image`` (PIL), ``filename`` (str), ``premise`` (str),
+    ``hypothesis`` (str), ``label`` (ClassLabel: entailment/neutral/
+    contradiction). The model's text input is ``hypothesis`` — the premise
+    is the image, not a text input.
+
+    Known limitation: ~9.2% of the neutral-class labels in the original
+    SNLI-VE paper are noisy, per the published authors.
+    """
+    if split == "val":
+        split = "validation"
+    if split not in ("train", "validation", "test"):
+        raise ValueError(f"split must be one of train/val/test, got {split!r}")
+
+    ds = load_dataset(hub_id, split=split, trust_remote_code=True)
+    ds = ds.cast_column("image", DSImage(decode=True))
+    ds = ds.with_transform(
+        make_vlp_transform(
+            image_size,
+            image_columns={"image": "image"},
+            text_column="hypothesis",
+            multi_caption=False,
+            seed=seed,
+        )
+    )
+    return ds
+
+
+# --- GLUE -------------------------------------------------------------------
+
+_GLUE_COLUMNS = {
+    "mrpc": ("sentence1", "sentence2"),
+    "rte": ("sentence1", "sentence2"),
+    "wnli": ("sentence1", "sentence2"),
+    "stsb": ("sentence1", "sentence2"),
+    "mnli": ("premise", "hypothesis"),
+    "qnli": ("question", "sentence"),
+    "qqp": ("question1", "question2"),
+    "sst2": ("sentence", None),
+    "cola": ("sentence", None),
+}
+
+
+def load_glue(
+    task: str,
+    split: str,
+    hub_id: str = "nyu-mll/glue",
+    seed: Optional[int] = None,
+):
+    """GLUE benchmark from `nyu-mll/glue` — text-only, no image.
+
+    ``task`` is one of: mrpc, rte, wnli, stsb, mnli, qnli, qqp, sst2, cola.
+    ``split`` is one of: train, validation, test. Test labels are hidden in
+    GLUE; use ``validation`` for evaluation.
+
+    Output schema after transform: ``{"text": str, "text_pair"?: str,
+    "label": int, "idx"?: int}``. For paired-sentence tasks, source columns
+    are renamed to ``text`` / ``text_pair`` for clean tokenization via the
+    ``tokenizer(text, text_pair=...)`` API.
+
+    Pair with ``VLPCollator(image_keys=())`` to skip image processing.
+
+    Note for MNLI: ``validation`` is treated as ``validation_matched``.
+    Use ``validation_mismatched`` explicitly for the mismatched split.
+    """
+    if task not in _GLUE_COLUMNS:
+        raise ValueError(
+            f"task must be one of {sorted(_GLUE_COLUMNS)}, got {task!r}"
+        )
+    valid_splits = ("train", "validation", "test")
+    if task == "mnli":
+        valid_splits = (
+            "train",
+            "validation",
+            "validation_matched",
+            "validation_mismatched",
+            "test_matched",
+            "test_mismatched",
+        )
+    if split not in valid_splits:
+        raise ValueError(
+            f"split must be one of {valid_splits}, got {split!r}"
+        )
+    if task == "mnli" and split == "validation":
+        split = "validation_matched"
+
+    col_a, col_b = _GLUE_COLUMNS[task]
+    ds = load_dataset(hub_id, task, split=split)
+
+    def transform(batch):
+        out = {"text": list(batch[col_a])}
+        if col_b is not None:
+            out["text_pair"] = list(batch[col_b])
+        if "label" in batch:
+            out["label"] = list(batch["label"])
+        if "idx" in batch:
+            out["idx"] = list(batch["idx"])
+        return out
+
+    ds = ds.with_transform(transform)
+    return ds
