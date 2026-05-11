@@ -9,6 +9,7 @@ from .collate import VLPCollator
 from .loaders import (
     load_cc3m,
     load_cc12m,
+    load_coco_karpathy,
     load_flickr30k,
     load_nlvr2,
     load_refcoco,
@@ -30,4 +31,5 @@ __all__ = [
     "load_refcocog",
     "load_cc3m",
     "load_cc12m",
+    "load_coco_karpathy",
 ]

@@ -25,6 +25,7 @@ from renaissance.data import (
     VLPCollator,
     load_cc3m,
     load_cc12m,
+    load_coco_karpathy,
     load_flickr30k,
     load_nlvr2,
     load_refcoco,
@@ -260,6 +261,46 @@ def test_refcoco_pipeline(synthetic_refcoco_ds, tokenizer):
 
 
 # ---------------------------------------------------------------------------
+# COCO Karpathy (multi-caption, embedded images)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def synthetic_coco_ds():
+    """Schema matches `namkha1032/coco-karpathy`: image_id, image, captions
+    (list[str] of length 5-7), plus the awkwardly-named width column the
+    loader drops on the real Hub."""
+    rows = []
+    for i in range(BS * 2):
+        rows.append({
+            "image_id": str(100000 + i),
+            "image": _img_field(i),
+            "captions": [f"a coco caption {i}.{j}" for j in range(5)],
+        })
+    features = Features({
+        "image_id": Value("string"),
+        "image": DSImage(),
+        "captions": Sequence(Value("string")),
+    })
+    ds = Dataset.from_list(rows, features=features)
+    ds = ds.with_transform(
+        make_vlp_transform(IMAGE_SIZE, text_column="captions", multi_caption=True, seed=0)
+    )
+    return ds
+
+
+def test_coco_pipeline(synthetic_coco_ds, tokenizer):
+    collator = VLPCollator(tokenizer, max_text_len=TEXT_LEN, do_mlm=False, do_itm=False)
+    loader = DataLoader(synthetic_coco_ds, batch_size=BS, collate_fn=collator)
+    batch = next(iter(loader))
+
+    assert batch["image"][0].shape == (BS, 3, IMAGE_SIZE, IMAGE_SIZE)
+    assert batch["text_ids"].shape == (BS, TEXT_LEN)
+    assert len(batch["text"]) == BS
+    assert batch["text"][0].startswith("a coco caption 0.")
+    assert batch["image_id"] == ["100000", "100001", "100002", "100003"]
+
+
+# ---------------------------------------------------------------------------
 # CC3M / CC12M (WebDataset, streaming)
 # ---------------------------------------------------------------------------
 
@@ -332,6 +373,7 @@ def test_raw_bytes_image_handled():
         (load_refcocog, "bogus"),
         (load_cc3m, "bogus"),
         (load_cc12m, "bogus"),
+        (load_coco_karpathy, "bogus"),
     ],
 )
 def test_loader_rejects_bad_split(loader, bad_split):

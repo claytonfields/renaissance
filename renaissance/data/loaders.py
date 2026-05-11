@@ -249,3 +249,44 @@ def load_cc12m(
     if split != "train":
         raise ValueError(f"split must be one of train, got {split!r}")
     return _load_wds_captioning(hub_id, split, image_size, streaming, seed)
+
+
+def load_coco_karpathy(
+    split: str,
+    image_size: int,
+    hub_id: str = "namkha1032/coco-karpathy",
+    seed: Optional[int] = None,
+):
+    """COCO 2014 captions with Karpathy splits from `namkha1032/coco-karpathy`.
+
+    Splits: ``train`` (113 K, restval folded in), ``val`` (5 K), ``test``
+    (5 K). Schema in the source: ``image_id`` (str), ``image`` (PIL),
+    ``image_width (px)`` (int — dropped on load), ``captions`` (list of 5-7
+    strings).
+
+    Note: this is a community re-upload with unspecified license metadata.
+    COCO 2014's underlying license is CC-BY-4.0 so functionally it's
+    permissive, but flag this when publishing checkpoint provenance.
+    """
+    if split not in ("train", "val", "validation", "test"):
+        raise ValueError(
+            f"split must be one of train/val/test, got {split!r}"
+        )
+    if split == "val":
+        split = "validation"
+
+    ds = load_dataset(hub_id, split=split)
+    # The `image_width (px)` column has an awkward name and isn't used.
+    if "image_width (px)" in ds.column_names:
+        ds = ds.remove_columns(["image_width (px)"])
+    ds = ds.cast_column("image", DSImage(decode=True))
+    ds = ds.with_transform(
+        make_vlp_transform(
+            image_size,
+            image_columns={"image": "image"},
+            text_column="captions",
+            multi_caption=True,
+            seed=seed,
+        )
+    )
+    return ds
