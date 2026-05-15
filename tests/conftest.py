@@ -175,6 +175,31 @@ def two_tower_ref_config():
     return cfg
 
 
+@pytest.fixture(scope="session")
+def two_tower_vqa_config():
+    cfg = _base_config()
+    cfg.update({
+        "model_type": "two-tower",
+        "image_size": TWO_TOWER_IMG,
+        "original_image_size": TWO_TOWER_IMG,
+        "loss_names": {**ALL_LOSS_NAMES, "vqa": 1},
+        "vqav2_label_size": 4,
+    })
+    return cfg
+
+
+@pytest.fixture(scope="session")
+def two_tower_mrpc_config():
+    cfg = _base_config()
+    cfg.update({
+        "model_type": "two-tower",
+        "image_size": TWO_TOWER_IMG,
+        "original_image_size": TWO_TOWER_IMG,
+        "loss_names": {**ALL_LOSS_NAMES, "mrpc": 1},
+    })
+    return cfg
+
+
 # ---------------------------------------------------------------------------
 # Synthetic batch factories
 # ---------------------------------------------------------------------------
@@ -237,4 +262,26 @@ def ref_batch():
         "text_labels": torch.full((total, TEXT_LEN), -100, dtype=torch.long),
         "text_masks": torch.ones(total, TEXT_LEN, dtype=torch.long),
         "target": torch.randint(0, MAX_BB, (BS,)),
+    }
+
+
+@pytest.fixture
+def vqa_batch(two_tower_batch):
+    """VQA batch: pretrain batch + per-example label/score lists matching the
+    modern data layer's pass-through schema."""
+    return {
+        **two_tower_batch,
+        "vqa_labels": [[0, 1], [2]],
+        "vqa_scores": [[1.0, 0.3], [1.0]],
+    }
+
+
+@pytest.fixture
+def mrpc_batch():
+    """MRPC batch: text-only, infer_text_only unpacks it into the HF text
+    encoder, so only `input_ids` / `attention_mask` are needed."""
+    return {
+        "input_ids": torch.randint(1, VOCAB, (BS, TEXT_LEN)),
+        "attention_mask": torch.ones(BS, TEXT_LEN, dtype=torch.long),
+        "label": torch.tensor([0, 1]),
     }
