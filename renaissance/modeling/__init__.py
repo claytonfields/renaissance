@@ -16,6 +16,7 @@ from .backbones import (
     TwoTowerBackbone,
     build_backbone,
 )
+from .model import RenaissanceModel
 from .tasks import TASK_REGISTRY, Task, TaskOutput, get_task
 
 __all__ = [
@@ -28,4 +29,5 @@ __all__ = [
     "TaskOutput",
     "TASK_REGISTRY",
     "get_task",
+    "RenaissanceModel",
 ]
