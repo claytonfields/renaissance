@@ -95,8 +95,22 @@ class ModelConfig:
 
 @dataclass
 class TaskConfig:
-    """Which objectives are active (value > 0 = active)."""
+    """Which objectives are active.
+
+    Two equivalent ways to declare the active set:
+
+    - ``tasks``: an explicit list, e.g. ``["mlm", "itm"]`` (preferred).
+    - ``loss_names``: the legacy ``{name: 0|1}`` dict.
+
+    Use either; `normalize_tasks` reconciles them so both are always
+    present and consistent downstream. If ``tasks`` is non-empty it is
+    authoritative and ``loss_names`` is rebuilt from it; otherwise
+    ``tasks`` is derived from the ``loss_names`` entries that are > 0.
+    """
+    tasks: List[str] = field(default_factory=list)
     loss_names: Dict[str, int] = field(default_factory=lambda: _loss_names({"itm": 1, "mlm": 1}))
+    # Optional per-task overrides, e.g. {"vqa": {"label_size": 3129}}.
+    task_config: Dict[str, Any] = field(default_factory=dict)
 
     # Task-specific settings
     whole_word_masking: bool = False
@@ -176,6 +190,41 @@ class RenaissanceConfig:
 # Conversion helpers
 # ---------------------------------------------------------------------------
 
+def normalize_tasks(flat: Dict[str, Any]) -> Dict[str, Any]:
+    """Reconcile ``tasks`` (list) and ``loss_names`` (dict) in a flat config.
+
+    After this runs, both keys are present and consistent:
+
+    - If ``tasks`` is non-empty it is authoritative — ``loss_names`` is
+      rebuilt as ``ALL_LOSS_NAMES`` with those names set to 1. (So a
+      ``tasks`` override wins over any inherited ``loss_names``.)
+    - Else if ``loss_names`` has entries > 0, ``tasks`` is derived from
+      them (in ``ALL_LOSS_NAMES`` order).
+    - Else both stay at their defaults.
+
+    Unknown task names raise ``ValueError``. Idempotent. Mutates and
+    returns ``flat``.
+    """
+    tasks = flat.get("tasks") or []
+    loss_names = flat.get("loss_names") or {}
+
+    if tasks:
+        unknown = [t for t in tasks if t not in ALL_LOSS_NAMES]
+        if unknown:
+            raise ValueError(
+                f"Unknown task name(s) {unknown}; valid: {sorted(ALL_LOSS_NAMES)}"
+            )
+        flat["loss_names"] = _loss_names({t: 1 for t in tasks})
+        flat["tasks"] = [t for t in ALL_LOSS_NAMES if t in set(tasks)]
+    else:
+        flat["loss_names"] = _loss_names(loss_names)
+        flat["tasks"] = [
+            name for name, weight in flat["loss_names"].items()
+            if weight and weight > 0
+        ]
+    return flat
+
+
 def to_flat_dict(cfg: RenaissanceConfig) -> Dict[str, Any]:
     """Flatten RenaissanceConfig into the dict RenaissanceTransformer expects."""
     d: Dict[str, Any] = {}
@@ -184,7 +233,7 @@ def to_flat_dict(cfg: RenaissanceConfig) -> Dict[str, Any]:
     d.update(asdict(cfg.task))
     d.update(asdict(cfg.data))
     d.update(asdict(cfg.training))
-    return d
+    return normalize_tasks(d)
 
 
 def from_omegaconf(omega_cfg) -> Dict[str, Any]:
@@ -209,7 +258,7 @@ def from_omegaconf(omega_cfg) -> Dict[str, Any]:
         for k, v in raw.items():
             if k not in ("experiment", "model", "task", "data", "training"):
                 flat[k] = v
-        return flat
+        return normalize_tasks(flat)
 
     # Already flat
-    return raw
+    return normalize_tasks(raw)

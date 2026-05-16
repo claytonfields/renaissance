@@ -8,7 +8,7 @@ push_to_hub — thin wrapper around HfApi.upload_folder.
 """
 
 import os
-from typing import Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 from transformers import PretrainedConfig
 
@@ -76,7 +76,9 @@ class RenaissanceHubConfig(PretrainedConfig):
         freeze_text_encoder: bool = False,
         freeze_cross_modal_layers: bool = False,
         # --- task ---
+        tasks: Optional[List[str]] = None,
         loss_names: Optional[Dict[str, int]] = None,
+        task_config: Optional[Dict[str, Any]] = None,
         whole_word_masking: bool = False,
         mlm_prob: float = 0.15,
         draw_false_image: int = 1,
@@ -131,7 +133,9 @@ class RenaissanceHubConfig(PretrainedConfig):
         self.freeze_image_encoder = freeze_image_encoder
         self.freeze_text_encoder = freeze_text_encoder
         self.freeze_cross_modal_layers = freeze_cross_modal_layers
+        self.tasks = tasks if tasks is not None else []
         self.loss_names = loss_names if loss_names is not None else _default_loss_names()
+        self.task_config = task_config if task_config is not None else {}
         self.whole_word_masking = whole_word_masking
         self.mlm_prob = mlm_prob
         self.draw_false_image = draw_false_image
@@ -200,7 +204,9 @@ class RenaissanceHubConfig(PretrainedConfig):
             "freeze_image_encoder": self.freeze_image_encoder,
             "freeze_text_encoder": self.freeze_text_encoder,
             "freeze_cross_modal_layers": self.freeze_cross_modal_layers,
+            "tasks": self.tasks,
             "loss_names": self.loss_names,
+            "task_config": self.task_config,
             "whole_word_masking": self.whole_word_masking,
             "mlm_prob": self.mlm_prob,
             "draw_false_image": self.draw_false_image,

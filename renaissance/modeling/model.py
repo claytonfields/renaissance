@@ -28,15 +28,21 @@ from .tasks import TASK_REGISTRY
 
 
 def _active_task_names(config):
-    """Tasks with a head to build: loss_names > 0 AND a registered Task.
-    The legacy config also flips stub GLUE names with no objective; those
-    are filtered out here (the rewrite drops the dead branches)."""
-    loss_names = config.get("loss_names", {})
-    return [
-        name
-        for name, weight in loss_names.items()
-        if weight and weight > 0 and name in TASK_REGISTRY
-    ]
+    """Tasks with a head to build, filtered to registered Tasks.
+
+    Prefers the normalized ``tasks`` list (Phase 5 schema); falls back to
+    deriving from ``loss_names`` so configs built directly as flat dicts
+    (tests, older callers) still work without running `normalize_tasks`.
+    Stub GLUE names / irtr that have no registered Task are dropped (the
+    rewrite removes those dead branches)."""
+    tasks = config.get("tasks")
+    if not tasks:
+        tasks = [
+            name
+            for name, weight in config.get("loss_names", {}).items()
+            if weight and weight > 0
+        ]
+    return [name for name in tasks if name in TASK_REGISTRY]
 
 
 class RenaissanceModel(nn.Module):
