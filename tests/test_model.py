@@ -12,6 +12,7 @@ import pytest
 import torch
 
 from renaissance.modeling import RenaissanceModel
+from renaissance.modules import renaissance_utils
 
 from tests.conftest import BS, MAX_BB
 
@@ -161,6 +162,51 @@ def test_only_active_heads_built(two_tower_snli_config):
 # ---------------------------------------------------------------------------
 # save_pretrained / from_pretrained roundtrip
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Phase 6: set_active_tasks / epoch_metrics / set_schedule LR grouping
+# ---------------------------------------------------------------------------
+
+def test_set_active_tasks(two_tower_pretrain_config):
+    model = RenaissanceModel(two_tower_pretrain_config)
+    assert model.current_tasks == []
+    model.set_active_tasks()
+    assert set(model.current_tasks) == {"mlm", "itm"}
+
+
+def test_forward_populates_epoch_metrics(two_tower_snli_config, snli_batch):
+    model = RenaissanceModel(two_tower_snli_config)
+    model.train()
+    model.current_tasks = ["snli"]
+    model(snli_batch)
+    m = model.epoch_metrics("train")
+    assert "snli/train/loss_epoch" in m
+    assert "snli/train/accuracy_epoch" in m
+    # computed → reset; a second compute with no updates restarts cleanly
+    assert "snli/train/loss_epoch" in model.epoch_metrics("train")
+
+
+def test_set_schedule_gives_heads_the_head_lr(two_tower_snli_config):
+    model = RenaissanceModel(two_tower_snli_config)
+    optimizer, _ = renaissance_utils.set_schedule(
+        model, two_tower_snli_config, max_steps=10
+    )
+    lr = two_tower_snli_config["learning_rate"]
+    head_lr = lr * two_tower_snli_config["lr_mult_head"]
+    head_param_ids = {
+        id(p) for n, p in model.named_parameters() if n.startswith("heads.")
+    }
+    assert head_param_ids, "no heads.* params found"
+    # The warmup scheduler scales param_groups["lr"] to ~0 at step 0; the
+    # group's configured base rate is preserved in "initial_lr".
+    placed = {
+        id(p)
+        for g in optimizer.param_groups
+        if abs(g.get("initial_lr", g["lr"]) - head_lr) < 1e-12
+        for p in g["params"]
+    }
+    assert head_param_ids.issubset(placed), "head params not on the head LR"
+
 
 def test_save_load_roundtrip(two_tower_snli_config, tmp_path):
     model = RenaissanceModel(two_tower_snli_config)

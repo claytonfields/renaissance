@@ -24,6 +24,7 @@ import torch
 import torch.nn as nn
 
 from .backbones import build_backbone
+from .metrics import TaskMetrics
 from .tasks import TASK_REGISTRY
 
 
@@ -51,17 +52,29 @@ class RenaissanceModel(nn.Module):
         self.config = config
         self.backbone = build_backbone(config)
 
+        active = _active_task_names(config)
         self.heads = nn.ModuleDict()
-        self._metric_names = {}
-        for name in _active_task_names(config):
-            task = TASK_REGISTRY[name]
-            head = task.build_head(self.backbone, config)
+        for name in active:
+            head = TASK_REGISTRY[name].build_head(self.backbone, config)
             if head is not None:
                 self.heads[name] = head
-            self._metric_names[name] = task.metric_names()
 
+        self.metrics = TaskMetrics(active, TASK_REGISTRY, phases=("train", "val"))
         self.current_tasks = []
         self._log_buffer: dict = {}
+
+    def _phase(self) -> str:
+        return "train" if self.training else "val"
+
+    def set_active_tasks(self) -> None:
+        """Set `current_tasks` to the config's active set. Replaces
+        `renaissance_utils.set_task`."""
+        self.current_tasks = _active_task_names(self.config)
+
+    def epoch_metrics(self, phase: str) -> dict:
+        """Compute + reset epoch metrics. Replaces
+        `renaissance_utils.epoch_wrapup`."""
+        return self.metrics.compute(phase)
 
     # ------------------------------------------------------------------ #
     # Forward
@@ -96,6 +109,7 @@ class RenaissanceModel(nn.Module):
             if out.targets is not None:
                 ret[f"{name}_targets"] = out.targets
             ret.update({f"{name}_{k}": v for k, v in out.extras.items()})
+            self.metrics.update(self._phase(), name, out)
             self.log(f"{name}/loss", out.loss)
         return ret
 

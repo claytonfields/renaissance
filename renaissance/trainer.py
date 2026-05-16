@@ -104,7 +104,7 @@ class RenaissanceTrainer:
 
     def _train_epoch(self):
         self.model.train()
-        renaissance_utils.set_task(self.model)
+        self.model.set_active_tasks()
         device = self.accelerator.device
 
         for batch in self.train_dataloader:
@@ -127,20 +127,14 @@ class RenaissanceTrainer:
             if self.global_step >= self.max_steps:
                 break
 
-        metrics = renaissance_utils.epoch_wrapup(
-            self.model,
-            phase="train",
-            epoch=self.current_epoch,
-            log_dir=self.config.get("log_dir", ""),
-        )
-        self._log_metrics(metrics)
+        self._log_metrics(self.model.epoch_metrics("train"))
 
     def _val_epoch(self):
         self._eval_epoch(phase="val", dataloader=self.val_dataloader)
 
     def _eval_epoch(self, phase: str, dataloader):
         self.model.eval()
-        renaissance_utils.set_task(self.model)
+        self.model.set_active_tasks()
         device = self.accelerator.device
         with torch.no_grad():
             for batch in dataloader:
@@ -148,13 +142,7 @@ class RenaissanceTrainer:
                 self.model._log_buffer = {}
                 self.model(batch)
 
-        metrics = renaissance_utils.epoch_wrapup(
-            self.model,
-            phase=phase,
-            epoch=self.current_epoch,
-            log_dir=self.config.get("log_dir", ""),
-        )
-        self._log_metrics(metrics)
+        self._log_metrics(self.model.epoch_metrics(phase))
 
     def _log_metrics(self, metrics: dict):
         if self.accelerator.is_main_process and self.writer is not None:

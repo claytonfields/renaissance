@@ -13,7 +13,7 @@ import torch
 from omegaconf import OmegaConf
 
 from renaissance.config_schema import from_omegaconf
-from renaissance.modules import RenaissanceTransformer
+from renaissance.modeling import RenaissanceModel
 from renaissance.trainer import RenaissanceTrainer
 
 
@@ -81,7 +81,7 @@ def main():
     else:
         raise ValueError(f"data.backend must be 'legacy' or 'modern', got {backend!r}")
 
-    model = RenaissanceTransformer(_config)
+    model = RenaissanceModel(_config)
 
     if not test_only:
         trainer = RenaissanceTrainer(

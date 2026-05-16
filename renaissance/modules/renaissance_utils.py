@@ -235,6 +235,11 @@ def set_schedule(model, config, max_steps: int):
         "norm2.weight",
     ]
     head_names = [
+        # RenaissanceModel keeps all task heads in an nn.ModuleDict named
+        # `heads`, so `heads.` is the modern head-param prefix.
+        "heads.",
+        # Legacy RenaissanceTransformer head attribute names (kept so the
+        # legacy model still gets the head LR multiplier until Phase 7).
         "vqa_classifier", "nlvr2_classifier", "mlm_score", "itm_score", "snli_classifier",
         "ref_classifier", "ref2_classifier", "mrpc_classifier", "rte_classifier",
         "wnli_classifier", "sst2_classifier", "qqp_classifier", "qnli_classifier",
