@@ -35,6 +35,10 @@ class OneTowerBackbone(Backbone):
         return 2 * self._hidden_size
 
     @property
+    def token_dim(self) -> int:
+        return self._hidden_size
+
+    @property
     def text_hidden_size(self) -> int:
         return self._hidden_size
 

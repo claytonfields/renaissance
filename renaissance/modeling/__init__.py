@@ -16,6 +16,7 @@ from .backbones import (
     TwoTowerBackbone,
     build_backbone,
 )
+from .tasks import TASK_REGISTRY, Task, TaskOutput, get_task
 
 __all__ = [
     "Backbone",
@@ -23,4 +24,8 @@ __all__ = [
     "OneTowerBackbone",
     "TwoTowerBackbone",
     "build_backbone",
+    "Task",
+    "TaskOutput",
+    "TASK_REGISTRY",
+    "get_task",
 ]

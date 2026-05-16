@@ -96,6 +96,16 @@ class Backbone(nn.Module, ABC):
         ...
 
     @property
+    @abstractmethod
+    def token_dim(self) -> int:
+        """Width of `text_tokens` / `image_tokens` as returned by
+        `forward` — i.e. the per-token feature size the MLM head consumes.
+        One-tower: the shared encoder hidden size. Two-tower: the fused
+        cross-modal width (`cross_layer_hidden_size`), NOT the raw text/
+        image encoder widths."""
+        ...
+
+    @property
     def text_hidden_size(self) -> int:
         raise NotImplementedError(
             f"{type(self).__name__} does not expose a separate text stream"

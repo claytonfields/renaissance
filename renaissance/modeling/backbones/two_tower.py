@@ -29,6 +29,11 @@ class TwoTowerBackbone(Backbone):
         return 2 * self._cross_hidden
 
     @property
+    def token_dim(self) -> int:
+        # Fusion projects both streams to cross_layer_hidden_size.
+        return self._cross_hidden
+
+    @property
     def text_hidden_size(self) -> int:
         return self.encoder.text_transformer_hidden_size
 
