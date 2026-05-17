@@ -14,7 +14,6 @@ from .heads import Pooler
 
 
 
-from transformers.models.auto import AutoConfig, AutoModel
 
 
 
@@ -269,35 +268,29 @@ class OneTowerEncoder(nn.Module):
     ):
         super().__init__()
         
-        if config['random_init_encoder']:
-            # Manually Configure Encoder Dimensions
-            if config['encoder_manual_configuration']:
-                encoder_kwargs = {
-                    'vocab_size' : config["vocab_size"],
-                    'hidden_size' : config["hidden_size"],
-                    'num_hidden_layers' : config["num_layers"],
-                    'num_attention_heads' : config["num_heads"],
-                    'intermediate_size' : config["hidden_size"] * config["mlp_ratio"],
-                    'max_position_embeddings' : config["max_text_len"],
-                    'hidden_dropout_prob' : config["drop_rate"],
-                    'attention_probs_dropout_prob' : config["drop_rate"],
-                }
-                hf_config = AutoConfig.from_pretrained(config['encoder'], **encoder_kwargs)
-            # Use Default Encoder Dimensions with Random Weights
-            elif not config['encoder_manual_configuration']:
-                hf_config = AutoConfig.from_pretrained(config['encoder'])
-            model = AutoModel.from_config(hf_config)
-            self.encoder = model.encoder
-            
-            # image_size = config['image_size']
-            # max_text_len = config['max_text_len']
-            # self.hidden_size = config['hidden_size']
-            # self.embedding_size = config['embedding_size']
-        # Use Pretrained Encoder Weights from Huggingface Hub
-        else:
-            # Download Encoder - Get Dimensions
-            model = AutoModel.from_pretrained(config['encoder'])
-            self.encoder = model.encoder
+        # Imported lazily to avoid an import cycle: the backbones package
+        # __init__ pulls in the wrapper that imports this module.
+        from renaissance.modeling.backbones.hf_loader import load_hf_encoder
+
+        random_init = config["random_init_encoder"]
+        overrides = None
+        if random_init and config["encoder_manual_configuration"]:
+            overrides = {
+                "vocab_size": config["vocab_size"],
+                "hidden_size": config["hidden_size"],
+                "num_hidden_layers": config["num_layers"],
+                "num_attention_heads": config["num_heads"],
+                "intermediate_size": config["hidden_size"] * config["mlp_ratio"],
+                "max_position_embeddings": config["max_text_len"],
+                "hidden_dropout_prob": config["drop_rate"],
+                "attention_probs_dropout_prob": config["drop_rate"],
+            }
+        model, _ = load_hf_encoder(
+            config["encoder"], random_init=random_init, overrides=overrides
+        )
+        # One-tower reuses only the transformer stack; the embedding streams
+        # are the custom Electra/ViT embeddings built below.
+        self.encoder = model.encoder
         self.hidden_size = self.encoder.config.hidden_size
         try:
             self.embedding_size = self.encoder.config.embedding_size

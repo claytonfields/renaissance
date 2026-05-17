@@ -9,7 +9,7 @@ Created on Tue Jun 18 17:19:52 2024
 import torch
 import torch.nn as nn
 
-from transformers.models.auto import AutoConfig, AutoModel
+from transformers.models.auto import AutoModel
 from transformers.models.lxmert.modeling_lxmert import LxmertXLayer
 from transformers.models.lxmert.configuration_lxmert import LxmertConfig
 
@@ -78,85 +78,52 @@ class TwoTowerEncoder(nn.Module):
         self.random_init_vision_encoder = config['random_init_vision_encoder']
         self.random_init_text_encoder = config['random_init_text_encoder']
         
-        # Vision Encoder
-        if self.random_init_vision_encoder:
-            if config['image_encoder_manual_configuration']:
-                image_encoder_kwargs = {
-                    'hidden_size' : config["image_encoder_hidden_size"],
-                    'num_hidden_layers' : config["image_encoder_num_layers"],
-                    'num_attention_heads' : config["image_encoder_num_heads"],
-                    'intermediate_size' : config["image_encoder_hidden_size"] * config["image_encoder_mlp_ratio"],
-                    'hidden_dropout_prob' : config["image_encoder_drop_rate"],
-                    'attention_probs_dropout_prob' : config["image_encoder_drop_rate"],
-                }
-                hf_image_config = AutoConfig.from_pretrained(config['image_encoder'], **image_encoder_kwargs)
-            # elif not config['image_encoder_manual_configuration']:
-            else:
-                hf_image_config = AutoConfig.from_pretrained(config['image_encoder'])
-            self.image_encoder = AutoModel.from_config(hf_image_config)
-            # if 'clip' in (config['image_encoder']):
-            #     self.image_encoder = self.image_encoder.vision_model
-        
-        else:
-            # hf_image_config = AutoConfig.from_pretrained(config['image_encoder'])
-            self.image_encoder = AutoModel.from_pretrained(config['image_encoder'])
-            
-        # Freeze Parameters for self.image_encoder
-        if config['freeze_image_encoder']:
-            for param in self.image_encoder.parameters():
-                param.requires_grad = False
-        
-        # Initialize text_encoder
-        # Randomly Initialize Encoder Weights
-        if self.random_init_text_encoder:
-            if config['text_encoder_manual_configuration']:
-                text_encoder_kwargs = {
-                    'hidden_size' : config["text_encoder_hidden_size"],
-                    'num_hidden_layers' : config["text_encoder_num_layers"],
-                    'num_attention_heads' : config["text_encoder_num_heads"],
-                    'intermediate_size' : config["text_encoder_hidden_size"] * config["text_encoder_mlp_ratio"],
-                    'hidden_dropout_prob' : config["text_encoder_drop_rate"],
-                    'attention_probs_dropout_prob' : config["text_encoder_drop_rate"],
-                }
-                hf_text_config = AutoConfig.from_pretrained(config['text_encoder'], **text_encoder_kwargs)
-            # elif not config['text_encoder_manual_configuration']:
-            else:
-                hf_text_config = AutoConfig.from_pretrained(config['text_encoder'])
-            self.text_transformer = AutoModel.from_config(hf_text_config)
-        else:
-            # hf_text_config = AutoConfig.from_pretrained(config['text_encoder'])
-            self.text_transformer = AutoModel.from_pretrained(config['text_encoder'])
-        
-        # Freeze Parameters for self.text_transformer
-        if config['freeze_text_encoder']:
-            for param in self.text_transformer.parameters():
-                param.requires_grad = False
-        
-        
-        # self.image_encoder_hidden_size = self.image_encoder.config.hidden_size
-        try:
-            self.image_encoder_hidden_size = self.image_encoder.config.hidden_size
-        except:
-            pass
-        try:
-            self.image_encoder_hidden_size = self.image_encoder.config.hidden_dim
-        except:
-            pass
-        try :
-            self.image_encoder_hidden_size = self.image_encoder.config.hidden_sizes[-1]
-        except:
-            pass
-        try:
-            self.image_encoder_hidden_size = self.image_encoder.config.embed_dim[-1]
-        except:
-            pass
-        try:    
-            self.image_encoder_hidden_size = self.image_encoder.config.embed_dims[-1]
-        except:
-            pass
-        
-        
-        self.text_transformer_hidden_size = self.text_transformer.config.hidden_size
+        # Imported lazily to avoid an import cycle: the backbones package
+        # __init__ pulls in the wrapper that imports this module.
+        from renaissance.modeling.backbones.hf_loader import (
+            hf_model_hidden_size,
+            load_hf_encoder,
+        )
+
+        def _overrides(prefix):
+            return {
+                "hidden_size": config[f"{prefix}_hidden_size"],
+                "num_hidden_layers": config[f"{prefix}_num_layers"],
+                "num_attention_heads": config[f"{prefix}_num_heads"],
+                "intermediate_size": config[f"{prefix}_hidden_size"]
+                * config[f"{prefix}_mlp_ratio"],
+                "hidden_dropout_prob": config[f"{prefix}_drop_rate"],
+                "attention_probs_dropout_prob": config[f"{prefix}_drop_rate"],
+            }
+
+        # Vision encoder (built first — preserves the legacy RNG draw order
+        # so fixed-seed init is byte-identical to the pre-refactor path).
+        self.image_encoder, self.image_encoder_hidden_size = load_hf_encoder(
+            config["image_encoder"],
+            random_init=self.random_init_vision_encoder,
+            overrides=(
+                _overrides("image_encoder")
+                if self.random_init_vision_encoder
+                and config["image_encoder_manual_configuration"]
+                else None
+            ),
+            freeze=config["freeze_image_encoder"],
+        )
+
+        # Text encoder.
+        self.text_transformer, _ = load_hf_encoder(
+            config["text_encoder"],
+            random_init=self.random_init_text_encoder,
+            overrides=(
+                _overrides("text_encoder")
+                if self.random_init_text_encoder
+                and config["text_encoder_manual_configuration"]
+                else None
+            ),
+            freeze=config["freeze_text_encoder"],
+        )
+
+        self.text_transformer_hidden_size = hf_model_hidden_size(self.text_transformer)
         self.hidden_size = config['cross_layer_hidden_size']
         # Cross Modal Layers
         self.cross_modal_text_transform = nn.Linear(self.text_transformer_hidden_size, self.hidden_size)
