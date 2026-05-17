@@ -37,36 +37,32 @@ Results and TensorBoard logs are written to `result/<exp_name>_seed<N>_is<img>_p
 
 ## Configuration System
 
-Config lives in typed dataclasses (`renaissance/config_schema.py`) and YAML files under `configs/`. The schema has five groups — `experiment`, `model`, `task`, `data`, `training` — which are flattened into a plain dict before being passed to `RenaissanceTransformer`.
+Config lives in typed dataclasses (`renaissance/config_schema.py`) and YAML files under `configs/`. The schema has five groups — `experiment`, `model`, `task`, `data`, `training` — which are flattened into a plain dict (via `to_flat_dict`/`from_omegaconf`, both of which run `normalize_tasks`) before being passed to `RenaissanceModel`.
 
 Key config groups:
 - **Model type**: `model.model_type = 'one-tower' | 'two-tower'`
 - **One-tower**: `model.encoder`, `model.pooler_type` (`single` | `double`), `model.random_init_encoder`, dimension overrides
 - **Two-tower**: `model.image_encoder`, `model.text_encoder`, `model.freeze_image_encoder`, `model.freeze_text_encoder`, cross-modal dims (`model.cross_layer_hidden_size`, `model.num_cross_layers`, `model.num_cross_layer_heads`, `model.cross_layer_mlp_ratio`, `model.cross_layer_drop_rate`)
 - **Training**: `training.max_steps`, `training.max_epoch`, `data.batch_size`, `data.per_gpu_batchsize`, `training.learning_rate`, `training.warmup_steps`
-- **Tasks / losses**: `task.loss_names` dict — set any task to `1` to activate it (`mlm`, `itm`, `vqa`, `nlvr2`, `snli`, `irtr`, `ref`, `ref2`, `mrpc`, `rte`, `mnli`, `cifar10`, etc.)
+- **Tasks / losses**: either `task.tasks` (a list, e.g. `["mlm", "itm"]`, preferred) or the legacy `task.loss_names` dict (set a task to `1`). `normalize_tasks` reconciles the two — a non-empty `tasks` list wins and rebuilds `loss_names`; otherwise `tasks` is derived from `loss_names > 0`. Registered tasks: `mlm`, `itm`, `vqa`, `nlvr2`, `snli`, `ref`, `ref2`, `mrpc`. (`irtr` and the stub GLUE tasks were dropped in the modeling rewrite.)
 
 The legacy Sacred-based config is preserved at `renaissance/config_legacy.py`.
 
 ## Architecture Overview
 
 ### Entry point
-`run.py` → loads YAML + CLI overrides via omegaconf → instantiates `MTDataModule` + `RenaissanceTransformer` → hands off to `RenaissanceTrainer` (Accelerate-based).
+`run.py` → loads YAML + CLI overrides via omegaconf → instantiates the data backend + `RenaissanceModel` → hands off to `RenaissanceTrainer` (Accelerate-based).
 
-### `RenaissanceTransformer` (`renaissance/modules/renaissance_module.py`)
-Plain `nn.Module`. Delegates all encoding to one of two encoder classes and adds task-specific heads on top. Task routing happens in `forward()` via `self.current_tasks`, which is set each step by `renaissance_utils.set_task()`. Step-level metrics are buffered in `self._log_buffer`; the trainer flushes them to TensorBoard.
+### Modeling layer (`renaissance/modeling/`)
+The modeling stack was rewritten into a backbone-protocol + task-registry design (the legacy `renaissance/modules/renaissance_module.py` is gone).
 
-### Encoder classes (`renaissance/modules/`)
-- **`OneTowerEncoder`** — shares a single HF transformer backbone for both modalities. Text uses custom `ElectraEmbeddings`; images use `ViTEmbeddings` (patch projection). Both embedding streams are concatenated and fed through the shared encoder. Supports `single` and `double` CLS pooling.
-- **`TwoTowerEncoder`** — separate HF text (`text_transformer`) and vision (`image_encoder`) encoders, each downloaded via `AutoModel`. Their outputs are linearly projected to a shared `cross_layer_hidden_size`, then fused by `LxmertCrossModalEncoder` (parallel cross-attention layers). The fused CLS features from both streams are concatenated for downstream heads. Handles convolutional vision models via `resize_convolutional_output()`.
-- **`LxmertCrossModalEncoder`** (`fusion_encoder.py`) — the cross-modal fusion module, always trained from scratch. Uses stacked `LxmertXLayer` cross-attention, with separate text and image poolers.
-- **`nox_two_tower_encoder.py`** — new/in-progress encoder variant (untracked file on current branch).
+- **`RenaissanceModel` (`model.py`)** — plain `nn.Module`. `__init__` is a loop building one head per active task into an `nn.ModuleDict`; `forward` is a loop over `self.current_tasks` running each task. Adding a task touches neither method. `set_active_tasks()` selects the configured tasks; metrics are owned by the model (`self.metrics`, a `TaskMetrics`) and flushed via `epoch_metrics(phase)`; step losses buffer in `self._log_buffer`.
+- **Backbones (`backbones/`)** — `Backbone` protocol returning a uniform `EncoderOutput` (`pooled` / `text_tokens` / `image_tokens`, with legacy `cls_feats`/`text_feats`/`image_feats` aliases). `OneTowerBackbone` and `TwoTowerBackbone` currently wrap the legacy encoders in `renaissance/modules/`; `hf_loader.py` centralizes all `AutoModel`/`AutoConfig` loading + dim-override logic. (Encoder internals get modernized in the planned Phase 8.)
+- **Heads (`heads.py`)** — `Pooler`, `MlmHead`, `ItmHead`, and one generic `LinearClsHead(in_dim, num_labels, hidden_dim=None, pool=False)` covering VQA/SNLI/ref/ref2/NLVR2/GLUE/CIFAR-10.
+- **Tasks (`tasks/`)** — one `Task` per objective (`mlm`, `itm`, `vqa`, `nlvr2`, `snli`, `ref`, `ref2`, `mrpc`) in `TASK_REGISTRY`. Each declares `build_head(backbone, config)`, `metric_names()`, and `forward(model, batch) -> TaskOutput(loss, logits, targets, extras)`. No `pl_module` reach-back. NLVR2's dual-image trick is local to `Nlvr2Task`.
+- **Metrics (`metrics.py`)** — `TaskMetrics` builds per-(phase, task, metric) objects from each task's `metric_names()` plus an always-on loss scalar; `compute(phase)` returns `{task/phase/metric_epoch: float}`.
 
-### Heads (`renaissance/modules/heads.py`)
-`MLMHead`, `ITMHead`, `MultiModalClassificationHead` (VQA, SNLI, ref), `NLVR2ClassificationHead`, `UniModalClassificationHead` (GLUE text tasks, CIFAR-10 image-only).
-
-### Objectives (`renaissance/modules/objectives.py`)
-One `compute_<task>()` function per task. Each reads from the batch dict and calls `self.infer()` or `self.infer_text_only()`.
+`renaissance/modules/` still holds the wrapped legacy encoders (`one_tower_encoder`, `two_tower_encoder`, `embeddings`, `fusion_encoder`), `heads.Pooler`, `objectives.init_weights`, `dist_utils`, and `renaissance_utils.set_schedule`; it is deleted entirely in the planned Phase 8.
 
 ### Data pipeline
 `renaissance/datamodules/multitask_datamodule.py` (`MTDataModule`) coordinates multiple `DataModule` instances. Each dataset has a corresponding `*_datamodule.py` and `*_dataset.py`. Datasets are pre-serialized to [Apache Arrow](https://arrow.apache.org/) format using the scripts in `renaissance/utils/write_*.py` — see `DATA.md` for dataset-specific instructions.

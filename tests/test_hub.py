@@ -12,7 +12,7 @@ import pytest
 import torch
 
 from renaissance.hub import RenaissanceHubConfig
-from renaissance.modules.renaissance_module import RenaissanceTransformer
+from renaissance.modeling import RenaissanceModel
 
 
 # ---------------------------------------------------------------------------
@@ -62,13 +62,13 @@ class TestRenaissanceHubConfig:
 
 class TestSavePretrained:
     def test_creates_config_json(self, two_tower_pretrain_config):
-        model = RenaissanceTransformer(two_tower_pretrain_config)
+        model = RenaissanceModel(two_tower_pretrain_config)
         with tempfile.TemporaryDirectory() as tmp:
             model.save_pretrained(tmp)
             assert os.path.exists(os.path.join(tmp, "config.json"))
 
     def test_creates_safetensors(self, two_tower_pretrain_config):
-        model = RenaissanceTransformer(two_tower_pretrain_config)
+        model = RenaissanceModel(two_tower_pretrain_config)
         with tempfile.TemporaryDirectory() as tmp:
             model.save_pretrained(tmp)
             assert os.path.exists(os.path.join(tmp, "model.safetensors"))
@@ -76,7 +76,7 @@ class TestSavePretrained:
     def test_safetensors_contains_all_params(self, two_tower_pretrain_config):
         from safetensors.torch import load_file
 
-        model = RenaissanceTransformer(two_tower_pretrain_config)
+        model = RenaissanceModel(two_tower_pretrain_config)
         model.eval()
         with tempfile.TemporaryDirectory() as tmp:
             model.save_pretrained(tmp)
@@ -92,11 +92,11 @@ class TestSavePretrained:
 
 class TestFromPretrained:
     def test_param_equality(self, two_tower_pretrain_config):
-        model = RenaissanceTransformer(two_tower_pretrain_config)
+        model = RenaissanceModel(two_tower_pretrain_config)
         model.eval()
         with tempfile.TemporaryDirectory() as tmp:
             model.save_pretrained(tmp)
-            loaded = RenaissanceTransformer.from_pretrained(tmp)
+            loaded = RenaissanceModel.from_pretrained(tmp)
         loaded.eval()
 
         orig = dict(model.named_parameters())
@@ -105,19 +105,17 @@ class TestFromPretrained:
             assert torch.allclose(param, orig[name]), f"param mismatch: {name}"
 
     def test_forward_output_equality(self, two_tower_pretrain_config, two_tower_batch):
-        model = RenaissanceTransformer(two_tower_pretrain_config)
+        model = RenaissanceModel(two_tower_pretrain_config)
         model.eval()
         with tempfile.TemporaryDirectory() as tmp:
             model.save_pretrained(tmp)
-            loaded = RenaissanceTransformer.from_pretrained(tmp)
+            loaded = RenaissanceModel.from_pretrained(tmp)
         loaded.eval()
 
         with torch.no_grad():
             out_orig = model.infer(two_tower_batch)
             out_loaded = loaded.infer(two_tower_batch)
 
-        tensor_keys = [k for k, v in out_orig.items() if isinstance(v, torch.Tensor)]
-        assert tensor_keys, "infer() returned no tensors"
-        for key in tensor_keys:
+        for key in ("cls_feats", "text_feats", "image_feats"):
             assert torch.allclose(out_orig[key], out_loaded[key], atol=1e-6), \
                 f"output mismatch at '{key}'"

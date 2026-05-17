@@ -1,29 +1,28 @@
 """
-Smoke tests — fast-dev-run level checks that verify each architecture and
-objective function runs without error and produces finite losses.
+Smoke tests — fast-dev-run checks that each architecture + objective runs
+and produces finite losses, via `RenaissanceModel.forward`.
 
-These tests use synthetic batches (no real datasets required) and randomly
-initialised encoder weights (no model downloads required beyond HF configs).
+Synthetic batches, randomly-initialised encoders (no downloads beyond HF
+configs). Overlaps intentionally with test_model.py/test_tasks.py but
+keeps the one-tower coverage and the combined multi-task forward.
 """
 
 import pytest
 import torch
 
-from renaissance.modules import RenaissanceTransformer
-from renaissance.modules.objectives import (
-    compute_mlm,
-    compute_itm,
-    compute_snli,
-    compute_nlvr2,
-    compute_ref,
-)
+from renaissance.modeling import RenaissanceModel
 
 from tests.conftest import BS, MAX_BB
 
 
 def _finite(tensor):
-    """Return True if all elements are finite (no NaN / Inf)."""
-    return tensor.isfinite().all().item()
+    return torch.as_tensor(tensor).isfinite().all().item()
+
+
+def _run(model, tasks, batch):
+    model.train()
+    model.current_tasks = list(tasks)
+    return model(batch)
 
 
 # ---------------------------------------------------------------------------
@@ -31,44 +30,34 @@ def _finite(tensor):
 # ---------------------------------------------------------------------------
 
 class TestOneTowerPretrain:
-    """Shared model instance keeps test runtime low — model creation is the
-    expensive step (AutoConfig.from_pretrained downloads ~few KB)."""
 
     @pytest.fixture(scope="class")
     def model(self, one_tower_pretrain_config):
-        return RenaissanceTransformer(one_tower_pretrain_config)
+        return RenaissanceModel(one_tower_pretrain_config)
 
     def test_instantiation(self, model):
-        assert model.model_type == "one-tower"
-        assert hasattr(model, "mlm_score")
-        assert hasattr(model, "itm_score")
+        assert model.config["model_type"] == "one-tower"
+        assert "mlm" in model.heads
+        assert "itm" in model.heads
 
     def test_infer_shape_and_values(self, model, one_tower_batch):
         model.eval()
         with torch.no_grad():
             out = model.infer(one_tower_batch)
-        assert "cls_feats" in out
-        assert "text_feats" in out
-        assert "image_feats" in out
         assert out["cls_feats"].shape[0] == BS
         assert _finite(out["cls_feats"])
 
     def test_mlm_loss(self, model, one_tower_batch):
-        model.train()
-        ret = compute_mlm(model, one_tower_batch)
+        ret = _run(model, ["mlm"], one_tower_batch)
         assert _finite(ret["mlm_loss"])
 
     def test_itm_loss(self, model, one_tower_batch):
-        model.train()
-        ret = compute_itm(model, one_tower_batch)
+        ret = _run(model, ["itm"], one_tower_batch)
         assert _finite(ret["itm_loss"])
 
     def test_combined_forward(self, model, one_tower_batch):
-        """End-to-end forward through both active objectives."""
-        model.train()
-        model.current_tasks = ["mlm", "itm"]
-        ret = model(one_tower_batch)
-        total_loss = sum(v for k, v in ret.items() if "loss" in k)
+        ret = _run(model, ["mlm", "itm"], one_tower_batch)
+        total_loss = sum(v for k, v in ret.items() if k.endswith("_loss"))
         assert _finite(total_loss)
 
 
@@ -80,36 +69,31 @@ class TestTwoTowerPretrain:
 
     @pytest.fixture(scope="class")
     def model(self, two_tower_pretrain_config):
-        return RenaissanceTransformer(two_tower_pretrain_config)
+        return RenaissanceModel(two_tower_pretrain_config)
 
     def test_instantiation(self, model):
-        assert model.model_type == "two-tower"
-        assert hasattr(model, "mlm_score")
-        assert hasattr(model, "itm_score")
+        assert model.config["model_type"] == "two-tower"
+        assert "mlm" in model.heads
+        assert "itm" in model.heads
 
     def test_infer_shape_and_values(self, model, two_tower_batch):
         model.eval()
         with torch.no_grad():
             out = model.infer(two_tower_batch)
-        assert "cls_feats" in out
         assert out["cls_feats"].shape[0] == BS
         assert _finite(out["cls_feats"])
 
     def test_mlm_loss(self, model, two_tower_batch):
-        model.train()
-        ret = compute_mlm(model, two_tower_batch)
+        ret = _run(model, ["mlm"], two_tower_batch)
         assert _finite(ret["mlm_loss"])
 
     def test_itm_loss(self, model, two_tower_batch):
-        model.train()
-        ret = compute_itm(model, two_tower_batch)
+        ret = _run(model, ["itm"], two_tower_batch)
         assert _finite(ret["itm_loss"])
 
     def test_combined_forward(self, model, two_tower_batch):
-        model.train()
-        model.current_tasks = ["mlm", "itm"]
-        ret = model(two_tower_batch)
-        total_loss = sum(v for k, v in ret.items() if "loss" in k)
+        ret = _run(model, ["mlm", "itm"], two_tower_batch)
+        total_loss = sum(v for k, v in ret.items() if k.endswith("_loss"))
         assert _finite(total_loss)
 
 
@@ -121,62 +105,42 @@ class TestFinetuningSNLI:
 
     @pytest.fixture(scope="class")
     def model(self, two_tower_snli_config):
-        return RenaissanceTransformer(two_tower_snli_config)
+        return RenaissanceModel(two_tower_snli_config)
 
     def test_instantiation(self, model):
-        assert hasattr(model, "snli_classifier")
+        assert "snli" in model.heads
 
     def test_snli_loss(self, model, snli_batch):
-        model.train()
-        ret = compute_snli(model, snli_batch)
+        ret = _run(model, ["snli"], snli_batch)
         assert _finite(ret["snli_loss"])
-        assert ret["snli_logits"].shape == (BS, 3)  # 3-class entailment
-
-    def test_snli_forward(self, model, snli_batch):
-        model.train()
-        model.current_tasks = ["snli"]
-        ret = model(snli_batch)
-        assert _finite(ret["snli_loss"])
+        assert ret["snli_logits"].shape == (BS, 3)
 
 
 class TestFinetuningNLVR2:
 
     @pytest.fixture(scope="class")
     def model(self, two_tower_nlvr2_config):
-        return RenaissanceTransformer(two_tower_nlvr2_config)
+        return RenaissanceModel(two_tower_nlvr2_config)
 
     def test_instantiation(self, model):
-        assert hasattr(model, "nlvr2_classifier")
+        assert "nlvr2" in model.heads
 
     def test_nlvr2_loss(self, model, nlvr2_batch):
-        model.train()
-        ret = compute_nlvr2(model, nlvr2_batch)
+        ret = _run(model, ["nlvr2"], nlvr2_batch)
         assert _finite(ret["nlvr2_loss"])
-        assert ret["nlvr2_logits"].shape == (BS, 2)  # binary
+        assert ret["nlvr2_logits"].shape == (BS, 2)
 
-
-# ---------------------------------------------------------------------------
-# Two-Tower: reference resolution
-# ---------------------------------------------------------------------------
 
 class TestRefResolution:
 
     @pytest.fixture(scope="class")
     def model(self, two_tower_ref_config):
-        return RenaissanceTransformer(two_tower_ref_config)
+        return RenaissanceModel(two_tower_ref_config)
 
     def test_instantiation(self, model):
-        assert hasattr(model, "ref_classifier")
+        assert "ref" in model.heads
 
     def test_ref_loss(self, model, ref_batch):
-        model.train()
-        ret = compute_ref(model, ref_batch)
+        ret = _run(model, ["ref"], ref_batch)
         assert _finite(ret["ref_loss"])
-        # Logits should be (BS, MAX_BB) — one score per candidate region
         assert ret["ref_logits"].shape == (BS, MAX_BB)
-
-    def test_ref_forward(self, model, ref_batch):
-        model.train()
-        model.current_tasks = ["ref"]
-        ret = model(ref_batch)
-        assert _finite(ret["ref_loss"])

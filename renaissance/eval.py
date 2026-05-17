@@ -1,5 +1,5 @@
 """
-Standalone evaluation harness for RenaissanceTransformer.
+Standalone evaluation harness for RenaissanceModel.
 
 Usage
 -----
@@ -13,6 +13,12 @@ CLI:
         --task snli --split val \\
         --data_root data/arrow/ \\
         --output results.json
+
+Post-rewrite this is a thin wrapper: the model owns the metrics
+(`RenaissanceModel.forward` updates them, `epoch_metrics` aggregates), so
+the per-task `Evaluator` subclasses + `objectives.compute_*` dependency
+the legacy harness needed are gone. `Evaluator._REGISTRY` and the
+`evaluate()` signature are preserved for callers/tests.
 """
 
 from __future__ import annotations
@@ -23,13 +29,8 @@ from typing import Any, Dict, Optional
 
 import torch
 
-from .modules import renaissance_utils
-from .modules import objectives
+from .modeling.tasks import TASK_REGISTRY
 
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def _to_device(batch, device):
     if isinstance(batch, torch.Tensor):
@@ -41,114 +42,13 @@ def _to_device(batch, device):
     return batch
 
 
-# ---------------------------------------------------------------------------
-# Evaluator base + per-task subclasses
-# ---------------------------------------------------------------------------
-
 class Evaluator:
-    """Run inference over a dataloader and aggregate task metrics.
+    """Kept for API/back-compat. The registry is the task registry; there
+    are no per-task subclasses anymore — `evaluate()` drives the model
+    directly."""
 
-    Subclasses register themselves automatically via __init_subclass__.
-    Use the class attribute ``task`` to identify the task name.
-    """
+    _REGISTRY: Dict[str, Any] = TASK_REGISTRY
 
-    _REGISTRY: Dict[str, type] = {}
-
-    task: str = ""
-
-    def __init__(self, model):
-        self.model = model
-
-    def __init_subclass__(cls, task: str = "", **kwargs):
-        super().__init_subclass__(**kwargs)
-        if task:
-            cls.task = task
-            Evaluator._REGISTRY[task] = cls
-
-    # ---- override in subclasses ----
-
-    def process_batch(self, batch) -> None:
-        raise NotImplementedError
-
-    # ---- shared aggregation ----
-
-    def aggregate(self, phase: str = "val") -> Dict[str, Any]:
-        """Compute & reset epoch-level metrics via the shared epoch_wrapup."""
-        return renaissance_utils.epoch_wrapup(self.model, phase=phase)
-
-    # ---- callable interface ----
-
-    def __call__(
-        self,
-        dataloader,
-        device: Optional[torch.device] = None,
-        phase: str = "val",
-    ) -> Dict[str, Any]:
-        if device is None:
-            device = self.model.device
-        self.model.eval()
-        self.model.current_tasks = [self.task]
-        with torch.no_grad():
-            for batch in dataloader:
-                batch = _to_device(batch, device)
-                self.model._log_buffer = {}
-                self.process_batch(batch)
-        return self.aggregate(phase=phase)
-
-
-class MLMEvaluator(Evaluator, task="mlm"):
-    def process_batch(self, batch):
-        objectives.compute_mlm(self.model, batch)
-
-
-class ITMEvaluator(Evaluator, task="itm"):
-    def process_batch(self, batch):
-        objectives.compute_itm(self.model, batch)
-
-
-class VQAEvaluator(Evaluator, task="vqa"):
-    def process_batch(self, batch):
-        objectives.compute_vqa(self.model, batch)
-
-
-class NLVR2Evaluator(Evaluator, task="nlvr2"):
-    def process_batch(self, batch):
-        objectives.compute_nlvr2(self.model, batch)
-
-
-class SNLIEvaluator(Evaluator, task="snli"):
-    def process_batch(self, batch):
-        objectives.compute_snli(self.model, batch)
-
-
-class RefEvaluator(Evaluator, task="ref"):
-    def process_batch(self, batch):
-        objectives.compute_ref(self.model, batch)
-
-
-class Ref2Evaluator(Evaluator, task="ref2"):
-    def process_batch(self, batch):
-        objectives.compute_ref2(self.model, batch)
-
-
-class IRTREvaluator(Evaluator, task="irtr"):
-    """Evaluates the IRTR ranking loss per batch.
-
-    Note: for R@1/R@5/R@10 recall metrics over the full corpus use
-    ``objectives.compute_irtr_recall`` with dedicated text + image dataloaders.
-    """
-    def process_batch(self, batch):
-        objectives.compute_irtr(self.model, batch)
-
-
-class MRPCEvaluator(Evaluator, task="mrpc"):
-    def process_batch(self, batch):
-        objectives.compute_mrpc(self.model, batch)
-
-
-# ---------------------------------------------------------------------------
-# Top-level convenience function
-# ---------------------------------------------------------------------------
 
 def evaluate(
     model,
@@ -157,46 +57,42 @@ def evaluate(
     device: Optional[torch.device] = None,
     phase: str = "val",
 ) -> Dict[str, Any]:
-    """Evaluate *model* on *dataloader* for *task* and return a metrics dict.
+    """Evaluate *model* on *dataloader* for *task*; return a metrics dict.
 
-    Parameters
-    ----------
-    model:
-        A ``RenaissanceTransformer`` instance with the correct task head
-        instantiated (i.e. the corresponding ``loss_names[task] > 0``).
-    dataloader:
-        PyTorch DataLoader yielding batches in the format expected by the
-        task's ``compute_*`` function.
-    task:
-        One of the registered task names (see ``Evaluator._REGISTRY``).
-    device:
-        Target device. Defaults to the device of the first model parameter.
-    phase:
-        ``"val"`` or ``"test"`` — controls which metric accumulators are
-        read from the model (some tasks track dev/test splits separately).
-
-    Returns
-    -------
-    dict
-        Flat ``{metric_name: float}`` dict produced by ``epoch_wrapup``.
+    Runs the task through `RenaissanceModel.forward` (which updates the
+    model-owned metrics) over the loader, then `model.epoch_metrics(phase)`.
+    Adds an aggregate ``f"{phase}/the_metric"`` (sum of the non-loss
+    metric values) — the scalar legacy callers used for checkpoint
+    selection.
     """
-    cls = Evaluator._REGISTRY.get(task)
-    if cls is None:
+    if task not in Evaluator._REGISTRY:
         raise ValueError(
             f"No evaluator for task '{task}'. "
             f"Known tasks: {sorted(Evaluator._REGISTRY)}"
         )
-    return cls(model)(dataloader, device=device, phase=phase)
+    if device is None:
+        device = model.device
 
+    model.eval()
+    model.current_tasks = [task]
+    with torch.no_grad():
+        for batch in dataloader:
+            batch = _to_device(batch, device)
+            model._log_buffer = {}
+            model(batch)
 
-# ---------------------------------------------------------------------------
-# CLI entry point
-# ---------------------------------------------------------------------------
+    metrics = model.epoch_metrics(phase)
+    the_metric = sum(
+        v for k, v in metrics.items() if not k.endswith("loss_epoch")
+    )
+    metrics[f"{phase}/the_metric"] = the_metric
+    return metrics
+
 
 def main(argv=None):
     """python -m renaissance.eval --checkpoint <path> --task <task> ..."""
     parser = argparse.ArgumentParser(
-        description="Evaluate a RenaissanceTransformer checkpoint on a downstream task."
+        description="Evaluate a RenaissanceModel checkpoint on a downstream task."
     )
     parser.add_argument(
         "--checkpoint", required=True,
@@ -222,10 +118,10 @@ def main(argv=None):
     )
     args = parser.parse_args(argv)
 
-    from .modules.renaissance_module import RenaissanceTransformer
+    from .modeling import RenaissanceModel
 
     print(f"Loading model from {args.checkpoint!r} ...")
-    model = RenaissanceTransformer.from_pretrained(args.checkpoint)
+    model = RenaissanceModel.from_pretrained(args.checkpoint)
     model.eval()
 
     print(f"Building dataloader for task={args.task!r}, split={args.split!r} ...")
@@ -252,8 +148,8 @@ def main(argv=None):
 def _build_dataloader(model, task, split, data_root, batch_size, num_workers):
     """Construct the appropriate dataloader for *task* and *split*.
 
-    This is a thin dispatch layer; each dataset module is responsible for its
-    own collate logic.  See DATA.md for dataset preparation instructions.
+    Thin dispatch layer; each dataset module owns its collate logic.
+    See DATA.md for dataset preparation instructions.
     """
     raise NotImplementedError(
         "Automatic dataloader construction is not yet implemented. "

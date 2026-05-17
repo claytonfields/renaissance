@@ -4,7 +4,7 @@ End-to-end smoke tests: modern data backend → model forward pass.
 These tests build tiny in-memory `datasets.Dataset` objects matching the
 schemas the `renaissance.data` loaders emit, run them through the exact
 `make_vlp_transform` + `VLPCollator` pipeline `renaissance/data/runner.py`
-uses, then feed the collated batch into `RenaissanceTransformer` and run a
+uses, then feed the collated batch into `RenaissanceModel` and run a
 forward pass. The point is to catch wiring breaks between the data layer's
 batch schema and what the encoders / objectives expect — the unit tests in
 `test_data_modern.py` only exercise the data layer in isolation.
@@ -31,7 +31,7 @@ from transformers import AutoTokenizer
 
 from renaissance.data import VLPCollator
 from renaissance.data.transforms import make_vlp_transform
-from renaissance.modules import RenaissanceTransformer
+from renaissance.modeling import RenaissanceModel
 
 from tests.conftest import ALL_LOSS_NAMES, BS, TEXT_LEN
 
@@ -89,7 +89,7 @@ def _collate(ds, config, *, do_itm, image_keys=("image",)):
 
 def test_two_tower_infer_from_collated_batch(two_tower_pretrain_config):
     batch = _collate(_caption_dataset(BS), two_tower_pretrain_config, do_itm=False)
-    model = RenaissanceTransformer(two_tower_pretrain_config)
+    model = RenaissanceModel(two_tower_pretrain_config)
     model.eval()
     with torch.no_grad():
         out = model.infer(batch)
@@ -99,7 +99,7 @@ def test_two_tower_infer_from_collated_batch(two_tower_pretrain_config):
 
 def test_one_tower_infer_from_collated_batch(one_tower_pretrain_config):
     batch = _collate(_caption_dataset(BS), one_tower_pretrain_config, do_itm=False)
-    model = RenaissanceTransformer(one_tower_pretrain_config)
+    model = RenaissanceModel(one_tower_pretrain_config)
     model.eval()
     with torch.no_grad():
         out = model.infer(batch)
@@ -121,7 +121,7 @@ def itm_config(two_tower_pretrain_config):
 def test_two_tower_itm_e2e(itm_config):
     batch = _collate(_caption_dataset(BS), itm_config, do_itm=True)
     assert "false_image_0" in batch
-    model = RenaissanceTransformer(itm_config)
+    model = RenaissanceModel(itm_config)
     model.train()
     model.current_tasks = ["itm"]
     ret = model(batch)
@@ -179,7 +179,7 @@ def test_two_tower_vqa_e2e(vqa_config, tmp_path):
     batch = _collate(ds, vqa_config, do_itm=False)
     assert "vqa_labels" in batch and "vqa_scores" in batch
 
-    model = RenaissanceTransformer(vqa_config)
+    model = RenaissanceModel(vqa_config)
     model.train()
     model.current_tasks = ["vqa"]
     ret = model(batch)

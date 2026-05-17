@@ -17,7 +17,7 @@ import torch
 import torch.nn as nn
 
 from renaissance.eval import Evaluator, evaluate
-from renaissance.modules.renaissance_module import RenaissanceTransformer
+from renaissance.modeling import RenaissanceModel
 
 
 # ---------------------------------------------------------------------------
@@ -145,12 +145,14 @@ def _pretrain_batch():
 
 class TestEvaluatorRegistry:
     def test_known_tasks_registered(self):
-        for task in ("mlm", "itm", "vqa", "nlvr2", "snli", "ref", "ref2", "irtr", "mrpc"):
+        # irtr was intentionally dropped in the modeling rewrite (needs
+        # draw_false_text negatives + a rank head derived from ITM weights).
+        for task in ("mlm", "itm", "vqa", "nlvr2", "snli", "ref", "ref2", "mrpc"):
             assert task in Evaluator._REGISTRY, f"task '{task}' not registered"
 
     def test_unknown_task_raises(self):
         cfg = _two_tower_config({"itm": 1})
-        model = RenaissanceTransformer(cfg)
+        model = RenaissanceModel(cfg)
         with pytest.raises(ValueError, match="No evaluator"):
             evaluate(model, [], task="nonexistent_task")
 
@@ -167,10 +169,10 @@ class TestITMEvaluator:
     @pytest.fixture(scope="class")
     def model(self):
         cfg = _two_tower_config({"itm": 1})
-        m = RenaissanceTransformer(cfg)
+        m = RenaissanceModel(cfg)
         m.eval()
         # Zero-out ITM head weights → logits are constant → argmax = 0
-        for p in m.itm_score.parameters():
+        for p in m.heads["itm"].parameters():
             nn.init.zeros_(p)
         return m
 
@@ -208,34 +210,33 @@ class TestSNLIEvaluator:
     @pytest.fixture(scope="class")
     def model(self):
         cfg = _two_tower_config({"snli": 1})
-        m = RenaissanceTransformer(cfg)
+        m = RenaissanceModel(cfg)
         m.eval()
-        for p in m.snli_classifier.parameters():
+        for p in m.heads["snli"].parameters():
             nn.init.zeros_(p)
         return m
 
     def _snli_batch(self, labels):
         b = _pretrain_batch()
         b["labels"] = labels
-        b["table_name"] = ["snli_dev"] * len(labels)
         return b
 
     def test_returns_metric_keys(self, model):
         batch = self._snli_batch([0, 1])
         metrics = evaluate(model, [batch], task="snli")
-        assert "snli/dev/accuracy_epoch" in metrics
+        assert "snli/val/accuracy_epoch" in metrics
 
     def test_all_correct_accuracy_one(self, model):
         """All labels = 0, zero weights → argmax always 0 → 100% accuracy."""
         batch = self._snli_batch([0, 0])
         metrics = evaluate(model, [batch], task="snli")
-        assert metrics["snli/dev/accuracy_epoch"] == pytest.approx(1.0)
+        assert metrics["snli/val/accuracy_epoch"] == pytest.approx(1.0)
 
     def test_all_wrong_accuracy_zero(self, model):
         """All labels ≠ 0, zero weights → argmax always 0 → 0% accuracy."""
         batch = self._snli_batch([1, 2])
         metrics = evaluate(model, [batch], task="snli")
-        assert metrics["snli/dev/accuracy_epoch"] == pytest.approx(0.0)
+        assert metrics["snli/val/accuracy_epoch"] == pytest.approx(0.0)
 
 
 # ---------------------------------------------------------------------------
@@ -248,9 +249,9 @@ class TestNLVR2Evaluator:
     @pytest.fixture(scope="class")
     def model(self):
         cfg = _two_tower_config({"nlvr2": 1})
-        m = RenaissanceTransformer(cfg)
+        m = RenaissanceModel(cfg)
         m.eval()
-        for p in m.nlvr2_classifier.parameters():
+        for p in m.heads["nlvr2"].parameters():
             nn.init.zeros_(p)
         return m
 
@@ -259,23 +260,22 @@ class TestNLVR2Evaluator:
         b["image_0"] = _image_batch()
         b["image_1"] = _image_batch()
         b["answers"] = answers
-        b["table_name"] = ["nlvr2_dev"] * len(answers)
         return b
 
     def test_returns_metric_keys(self, model):
         batch = self._nlvr2_batch([0, 0])
         metrics = evaluate(model, [batch], task="nlvr2")
-        assert "nlvr2/dev/accuracy_epoch" in metrics
+        assert "nlvr2/val/accuracy_epoch" in metrics
 
     def test_all_correct(self, model):
         batch = self._nlvr2_batch([0, 0])
         metrics = evaluate(model, [batch], task="nlvr2")
-        assert metrics["nlvr2/dev/accuracy_epoch"] == pytest.approx(1.0)
+        assert metrics["nlvr2/val/accuracy_epoch"] == pytest.approx(1.0)
 
     def test_all_wrong(self, model):
         batch = self._nlvr2_batch([1, 1])
         metrics = evaluate(model, [batch], task="nlvr2")
-        assert metrics["nlvr2/dev/accuracy_epoch"] == pytest.approx(0.0)
+        assert metrics["nlvr2/val/accuracy_epoch"] == pytest.approx(0.0)
 
 
 # ---------------------------------------------------------------------------
@@ -289,9 +289,9 @@ class TestRefEvaluator:
     @pytest.fixture(scope="class")
     def model(self):
         cfg = _two_tower_config({"ref": 1})
-        m = RenaissanceTransformer(cfg)
+        m = RenaissanceModel(cfg)
         m.eval()
-        for p in m.ref_classifier.parameters():
+        for p in m.heads["ref"].parameters():
             nn.init.zeros_(p)
         return m
 
@@ -331,7 +331,7 @@ class TestRefEvaluator:
 class TestEvaluateTopLevel:
     def test_returns_the_metric(self):
         cfg = _two_tower_config({"itm": 1})
-        model = RenaissanceTransformer(cfg)
+        model = RenaissanceModel(cfg)
         model.eval()
         batch = _pretrain_batch()
         metrics = evaluate(model, [batch], task="itm")
@@ -341,7 +341,7 @@ class TestEvaluateTopLevel:
         """Running two identical batches should give same metric as one batch
         (Accuracy is a ratio, not a sum)."""
         cfg = _two_tower_config({"itm": 1})
-        model = RenaissanceTransformer(cfg)
+        model = RenaissanceModel(cfg)
         model.eval()
         batch = _pretrain_batch()
 
