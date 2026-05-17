@@ -12,7 +12,7 @@ import pytest
 import torch
 
 from renaissance.modeling import RenaissanceModel
-from renaissance.modules import renaissance_utils
+from renaissance.modeling.optim import set_schedule
 
 from tests.conftest import BS, MAX_BB
 
@@ -188,7 +188,7 @@ def test_forward_populates_epoch_metrics(two_tower_snli_config, snli_batch):
 
 def test_set_schedule_gives_heads_the_head_lr(two_tower_snli_config):
     model = RenaissanceModel(two_tower_snli_config)
-    optimizer, _ = renaissance_utils.set_schedule(
+    optimizer, _ = set_schedule(
         model, two_tower_snli_config, max_steps=10
     )
     lr = two_tower_snli_config["learning_rate"]

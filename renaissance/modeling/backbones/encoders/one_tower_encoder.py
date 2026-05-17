@@ -8,8 +8,7 @@ from transformers.models.electra import ElectraConfig
 
 from typing import List, Optional, Tuple, Union
 
-from .objectives import init_weights
-from .heads import Pooler
+from renaissance.modeling.heads import Pooler, init_weights
 
 
 

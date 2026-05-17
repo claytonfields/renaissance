@@ -13,8 +13,7 @@ from transformers.models.auto import AutoModel
 from transformers.models.lxmert.modeling_lxmert import LxmertXLayer
 from transformers.models.lxmert.configuration_lxmert import LxmertConfig
 
-from .objectives import init_weights
-from .heads import Pooler
+from renaissance.modeling.heads import Pooler, init_weights
 
 
 class LxmertCrossModalEncoder(nn.Module):

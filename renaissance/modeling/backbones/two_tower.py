@@ -1,14 +1,14 @@
 """
 Two-tower backbone.
 
-Phase 1 wraps the existing `renaissance.modules.two_tower_encoder.
+Phase 1 wraps the existing `renaissance.modeling.backbones.encoders.two_tower_encoder.
 TwoTowerEncoder` behind the `Backbone` protocol — separate HF text and
 vision encoders fused by the LXMERT cross-modal module. Encoder internals
 are untouched (Phase 0 contract tests stay valid); callers only see
 `Backbone`.
 """
 
-from renaissance.modules.two_tower_encoder import TwoTowerEncoder
+from .encoders.two_tower_encoder import TwoTowerEncoder
 
 from .base import Backbone, EncoderOutput
 

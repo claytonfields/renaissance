@@ -4,7 +4,7 @@ from accelerate import Accelerator
 from accelerate.utils import DistributedDataParallelKwargs
 from torch.utils.tensorboard import SummaryWriter
 
-from .modules import renaissance_utils
+from .modeling.optim import set_schedule
 
 
 class RenaissanceTrainer:
@@ -38,7 +38,7 @@ class RenaissanceTrainer:
         self.max_epochs: int = config.get("max_epoch", 1)
 
         # Build schedule before prepare() so optimizer sees unwrapped params
-        optimizer, scheduler = renaissance_utils.set_schedule(model, config, self.max_steps)
+        optimizer, scheduler = set_schedule(model, config, self.max_steps)
         self.optimizer = optimizer
         self.scheduler = scheduler
 

@@ -1,13 +1,13 @@
 """
 One-tower backbone.
 
-Phase 1 wraps the existing `renaissance.modules.one_tower_encoder.
+Phase 1 wraps the existing `renaissance.modeling.backbones.encoders.one_tower_encoder.
 OneTowerEncoder` behind the `Backbone` protocol — the encoder internals
 are untouched so the Phase 0 contract tests stay valid. Later phases may
 refactor the wrapped internals; callers only ever see `Backbone`.
 """
 
-from renaissance.modules.one_tower_encoder import OneTowerEncoder
+from .encoders.one_tower_encoder import OneTowerEncoder
 
 from .base import Backbone, EncoderOutput
 
