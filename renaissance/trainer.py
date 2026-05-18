@@ -1,10 +1,32 @@
 import os
+import warnings
+
 import torch
 from accelerate import Accelerator
 from accelerate.utils import DistributedDataParallelKwargs
-from torch.utils.tensorboard import SummaryWriter
 
 from .modeling.optim import set_schedule
+
+
+def _make_summary_writer(log_dir):
+    """Construct a TensorBoard SummaryWriter, degrading to None if the
+    tensorboard backend is unavailable or broken.
+
+    `torch.utils.tensorboard` is imported lazily here (not at module
+    load) so that importing the trainer never drags in tensorboard /
+    tensorflow. Logging is best-effort: a missing or broken backend must
+    not crash training — every `self.writer` use is already None-guarded.
+    """
+    try:
+        from torch.utils.tensorboard import SummaryWriter
+
+        return SummaryWriter(log_dir=log_dir)
+    except Exception as e:  # ImportError, or tensorboard's TF fallback failing
+        warnings.warn(
+            f"TensorBoard logging disabled — could not initialize SummaryWriter: {e}",
+            RuntimeWarning,
+        )
+        return None
 
 
 class RenaissanceTrainer:
@@ -60,7 +82,7 @@ class RenaissanceTrainer:
 
         log_dir = config.get("log_dir", "result")
         os.makedirs(log_dir, exist_ok=True)
-        self.writer = SummaryWriter(log_dir=log_dir) if self.accelerator.is_main_process else None
+        self.writer = _make_summary_writer(log_dir) if self.accelerator.is_main_process else None
 
     # ------------------------------------------------------------------
     # Public API
