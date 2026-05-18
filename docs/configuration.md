@@ -1,6 +1,6 @@
 # Configuration
 
-Renaissance uses typed dataclasses (`renaissance/config_schema.py`) and YAML files under `configs/`. The schema has five groups — `experiment`, `model`, `task`, `data`, `training` — which are flattened into a plain dict before being passed to `RenaissanceTransformer`.
+Renaissance uses typed dataclasses (`renaissance/config_schema.py`) and YAML files under `configs/`. The schema has five groups — `experiment`, `model`, `task`, `data`, `training` — which are flattened into a plain dict before being passed to `RenaissanceModel`.
 
 ## Loading a config
 

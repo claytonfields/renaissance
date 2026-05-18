@@ -149,12 +149,12 @@ def _build_dataloader(model, task, split, data_root, batch_size, num_workers):
     """Construct the appropriate dataloader for *task* and *split*.
 
     Thin dispatch layer; each dataset module owns its collate logic.
-    See DATA.md for dataset preparation instructions.
+    See docs/data-preparation.md for dataset preparation instructions.
     """
     raise NotImplementedError(
         "Automatic dataloader construction is not yet implemented. "
         "Build the dataloader manually and call evaluate(model, dl, task) directly. "
-        "See DATA.md for dataset preparation instructions."
+        "See docs/data-preparation.md for dataset preparation instructions."
     )
 
 

@@ -1,5 +1,5 @@
 """
-HuggingFace Hub integration for RenaissanceTransformer.
+HuggingFace Hub integration for RenaissanceModel.
 
 RenaissanceHubConfig — PretrainedConfig subclass that serializes all model
 hyperparameters (ModelConfig + TaskConfig fields) to config.json.
@@ -147,7 +147,7 @@ class RenaissanceHubConfig(PretrainedConfig):
 
     @classmethod
     def from_flat_config(cls, flat: Dict[str, Any]) -> "RenaissanceHubConfig":
-        """Build a RenaissanceHubConfig from the flat dict RenaissanceTransformer uses."""
+        """Build a RenaissanceHubConfig from the flat dict RenaissanceModel uses."""
         model_fields = {f.name for f in dc_fields(ModelConfig)}
         task_fields = {f.name for f in dc_fields(TaskConfig)}
         kwargs: Dict[str, Any] = {}
@@ -159,7 +159,7 @@ class RenaissanceHubConfig(PretrainedConfig):
         return cls(**kwargs)
 
     def to_flat_config(self) -> Dict[str, Any]:
-        """Return the flat dict that RenaissanceTransformer expects."""
+        """Return the flat dict that RenaissanceModel expects."""
         d: Dict[str, Any] = {
             "model_type": self.arch,
             "encoder": self.encoder,
@@ -216,7 +216,7 @@ class RenaissanceHubConfig(PretrainedConfig):
             "max_bb": self.max_bb,
             "ref_res_head_layers": self.ref_res_head_layers,
             # experiment defaults — not serialized in hub config, but required
-            # by RenaissanceTransformer.__init__ to skip legacy checkpoint loading
+            # by RenaissanceModel.__init__ to skip legacy checkpoint loading
             "load_path": "",
             "test_only": False,
             "log_dir": "result",

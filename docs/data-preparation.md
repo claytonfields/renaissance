@@ -77,7 +77,7 @@ data/coco/
 ```
 
 ```python
-from renaissance.utils.write_coco_karpathy import make_arrow
+from renaissance.utils.legacy.write_coco_karpathy import make_arrow
 make_arrow("data/coco/", "data/arrow/")
 ```
 
@@ -97,7 +97,7 @@ data/vg/
 ```
 
 ```python
-from renaissance.utils.write_vg import make_arrow
+from renaissance.utils.legacy.write_vg import make_arrow
 make_arrow("data/vg/", "data/arrow/")
 ```
 
@@ -116,7 +116,7 @@ data/flickr30k/
 ```
 
 ```python
-from renaissance.utils.write_f30k_karpathy import make_arrow
+from renaissance.utils.legacy.write_f30k_karpathy import make_arrow
 make_arrow("data/flickr30k/", "data/arrow/")
 ```
 
@@ -139,7 +139,7 @@ data/vqa/
 ```
 
 ```python
-from renaissance.utils.write_vqa import make_arrow
+from renaissance.utils.legacy.write_vqa import make_arrow
 make_arrow("data/vqa/", "data/arrow/")
 ```
 
@@ -161,7 +161,7 @@ data/nlvr2/
 ```
 
 ```python
-from renaissance.utils.write_nlvr2 import make_arrow
+from renaissance.utils.legacy.write_nlvr2 import make_arrow
 make_arrow("data/nlvr2/", "data/arrow/")
 ```
 
@@ -172,7 +172,7 @@ make_arrow("data/nlvr2/", "data/arrow/")
 Built on top of Flickr30K images (see above) and [SNLI](https://nlp.stanford.edu/projects/snli/).
 
 ```python
-from renaissance.utils.write_snli import make_arrow
+from renaissance.utils.legacy.write_snli import make_arrow
 make_arrow("data/snli/", "data/arrow/")
 ```
 
@@ -191,7 +191,7 @@ data/gcc/
 ```
 
 ```python
-from renaissance.utils.write_conceptual_caption import make_arrow
+from renaissance.utils.legacy.write_conceptual_caption import make_arrow
 make_arrow("data/gcc/", "data/arrow/")
 ```
 
@@ -202,7 +202,7 @@ make_arrow("data/gcc/", "data/arrow/")
 Download from [http://www.cs.virginia.edu/~vicente/sbucaptions/](http://www.cs.virginia.edu/~vicente/sbucaptions/).
 
 ```python
-from renaissance.utils.write_sbu import make_arrow
+from renaissance.utils.legacy.write_sbu import make_arrow
 make_arrow("data/sbu/", "data/arrow/")
 ```
 

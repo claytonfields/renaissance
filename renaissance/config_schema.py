@@ -2,7 +2,7 @@
 Typed configuration schema for Renaissance.
 
 Each dataclass group maps to a top-level YAML key.  The top-level
-RenaissanceConfig is a flat dict when passed to RenaissanceTransformer —
+RenaissanceConfig is a flat dict when passed to RenaissanceModel —
 use config_schema.to_flat_dict(cfg) to produce it.
 
 CLI usage (via run.py):
@@ -228,7 +228,7 @@ def normalize_tasks(flat: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def to_flat_dict(cfg: RenaissanceConfig) -> Dict[str, Any]:
-    """Flatten RenaissanceConfig into the dict RenaissanceTransformer expects."""
+    """Flatten RenaissanceConfig into the dict RenaissanceModel expects."""
     d: Dict[str, Any] = {}
     d.update(asdict(cfg.experiment))
     d.update(asdict(cfg.model))
@@ -240,7 +240,7 @@ def to_flat_dict(cfg: RenaissanceConfig) -> Dict[str, Any]:
 
 def from_omegaconf(omega_cfg) -> Dict[str, Any]:
     """Convert an OmegaConf DictConfig (loaded from YAML + CLI overrides)
-    to the flat dict that RenaissanceTransformer expects.
+    to the flat dict that RenaissanceModel expects.
 
     The YAML can be either:
     - Grouped (top-level keys: experiment, model, task, data, training)
