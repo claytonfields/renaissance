@@ -134,7 +134,11 @@ class RenaissanceTrainer:
             self.model._log_buffer = {}
             with self.accelerator.accumulate(self.model):
                 output = self.model(batch)
-                total_loss = sum(v for k, v in output.items() if "loss" in k)
+                # RenaissanceModel.forward emits per-task losses as
+                # exactly "<task>_loss"; match that precisely rather than
+                # any key containing the substring "loss" (task `extras`
+                # are emitted as "<task>_<key>" and could collide).
+                total_loss = sum(v for k, v in output.items() if k.endswith("_loss"))
                 self.accelerator.backward(total_loss)
                 self.optimizer.step()
                 self.scheduler.step()
