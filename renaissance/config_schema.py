@@ -134,9 +134,11 @@ class DataConfig:
     eval_batch_size: int = 32
     num_workers: int = 12
 
-    # "legacy" → renaissance/datamodules + renaissance/datasets (pyarrow IPC)
-    # "modern" → renaissance/data (HF Hub-first)
-    backend: str = "legacy"
+    # "modern" → renaissance/data (HF Hub-first). Default since the 1.3 line.
+    # "legacy" → renaissance/datamodules + renaissance/datasets (pyarrow IPC,
+    #   Lightning-coupled). Deprecated; kept for reading pre-serialized Arrow
+    #   data on disk until the legacy data layer is removed.
+    backend: str = "modern"
     # Per-dataset extra kwargs for the modern runner (e.g. {"sbu": {"path": "..."},
     # "glue": {"task": "mrpc"}, "vg": {"config": "region_descriptions_v1.2.0"}}).
     dataset_kwargs: Dict[str, Any] = field(default_factory=dict)

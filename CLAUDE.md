@@ -65,11 +65,13 @@ The modeling stack was rewritten into a backbone-protocol + task-registry design
 The legacy `renaissance/modules/` package has been deleted entirely; the only live pieces (the two encoder implementations and `set_schedule`) moved into `renaissance/modeling/` and now import `Pooler`/`init_weights` from `modeling/heads.py`.
 
 ### Data pipeline
-`renaissance/datamodules/multitask_datamodule.py` (`MTDataModule`) coordinates multiple `DataModule` instances. Each dataset has a corresponding `*_datamodule.py` and `*_dataset.py`. Datasets are pre-serialized to [Apache Arrow](https://arrow.apache.org/) format using the scripts in `renaissance/utils/write_*.py` — see `DATA.md` for dataset-specific instructions.
+Two backends, selected by `data.backend`:
+- **`modern`** (default since the 1.3 line) — `renaissance/data` (`runner.py` → `loaders.py` → `collate.py`), HuggingFace Hub-first; no Arrow pre-conversion. `run.py` dispatches here via `renaissance.data.runner.build_dataloader`.
+- **`legacy`** (deprecated, emits a `DeprecationWarning`) — `renaissance/datamodules/multitask_datamodule.py` (`MTDataModule`) coordinating per-dataset `*_datamodule.py`/`*_dataset.py`, backed by pre-serialized [Apache Arrow](https://arrow.apache.org/) files (scripts now under `renaissance/utils/legacy/write_*.py`) and PyTorch Lightning. Kept only to read existing on-disk Arrow data; the shipped `configs/*.yaml` pin `data.backend: legacy` to preserve that behavior. See `docs/data-preparation.md`.
 
 ### Transforms (`renaissance/transforms/`)
 `transform.py` and `randaug.py` handle image augmentation pipelines keyed by `train_transform_keys` / `val_transform_keys` config values (e.g., `"imagenet"`, `"clip"`).
 
 ## Data Preparation
 
-Datasets must be converted to Arrow format before training. Conversion scripts are in `renaissance/utils/write_*.py`. Run the `make_arrow(root, arrows_root)` function for each dataset; place outputs under `data/arrow/`. See `DATA.md` for per-dataset download instructions.
+The default `modern` backend needs no preparation — datasets load from the HF Hub. For the deprecated `legacy` backend, datasets must be converted to Arrow first: run `make_arrow(root, arrows_root)` from `renaissance/utils/legacy/write_*.py` and place outputs under `data/arrow/`. See `docs/data-preparation.md` for per-dataset instructions and migration.

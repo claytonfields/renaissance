@@ -1,8 +1,38 @@
 # Data Preparation
 
-All datasets must be converted to Apache Arrow format before training. Conversion scripts live in `renaissance/utils/write_*.py`. Run the `make_arrow(root, arrows_root)` function for each dataset you need and place the outputs under `data/arrow/`.
-
 > **Note:** We do not distribute datasets. Download them from the official sources listed below.
+
+## Data backends
+
+Renaissance has two data backends, selected by `data.backend`:
+
+- **`modern`** *(default since the 1.3 line)* — `renaissance/data`, HuggingFace
+  Hub-first. Datasets are streamed/loaded directly via `datasets.load_dataset`;
+  **no Arrow pre-conversion step is required**. This is the recommended path
+  for new work. See [Configuring datasets for training](#configuring-datasets-for-training).
+- **`legacy`** *(deprecated)* — `renaissance/datamodules` + `renaissance/datasets`,
+  backed by pre-serialized Apache Arrow files and PyTorch Lightning. Kept only
+  so existing on-disk Arrow data keeps working until the legacy layer is
+  removed. Importing it emits a `DeprecationWarning`.
+
+### Migrating off the legacy backend
+
+If you have existing `data/arrow/` files (produced by the old
+`make_arrow` scripts) you have two options:
+
+1. **Keep using them for now** — pin `data.backend: legacy` in your config
+   (the shipped `configs/*.yaml` already do this) and your existing
+   `data_root: data/arrow/` continues to work unchanged.
+2. **Switch to `modern`** — drop the Arrow step entirely; set
+   `data.backend: modern` (or omit it — it is the default) and let the
+   modern loaders pull each dataset from the Hub. The dataset keys are the
+   same (`coco`, `vqa`, `nlvr2`, …); per-dataset Hub options go in
+   `data.dataset_kwargs`.
+
+The Arrow conversion scripts below apply **only to the legacy backend** and
+now live under `renaissance/utils/legacy/write_*.py`. Run the
+`make_arrow(root, arrows_root)` function for each dataset and place the
+outputs under `data/arrow/`.
 
 ---
 
@@ -183,7 +213,15 @@ make_arrow("data/sbu/", "data/arrow/")
 Set `data.datasets` in your YAML config or via CLI:
 
 ```yaml
+# modern backend (default) — no Arrow step, loaded from the Hub
 data:
+  datasets:
+    - coco
+    - vg
+
+# legacy backend — reads pre-serialized Arrow under data_root
+data:
+  backend: legacy
   datasets:
     - coco
     - vg
@@ -191,7 +229,7 @@ data:
 ```
 
 ```bash
-python run.py configs/pretrain_two_tower.yaml data.datasets=[coco,vg] data.data_root=data/arrow/
+python run.py configs/pretrain_two_tower.yaml data.datasets=[coco,vg]
 ```
 
-Available dataset keys: `coco`, `vg`, `gcc`, `sbu`, `f30k`, `vqa`, `nlvr2`, `snli`.
+Available dataset keys: `coco`, `vg`, `gcc`, `sbu`, `f30k`, `vqa`, `nlvr2`, `snli` (both backends), plus modern-only `coco_karpathy`, `cc3m`, `cc12m`, `refcoco`, `refcocoplus`, `refcocog`, `glue`.

@@ -68,6 +68,10 @@ task:
 data:
   datasets:
     - nlvr2
+  # Pinned to the legacy backend: this config reads pre-serialized Arrow
+  # data under data_root. Schema default is now "modern" (HF Hub-first);
+  # the legacy data layer is deprecated. See docs/data-preparation.md.
+  backend: legacy
   data_root: data/arrow/
   train_transform_keys:
     - imagenet

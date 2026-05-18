@@ -1,4 +1,5 @@
 import functools
+import warnings
 
 from lightning import LightningDataModule
 from torch.utils.data import DataLoader
@@ -10,6 +11,15 @@ from . import _datamodules
 
 class MTDataModule(LightningDataModule):
     def __init__(self, _config, dist=False):
+        warnings.warn(
+            "The legacy data backend (renaissance.datamodules / "
+            "renaissance.datasets, data.backend='legacy') is deprecated and "
+            "will be removed once the modern HF-Hub data layer "
+            "(data.backend='modern', now the default) fully replaces it. "
+            "Migrate per docs/data-preparation.md.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         datamodule_keys = _config["datasets"]
         assert len(datamodule_keys) > 0
 
