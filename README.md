@@ -13,7 +13,7 @@ pip install -e .
 
 ```bash
 # 1. Prepare data (see docs/data-preparation.md)
-python -c "from renaissance.utils.write_coco_karpathy import make_arrow; make_arrow('data/coco/', 'data/arrow/')"
+python -c "from renaissance.utils.legacy.write_coco_karpathy import make_arrow; make_arrow('data/coco/', 'data/arrow/')"
 
 # 2. Pretrain two-tower (DeiT-Tiny + ELECTRA-Small)
 python run.py configs/pretrain_two_tower.yaml \
@@ -31,9 +31,9 @@ python -m renaissance.eval \
 
 # 5. Push to Hub
 python -c "
-from renaissance.modules.renaissance_module import RenaissanceTransformer
+from renaissance.modeling import RenaissanceModel
 from renaissance.hub import push_to_hub
-model = RenaissanceTransformer.from_pretrained('result/finetune_nlvr2_...')
+model = RenaissanceModel.from_pretrained('result/finetune_nlvr2_...')
 push_to_hub(model, 'myuser/renaissance-nlvr2')
 "
 ```
@@ -102,8 +102,8 @@ result/
 Load a checkpoint programmatically:
 
 ```python
-from renaissance.modules.renaissance_module import RenaissanceTransformer
-model = RenaissanceTransformer.from_pretrained("result/my_experiment/")
+from renaissance.modeling import RenaissanceModel
+model = RenaissanceModel.from_pretrained("result/my_experiment/")
 ```
 
 ## Evaluation
@@ -117,7 +117,7 @@ python -m renaissance.eval \
   --output results.json
 ```
 
-Supported tasks: `mlm`, `itm`, `vqa`, `nlvr2`, `snli`, `ref`, `ref2`, `irtr`, `mrpc`.
+Supported tasks: `mlm`, `itm`, `vqa`, `nlvr2`, `snli`, `ref`, `ref2`, `mrpc`.
 
 ## Examples
 

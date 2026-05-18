@@ -46,7 +46,7 @@ Key config groups:
 - **Training**: `training.max_steps`, `training.max_epoch`, `data.batch_size`, `data.per_gpu_batchsize`, `training.learning_rate`, `training.warmup_steps`
 - **Tasks / losses**: either `task.tasks` (a list, e.g. `["mlm", "itm"]`, preferred) or the legacy `task.loss_names` dict (set a task to `1`). `normalize_tasks` reconciles the two — a non-empty `tasks` list wins and rebuilds `loss_names`; otherwise `tasks` is derived from `loss_names > 0`. Registered tasks: `mlm`, `itm`, `vqa`, `nlvr2`, `snli`, `ref`, `ref2`, `mrpc`. (`irtr` and the stub GLUE tasks were dropped in the modeling rewrite.)
 
-The legacy Sacred-based config is preserved at `renaissance/config_legacy.py`.
+The legacy Sacred-based config (`renaissance/config_legacy.py`) was removed in the 1.3 line; it survives only in git history.
 
 ## Architecture Overview
 

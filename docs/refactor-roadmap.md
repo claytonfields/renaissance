@@ -52,7 +52,7 @@ Each step keeps the smoke tests green as a regression guard.
 
 ## ✓ Step 4 — New Interface System (Sacred → omegaconf)
 
-**Delivered:** `renaissance/config_schema.py` (5 typed dataclasses + `to_flat_dict` + `from_omegaconf`); new `run.py` (omegaconf YAML load + CLI dotlist overrides); `configs/` directory with 4 YAML files; `renaissance/config.py` preserved as `renaissance/config_legacy.py`.
+**Delivered:** `renaissance/config_schema.py` (5 typed dataclasses + `to_flat_dict` + `from_omegaconf`); new `run.py` (omegaconf YAML load + CLI dotlist overrides); `configs/` directory with 4 YAML files; `renaissance/config.py` preserved as `renaissance/config_legacy.py` (later deleted in the 1.3 line — see git history).
 
 ---
 
