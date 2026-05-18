@@ -1,6 +1,6 @@
 # Renaissance Refactor Roadmap
 
-Steps 1–7 are complete and merged into `dev-interface` (PR #1 open → `renaissance-1.1`). Steps 8–10 remain.
+Steps 1–8 are complete; `v1.2.0` is tagged and `renaissance-1.2` is the stable default branch. Active development is on `renaissance-1.3-dev`. A post-1.2 hardening & cleanup pass (2026-05-17) is recorded below. Steps 9–10 remain.
 
 ---
 
@@ -19,11 +19,13 @@ Steps 1–7 are complete and merged into `dev-interface` (PR #1 open → `renais
         ↓
 [6] Eval & Benchmarking  ✓ done
         ↓
-[7] Docs & Release       ✓ done (v1.1.0 tag pending merge)
+[7] Docs & Release       ✓ done (v1.2.0 tagged)
         ↓
-[8] CI/CD Pipeline       ← next
+[8] CI/CD Pipeline       ✓ partial (test + lint jobs live)
         ↓
-[9] Performance & Efficiency Optimizations
+[*] Post-1.2 hardening   ✓ done (2026-05-17)
+        ↓
+[9] Performance & Efficiency Optimizations  ← next
         ↓
 [10] Extended Architecture Support
 ```
@@ -34,7 +36,7 @@ Each step keeps the smoke tests green as a regression guard.
 
 ## ✓ Step 1 — Smoke-Test Harness
 
-**Delivered:** `tests/conftest.py`, `tests/test_smoke.py`, `tests/test_datasets.py`, `tests/test_trainer.py` (33 tests total). Pre-existing failures in `test_trainer.py` and `test_datasets.py` are due to a tensorflow/numpy incompatibility (`np.object` removed in numpy 1.20+) and are unrelated to the refactor.
+**Delivered:** `tests/conftest.py`, `tests/test_smoke.py`, `tests/test_datasets.py`, `tests/test_trainer.py`. `test_trainer.py` was restored in the 2026-05-17 hardening pass (see below) and now runs in CI. `test_datasets.py` remains ignored — the legacy data layer imports `transformers.data`, which pulls in tensorflow and hits the `np.object` removal (numpy 1.20+); it comes back online when the legacy data layer is removed.
 
 ---
 
@@ -92,18 +94,54 @@ Each step keeps the smoke tests green as a regression guard.
 
 ---
 
-## Step 8 — CI/CD Pipeline
+## ✓ Post-1.2 Hardening & Cleanup Pass (2026-05-17)
+
+A fresh-eyes inspection of the post-rewrite tree surfaced stale docs, dead
+code, an untested core component, and a half-finished data-layer migration.
+All seven items landed on `renaissance-1.3-dev` (pushed to origin):
+
+1. **README correctness** (`74bc2bf`) — fixed quickstart/checkpoint snippets
+   that imported the deleted `renaissance.modules.RenaissanceTransformer` and
+   the pre-relocation `utils.write_*` path; dropped `irtr` from the eval task
+   list.
+2. **Dead-code removal** (`74bc2bf`) — deleted `renaissance/config_legacy.py`
+   (10.5k lines, imported `sacred` which is not a dependency, referenced
+   nowhere); cleaned its ruff-exclude / CLAUDE.md / roadmap pointers.
+3. **Trainer test coverage** (`d6fd4b5`) — `test_trainer.py` was ignored on a
+   misdiagnosed excuse; rewrote it against `RenaissanceModel` + conftest
+   fixtures and made the TensorBoard `SummaryWriter` import lazy + graceful
+   (a logging backend must never crash training). +3 tests now in CI.
+4. **Data-backend cutover** (`563f666`) — flipped the schema default
+   `backend: legacy → modern`; pinned `backend: legacy` explicitly in the 4
+   shipped configs so existing Arrow-on-disk runs are unchanged; added a
+   `DeprecationWarning` to `MTDataModule`; documented migration. Legacy stack
+   intact (additive-then-cutover); deletion deferred to a later phase.
+5. **Doc consolidation** (`75270c6`) — deleted obsolete root `DATA.md` /
+   `CONFIGURING_MODELS.md` duplicates; purged all stale
+   `RenaissanceTransformer` references repo-wide.
+6. **Packaging** (`3fef34f`) — `setup.py` now single-sources deps from
+   `requirements.txt`; version bumped `1.2.0.dev0 → 1.3.0.dev0`.
+7. **Housekeeping** (`9acbe6a` + git ops) — hardened the trainer loss-sum
+   (`endswith("_loss")` vs substring match); pruned 7 fully-merged branches;
+   archived 6 unmerged/no-remote branches as `archive/*` tags (pushed) before
+   deletion; removed root scratch notebooks.
+
+Suite went 181 → **184 passed / 1 skipped**, ruff clean throughout.
+
+---
+
+## Step 8 — CI/CD Pipeline (partial)
 
 **Goal:** Run the full test suite automatically on every push and pull request so regressions are caught before merging, without requiring a GPU.
 
-**Tasks:**
+**Delivered:** `.github/workflows/ci.yml` with a `test` job (CPU-only PyTorch wheel + `pytest tests/`) and a `lint` job (`ruff check .`), triggered on push/PR against `renaissance-1.2` and `renaissance-1.3-dev`.
 
-1. Add `.github/workflows/ci.yml` that runs `pytest tests/` on every push and PR against `main` and `dev-interface`.
-2. Pin a CPU-only PyTorch wheel in the CI environment to keep runner time under 5 minutes.
-3. Add a `lint` job: `ruff check .` + `ruff format --check .`.
-4. Add a `type-check` job: `mypy renaissance/` with a minimal `mypy.ini` (strict on new files, lenient on legacy).
-5. Cache the HuggingFace model config downloads (`.cache/huggingface`) across CI runs so `AutoConfig.from_pretrained` doesn't re-fetch every run.
-6. Add a `docs-build` job that validates all links in `docs/` are not broken (`markdown-link-check` or similar).
+**Remaining tasks:**
+
+1. Add `ruff format --check .` to the `lint` job.
+2. Add a `type-check` job: `mypy renaissance/` with a minimal `mypy.ini` (strict on new files, lenient on legacy).
+3. Cache the HuggingFace model config downloads (`.cache/huggingface`) across CI runs so `AutoConfig.from_pretrained` doesn't re-fetch every run.
+4. Add a `docs-build` job that validates all links in `docs/` are not broken (`markdown-link-check` or similar).
 
 **Watch out for:** The smoke tests download small HF configs (~few KB) at fixture time — ensure the CI runner has outbound internet or pre-cache the configs in the repo under `tests/fixtures/`.
 
