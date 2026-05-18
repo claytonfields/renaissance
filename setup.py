@@ -1,4 +1,15 @@
-from setuptools import setup, find_packages
+from pathlib import Path
+
+from setuptools import find_packages, setup
+
+# Single-source the dependency list from requirements.txt so the two
+# never drift. Skips comments, blank lines, and -r/-e directives.
+_REQ_FILE = Path(__file__).parent / "requirements.txt"
+install_requires = [
+    line
+    for raw in _REQ_FILE.read_text().splitlines()
+    if (line := raw.strip()) and not line.startswith(("#", "-"))
+]
 
 setup(
     name="renaissance",
@@ -6,26 +17,9 @@ setup(
         exclude=[".dfc", ".vscode", "dataset", "notebooks", "result", "scripts", "tests"]
     ),
     package_data={"renaissance.data": ["*.json"]},
-    version="1.2.0.dev0",
+    version="1.3.0.dev0",
     license="MIT",
     description="Renaissance: A Multimodal Transformer Modeling Platform",
     keywords=["vision and language pretraining"],
-    install_requires=[
-        "torch",
-        "torchvision",
-        "transformers",
-        "datasets",
-        "accelerate",
-        "safetensors",
-        "huggingface_hub",
-        "torchmetrics>=0.12",
-        "omegaconf",
-        "lightning",
-        "pyarrow",
-        "pandas",
-        "einops",
-        "numpy",
-        "Pillow",
-        "tensorboard",
-    ],
+    install_requires=install_requires,
 )
