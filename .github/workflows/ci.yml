@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [renaissance-1.2-dev, renaissance-1.3-dev]
+    branches: [renaissance-1.2, renaissance-1.3-dev]
   pull_request:
-    branches: [renaissance-1.2-dev, renaissance-1.3-dev]
+    branches: [renaissance-1.2, renaissance-1.3-dev]
 
 jobs:
   test:
