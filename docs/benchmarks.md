@@ -49,10 +49,14 @@ annotator disagreement (score = min(count / 3, 1.0) per answer).
 
 ## SNLI-VE
 
-| Split | Accuracy |
-|-------|----------|
-| dev   | — |
-| test  | — |
+Two-tower, image_size=384, deit-tiny + electra-small, `cross_layer_hidden_size=256`, `num_cross_layers=6`. Pretrained MLM+ITM then fine-tuned on SNLI-VE.
+
+| Split | Accuracy (Lightning, 2024-09) | Accuracy (rewrite, `scripts/regress_snli_ckpt.py`) |
+|-------|-------------------------------|-----------------------------------------------------|
+| dev   | 0.7405 | 0.7283 |
+| test  | 0.7455 | 0.7279 |
+
+The "rewrite" column is a regression run of the same weights (2024‑09 fine-tune ckpt) through the current `RenaissanceModel` code path; `strict=True` load matches all 666 parameters (see `scripts/regress_snli_ckpt.py` for the two-rule rename). Residual ~1.5 pp gap is attributed to environment drift (transformers/torch/torchvision updates since 2024‑09).
 
 ---
 
