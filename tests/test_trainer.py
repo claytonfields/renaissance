@@ -82,3 +82,44 @@ class TestRenaissanceTrainer:
         with torch.no_grad():
             ret = model(batch)
         assert ret["mlm_loss"].isfinite().all()
+
+
+def test_trainer_smoke_bf16(two_tower_pretrain_config, tmp_path):
+    """Trainer runs cleanly at ``precision='bf16'``.
+
+    Guards the bf16 code path in ``RenaissanceTrainer.__init__`` (line 49)
+    that maps the string precision to ``Accelerator(mixed_precision='bf16')``.
+    Runs on CPU via torch's CPU bf16 autocast — no GPU required — so the
+    check works in CI. The Step 9 thin-perf slice depends on this path
+    being reliable end-to-end.
+    """
+    # Accelerate keeps a process-wide singleton; the fp32 trainer test above
+    # already initialized it. Reset so we can reconfigure with a new
+    # mixed_precision value.
+    from accelerate.state import AcceleratorState
+    AcceleratorState._reset_state(reset_partial_state=True)
+
+    cfg = {
+        **two_tower_pretrain_config,
+        "max_steps": N_STEPS,
+        "max_epoch": 1,
+        "warmup_steps": 1,
+        "log_dir": str(tmp_path),
+        "precision": "bf16",
+    }
+    model = RenaissanceModel(cfg)
+    batch = _make_pretrain_batch(TWO_TOWER_IMG)
+    trainer = RenaissanceTrainer(
+        model, cfg, train_dataloader=_SyntheticLoader(batch, n=N_STEPS),
+    )
+    assert trainer.accelerator.mixed_precision == "bf16"
+    trainer.fit()
+    assert trainer.global_step >= N_STEPS
+
+    unwrapped = trainer.accelerator.unwrap_model(trainer.model)
+    unwrapped.eval()
+    unwrapped.set_active_tasks()
+    dev_batch = RenaissanceTrainer._to_device(batch, trainer.accelerator.device)
+    with torch.no_grad():
+        ret = unwrapped(dev_batch)
+    assert ret["mlm_loss"].isfinite().all(), "non-finite MLM loss after bf16 fit"
