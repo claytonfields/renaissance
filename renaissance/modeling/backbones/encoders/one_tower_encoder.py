@@ -287,6 +287,11 @@ class OneTowerEncoder(nn.Module):
         model, _ = load_hf_encoder(
             config["encoder"], random_init=random_init, overrides=overrides
         )
+        # Gradient checkpointing must be enabled on the outer PreTrainedModel
+        # BEFORE we strip down to `.encoder`; HF propagates the flag to the
+        # inner Transformer stack, which then reads it at runtime.
+        if config.get("gradient_checkpointing", False):
+            model.gradient_checkpointing_enable()
         # One-tower reuses only the transformer stack; the embedding streams
         # are the custom Electra/ViT embeddings built below.
         self.encoder = model.encoder

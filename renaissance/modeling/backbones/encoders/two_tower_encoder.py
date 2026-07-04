@@ -122,6 +122,14 @@ class TwoTowerEncoder(nn.Module):
             freeze=config["freeze_text_encoder"],
         )
 
+        # Optional gradient checkpointing on the tower encoders. HF sets a
+        # `.gradient_checkpointing` attribute on inner Transformer stacks that
+        # each layer's forward reads at runtime. The LXMERT fusion is a
+        # separate custom nn.Module — no HF hook, so it's not checkpointed.
+        if config.get("gradient_checkpointing", False):
+            self.image_encoder.gradient_checkpointing_enable()
+            self.text_transformer.gradient_checkpointing_enable()
+
         self.text_transformer_hidden_size = hf_model_hidden_size(self.text_transformer)
         self.hidden_size = config['cross_layer_hidden_size']
         # Cross Modal Layers

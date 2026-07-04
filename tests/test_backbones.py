@@ -85,6 +85,34 @@ class TestBuildBackbone:
             build_backbone(cfg)
 
 
+class TestGradientCheckpointing:
+    """Piece #2 of the Step 9 thin-perf slice: verify the
+    ``gradient_checkpointing`` config flag reaches the HF encoders and that
+    the default (off) is unchanged."""
+
+    def test_two_tower_off_by_default(self, two_tower_pretrain_config):
+        bb = build_backbone(two_tower_pretrain_config)
+        assert not bb.encoder.image_encoder.is_gradient_checkpointing
+        assert not bb.encoder.text_transformer.is_gradient_checkpointing
+
+    def test_two_tower_on_when_flagged(self, two_tower_pretrain_config):
+        cfg = {**two_tower_pretrain_config, "gradient_checkpointing": True}
+        bb = build_backbone(cfg)
+        assert bb.encoder.image_encoder.is_gradient_checkpointing
+        assert bb.encoder.text_transformer.is_gradient_checkpointing
+
+    def test_one_tower_off_by_default(self, one_tower_pretrain_config):
+        bb = build_backbone(one_tower_pretrain_config)
+        # OneTowerEncoder keeps only the inner Transformer stack; HF's
+        # `gradient_checkpointing_enable` sets the flag on that stack directly.
+        assert not bb.encoder.encoder.gradient_checkpointing
+
+    def test_one_tower_on_when_flagged(self, one_tower_pretrain_config):
+        cfg = {**one_tower_pretrain_config, "gradient_checkpointing": True}
+        bb = build_backbone(cfg)
+        assert bb.encoder.encoder.gradient_checkpointing
+
+
 # ---------------------------------------------------------------------------
 # EncoderOutput container
 # ---------------------------------------------------------------------------

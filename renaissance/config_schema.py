@@ -92,6 +92,11 @@ class ModelConfig:
     freeze_text_encoder: bool = False
     freeze_cross_modal_layers: bool = False
 
+    # Memory / throughput. Opt-in; wired through hf_loader so no config change
+    # is behavior-changing when off (default). The LXMERT cross-modal fusion
+    # is NOT covered — it's a custom nn.Module without HF's checkpoint hook.
+    gradient_checkpointing: bool = False
+
 
 @dataclass
 class TaskConfig:
