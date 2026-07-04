@@ -167,9 +167,37 @@ python run.py configs/pretrain_two_tower.yaml \
 
 ---
 
+## Memory & throughput
+
+Two opt-in `model.*` flags accelerate the HF tower encoders. Both default to `false`, so existing configs are unaffected. Neither covers the LXMERT cross-modal fusion (custom `LxmertXLayer`, no HF hook) — they act on the tower encoders only, which is where most of the parameter count lives.
+
+| Flag | Effect | Requires |
+|------|--------|---------|
+| `model.use_flash_attention` | Loads the tower encoder(s) with `attn_implementation="flash_attention_2"`. Fewer memory reads per attention op. | `flash-attn` installed; NVIDIA GPU with compute capability ≥ 8.0 (Ampere/Hopper) |
+| `model.gradient_checkpointing` | Enables activation-recomputation on the tower encoder(s). ~30–50% less activation memory, ~20–30% slower forward. | Nothing extra |
+
+```bash
+# Faster attention on Ampere+ hardware
+python run.py configs/pretrain_two_tower.yaml \
+  model.use_flash_attention=true
+
+# Trade forward-pass time for memory to fit larger batches
+python run.py configs/pretrain_two_tower.yaml \
+  model.gradient_checkpointing=true
+
+# Both together — typical for large-batch fine-tuning
+python run.py configs/finetune_nlvr2.yaml \
+  model.use_flash_attention=true \
+  model.gradient_checkpointing=true
+```
+
+`use_flash_attention` raises at model-build time if flash-attn isn't installed or the GPU is pre-Ampere — HF's `AutoModel.from_pretrained` validates the backend, so misconfiguration fails loudly rather than silently falling back.
+
+---
+
 ## Tips
 
-- **OOM:** Reduce `per_gpu_batchsize` and increase `batch_size` proportionally to maintain effective batch size.
-- **Speed:** Enable `training.precision=16` or `"bf16"` on supported hardware.
+- **OOM:** First try `model.gradient_checkpointing=true`; if still tight, reduce `per_gpu_batchsize` and raise `batch_size` proportionally to keep the effective batch size.
+- **Speed:** Enable `training.precision="bf16"` on supported hardware; add `model.use_flash_attention=true` on Ampere+.
 - **Stability:** If fp16 training diverges, switch to `"bf16"` or lower `learning_rate`.
 - **Fine-tuning:** Use a higher image resolution (`model.image_size=288`) and cosine schedule. Renaissance interpolates position embeddings automatically when `image_size != original_image_size`.
