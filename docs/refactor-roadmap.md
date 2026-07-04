@@ -1,6 +1,12 @@
 # Renaissance Refactor Roadmap
 
-Steps 1–8 are complete; `v1.2.0` is tagged and `renaissance-1.2` is the stable default branch. Active development is on `renaissance-1.3-dev`. A post-1.2 hardening & cleanup pass (2026-05-17) is recorded below. Steps 9–10 remain.
+Steps 1–8 are complete; `v1.2.0` is tagged and `renaissance-1.2` is the stable default branch. Active development is on `renaissance-1.3-dev`. A post-1.2 hardening & cleanup pass (2026-05-17), a modeling-rewrite validation via the SNLI-VE regression (2026-07-03), and the Step 9 thin-perf slice (2026-07-03) are recorded below. Step 10 is the next major initiative.
+
+**Immediate next up** (queued for the next session):
+
+1. **Result-directory cleanup** — the `result/` tree contains 2 years of Lightning-era runs; the user is handling this in a separate session before further work.
+2. **NLVR2 regression** — validate the modeling rewrite's dual-image trick + `adjust_type_embeds_for_nlvr2` monkey-patch survived, using the ckpt at `result/nlvr2_twotower_exp2_bit50_electrasmall_seed0_from_...` (if it has weights + a paired eval.txt). Same pattern as `scripts/regress_snli_ckpt.py`.
+3. **Step 10 architecture expansion** — LLM text encoders (decoder-only + mean-pool), CLIP vision encoders, contrastive/InfoNCE pretraining (wire the `contras` loss into `TASK_REGISTRY`), alternative fusion strategies.
 
 ---
 
@@ -25,7 +31,11 @@ Steps 1–8 are complete; `v1.2.0` is tagged and `renaissance-1.2` is the stable
         ↓
 [*] Post-1.2 hardening   ✓ done (2026-05-17)
         ↓
-[9] Performance & Efficiency Optimizations  ← next
+[*] SNLI-VE regression   ✓ done (2026-07-03) — modeling rewrite validated
+        ↓
+[9] Perf & efficiency    ✓ thin slice (2026-07-03); torch.compile + LoRA deferred
+        ↓
+[*] NLVR2 regression     ← next (validates dual-image quirk pre-Step 10)
         ↓
 [10] Extended Architecture Support
 ```
@@ -147,18 +157,41 @@ Suite went 181 → **184 passed / 1 skipped**, ruff clean throughout.
 
 ---
 
+## ✓ Modeling-Rewrite Validation via SNLI-VE Regression (2026-07-03)
+
+Before starting Step 9, we resequenced the roadmap: the original "Step 9 perf → Step 10 arch" order predates the modeling rewrite + data-backend cutover, and there was no baseline proving the rewrite was faithful. Validate-first was chosen.
+
+**Delivered:**
+- `scripts/regress_snli_ckpt.py` — loads a Sept-2024 Lightning `.ckpt` through a **two-rule prefix rewrite** (`encoder.*` → `backbone.encoder.*`, `snli_classifier.*` → `heads.snli.*`) with `strict=True`, then evaluates on SNLI-VE dev + test.
+- All **666 tensors load byte-identically** (0 missing / 0 unexpected). SNLI-VE dev 0.7283 (target 0.7405) / test 0.7279 (target 0.7455) — within a 2 pp tolerance. Residual gap attributed to library drift (transformers 4.37 / torch 2.8 vs the 2024-09 training env).
+- `docs/benchmarks.md` — SNLI-VE row filled in with the 2024-09 targets side-by-side with the rewrite numbers, plus the header explaining what the regression proves.
+
+**Verdict:** the modeling rewrite is faithful. Cleared the gate for Step 9.
+
+---
+
 ## Step 9 — Performance & Efficiency Optimizations
 
 **Goal:** Make training and inference faster and more memory-efficient without changing model behavior, enabling larger batch sizes and longer sequences on the same hardware.
 
-**Tasks:**
+### ✓ Thin-perf slice (2026-07-03)
 
-1. **Flash Attention:** Replace standard `nn.MultiheadAttention` / HF attention layers with `flash_attn` where supported. Gate behind a config flag (`use_flash_attention: bool`) so the fallback path stays testable on CPU.
-2. **Gradient checkpointing:** Enable `model.gradient_checkpointing_enable()` for the text and image encoder towers; expose as a `gradient_checkpointing: bool` config key.
-3. **`torch.compile`:** Wrap the model with `torch.compile(model, mode="reduce-overhead")` behind a flag; measure throughput delta and document in `docs/benchmarks.md`.
-4. **Parameter-efficient fine-tuning (LoRA/adapters):** Integrate `peft` library to allow fine-tuning with LoRA adapters on the encoder towers. Expose `use_lora: bool`, `lora_r`, `lora_alpha` config keys.
-5. **Mixed precision audit:** Confirm `bfloat16` works end-to-end (not just `float16`) and add a CI smoke run with `mixed_precision="bf16"`.
-6. Benchmark each optimization in isolation on a standard config and document the throughput / memory numbers in `docs/benchmarks.md`.
+Post-rewrite, three of the original Step 9 tasks collapsed to a load-time toggle because the modeling stack now goes through the single `renaissance/modeling/backbones/hf_loader.py` chokepoint. Landed in four commits on `renaissance-1.3-dev` (`40c0a3c` → `1f190a3`):
+
+1. **bf16 audit + CI smoke** (`40c0a3c`) — CPU-only smoke test in `tests/test_trainer.py` that instantiates `RenaissanceTrainer` at `precision="bf16"`, runs 2 fit steps, asserts a finite MLM loss. Guards the existing bf16 path in `trainer.py:49` (`Accelerator(mixed_precision="bf16")`).
+2. **Gradient checkpointing** (`44d1778`) — `model.gradient_checkpointing: bool = False` schema field; when True, calls `.gradient_checkpointing_enable()` on both tower encoders in `two_tower_encoder` / `one_tower_encoder`. 4 tests in `TestGradientCheckpointing`.
+3. **Flash Attention** (`9092291`) — `model.use_flash_attention: bool = False` schema field; when True, threads `attn_implementation="flash_attention_2"` through `load_hf_encoder` to both towers. Requires Ampere+ GPU + flash-attn installed (fails loudly at build time). 4 tests including a spy-based path that verifies wiring without needing flash-attn on CI.
+4. **Docs** (`1f190a3`) — new "Memory & throughput" section in `docs/training.md` describing both flags, updated Tips.
+
+**Confirmed:** all flags default off → SNLI-VE regression numbers unchanged (byte-identical dev 0.7283 / test 0.7279 / losses). Suite went 184 → 193 passed (+9 tests). LXMERT cross-modal fusion is NOT covered by either flag (custom `LxmertXLayer` has no HF hook) — deferred until measurements show fusion is the bottleneck.
+
+### Deferred Step 9 tasks
+
+Both are independent enough to add later without redesign:
+
+1. **`torch.compile`:** Wrap the model with `torch.compile(model, mode="reduce-overhead")` behind a flag; measure throughput delta and document in `docs/benchmarks.md`.
+2. **Parameter-efficient fine-tuning (LoRA/adapters):** Integrate `peft` library to allow fine-tuning with LoRA adapters on the encoder towers. Expose `use_lora: bool`, `lora_r`, `lora_alpha` config keys. Adapter serialization has to coexist with the Hub `save_pretrained` code from Step 5.
+3. Benchmark each optimization in isolation on a standard config and document the throughput / memory numbers in `docs/benchmarks.md`.
 
 **Watch out for:** Flash Attention requires CUDA compute capability ≥ 8.0 (Ampere+). The fallback path must remain correct and tested on older GPUs and CPU. LoRA adapters interact with the Hub integration (Step 5) — `save_pretrained` must serialize adapter weights separately from base weights.
 
