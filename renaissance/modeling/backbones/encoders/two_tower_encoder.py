@@ -95,6 +95,8 @@ class TwoTowerEncoder(nn.Module):
                 "attention_probs_dropout_prob": config[f"{prefix}_drop_rate"],
             }
 
+        attn_impl = "flash_attention_2" if config.get("use_flash_attention", False) else None
+
         # Vision encoder (built first — preserves the legacy RNG draw order
         # so fixed-seed init is byte-identical to the pre-refactor path).
         self.image_encoder, self.image_encoder_hidden_size = load_hf_encoder(
@@ -107,6 +109,7 @@ class TwoTowerEncoder(nn.Module):
                 else None
             ),
             freeze=config["freeze_image_encoder"],
+            attn_implementation=attn_impl,
         )
 
         # Text encoder.
@@ -120,6 +123,7 @@ class TwoTowerEncoder(nn.Module):
                 else None
             ),
             freeze=config["freeze_text_encoder"],
+            attn_implementation=attn_impl,
         )
 
         # Optional gradient checkpointing on the tower encoders. HF sets a

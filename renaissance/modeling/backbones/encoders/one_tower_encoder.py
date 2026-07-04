@@ -284,8 +284,12 @@ class OneTowerEncoder(nn.Module):
                 "hidden_dropout_prob": config["drop_rate"],
                 "attention_probs_dropout_prob": config["drop_rate"],
             }
+        attn_impl = "flash_attention_2" if config.get("use_flash_attention", False) else None
         model, _ = load_hf_encoder(
-            config["encoder"], random_init=random_init, overrides=overrides
+            config["encoder"],
+            random_init=random_init,
+            overrides=overrides,
+            attn_implementation=attn_impl,
         )
         # Gradient checkpointing must be enabled on the outer PreTrainedModel
         # BEFORE we strip down to `.encoder`; HF propagates the flag to the

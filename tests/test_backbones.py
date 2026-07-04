@@ -63,6 +63,15 @@ class TestHFLoader:
         model, _ = load_hf_encoder(TEXT_ENC, random_init=True, freeze=True)
         assert all(not p.requires_grad for p in model.parameters())
 
+    def test_attn_implementation_reaches_config(self):
+        # "eager" works on any hardware; "flash_attention_2" would need
+        # Ampere+ GPU + flash-attn installed, so exercise the plumbing
+        # with an always-available backend instead.
+        model, _ = load_hf_encoder(
+            TEXT_ENC, random_init=True, attn_implementation="eager",
+        )
+        assert model.config._attn_implementation == "eager"
+
 
 # ---------------------------------------------------------------------------
 # build_backbone factory
@@ -111,6 +120,55 @@ class TestGradientCheckpointing:
         cfg = {**one_tower_pretrain_config, "gradient_checkpointing": True}
         bb = build_backbone(cfg)
         assert bb.encoder.encoder.gradient_checkpointing
+
+
+class TestFlashAttention:
+    """Piece #3 of the Step 9 thin-perf slice: verify the
+    ``use_flash_attention`` config flag propagates to ``load_hf_encoder``.
+
+    The actual ``flash_attention_2`` backend needs an Ampere+ GPU with
+    flash-attn installed, so these tests spy on the loader and downgrade
+    the request to ``"eager"`` before the model is built — the intent
+    reaching the loader is what we're validating.
+    """
+
+    @staticmethod
+    def _install_spy(monkeypatch):
+        import renaissance.modeling.backbones.hf_loader as hf_loader_mod
+        orig = hf_loader_mod.load_hf_encoder
+        seen = []
+
+        def spy(name, **kw):
+            seen.append(dict(kw))
+            if kw.get("attn_implementation") == "flash_attention_2":
+                kw["attn_implementation"] = "eager"
+            return orig(name, **kw)
+
+        monkeypatch.setattr(hf_loader_mod, "load_hf_encoder", spy)
+        return seen
+
+    def test_two_tower_flag_reaches_loader(self, monkeypatch, two_tower_pretrain_config):
+        seen = self._install_spy(monkeypatch)
+        cfg = {**two_tower_pretrain_config, "use_flash_attention": True}
+        build_backbone(cfg)
+        # Two calls: image encoder + text encoder, both should request flash-attn.
+        assert len(seen) == 2
+        for kw in seen:
+            assert kw.get("attn_implementation") == "flash_attention_2"
+
+    def test_two_tower_off_by_default(self, monkeypatch, two_tower_pretrain_config):
+        seen = self._install_spy(monkeypatch)
+        build_backbone(two_tower_pretrain_config)
+        assert len(seen) == 2
+        for kw in seen:
+            assert kw.get("attn_implementation") is None
+
+    def test_one_tower_flag_reaches_loader(self, monkeypatch, one_tower_pretrain_config):
+        seen = self._install_spy(monkeypatch)
+        cfg = {**one_tower_pretrain_config, "use_flash_attention": True}
+        build_backbone(cfg)
+        assert len(seen) == 1
+        assert seen[0].get("attn_implementation") == "flash_attention_2"
 
 
 # ---------------------------------------------------------------------------

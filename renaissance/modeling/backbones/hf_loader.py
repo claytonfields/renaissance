@@ -48,6 +48,7 @@ def load_hf_encoder(
     random_init: bool = True,
     overrides: Optional[Dict] = None,
     freeze: bool = False,
+    attn_implementation: Optional[str] = None,
 ) -> Tuple[nn.Module, int]:
     """Build or download an HF encoder.
 
@@ -64,21 +65,31 @@ def load_hf_encoder(
         the dims, so overriding them is a silent footgun and is rejected.
     freeze
         If True, set ``requires_grad=False`` on every parameter.
+    attn_implementation
+        Optional attention backend to select at build time (e.g.
+        ``"flash_attention_2"``, ``"sdpa"``, ``"eager"``). Forwarded to
+        ``AutoModel.from_pretrained`` / ``from_config``; HF's own
+        validation raises if the backend isn't available for this model
+        or the env. Leave ``None`` (default) for HF's default choice.
 
     Returns
     -------
     (model, hidden_size)
     """
+    extra: Dict = {}
+    if attn_implementation is not None:
+        extra["attn_implementation"] = attn_implementation
+
     if random_init:
         config = AutoConfig.from_pretrained(name, **(overrides or {}))
-        model = AutoModel.from_config(config)
+        model = AutoModel.from_config(config, **extra)
     else:
         if overrides:
             raise ValueError(
                 "overrides only apply when random_init=True; pretrained "
                 "weights fix the architecture dims."
             )
-        model = AutoModel.from_pretrained(name)
+        model = AutoModel.from_pretrained(name, **extra)
 
     if freeze:
         for param in model.parameters():

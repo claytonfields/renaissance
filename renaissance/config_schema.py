@@ -96,6 +96,11 @@ class ModelConfig:
     # is behavior-changing when off (default). The LXMERT cross-modal fusion
     # is NOT covered — it's a custom nn.Module without HF's checkpoint hook.
     gradient_checkpointing: bool = False
+    # When True, tower encoders are loaded with attn_implementation=
+    # "flash_attention_2". Requires flash-attn installed + CUDA compute
+    # capability >= 8.0 (Ampere+); fails at model-build time if unavailable.
+    # LXMERT fusion is NOT covered (custom LxmertXLayer has no HF attn hook).
+    use_flash_attention: bool = False
 
 
 @dataclass
