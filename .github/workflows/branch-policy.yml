@@ -1,0 +1,41 @@
+name: branch-policy
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  merge-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Release accepts merges from develop only
+        env:
+          BASE: ${{ github.base_ref }}
+          HEAD: ${{ github.head_ref }}
+        run: |
+          if [ "$BASE" = "renaissance-1.2" ] && [ "$HEAD" != "develop" ]; then
+            echo "::error::PRs into renaissance-1.2 must come from develop (got '$HEAD')"
+            exit 1
+          fi
+          echo "ok: $HEAD -> $BASE"
+
+  commit-style:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Commit subjects must start with [#N]
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          bad=0
+          for sha in $(git rev-list --no-merges "$BASE_SHA".."$HEAD_SHA"); do
+            subj=$(git log -1 --format=%s "$sha")
+            if ! printf '%s' "$subj" | grep -qE '^\[#[0-9]+\]'; then
+              echo "::error::$sha: '$subj' — subject must start with an issue ref like [#2]"
+              bad=1
+            fi
+          done
+          exit $bad
