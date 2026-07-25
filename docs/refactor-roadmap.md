@@ -2,11 +2,7 @@
 
 Steps 1–8 are complete; `v1.2.0` is tagged and `renaissance-1.2` is the stable default branch. Active development is on `renaissance-1.3-dev`. A post-1.2 hardening & cleanup pass (2026-05-17), a modeling-rewrite validation via the SNLI-VE regression (2026-07-03), and the Step 9 thin-perf slice (2026-07-03) are recorded below. Step 10 is the next major initiative.
 
-**Immediate next up** (queued for the next session):
-
-1. **Result-directory cleanup** — the `result/` tree contains 2 years of Lightning-era runs; the user is handling this in a separate session before further work.
-2. **NLVR2 regression** — validate the modeling rewrite's dual-image trick + `adjust_type_embeds_for_nlvr2` monkey-patch survived, using the ckpt at `result/nlvr2_twotower_exp2_bit50_electrasmall_seed0_from_...` (if it has weights + a paired eval.txt). Same pattern as `scripts/regress_snli_ckpt.py`.
-3. **Step 10 architecture expansion** — LLM text encoders (decoder-only + mean-pool), CLIP vision encoders, contrastive/InfoNCE pretraining (wire the `contras` loss into `TASK_REGISTRY`), alternative fusion strategies.
+**Direction change (2026-07-22):** the NLVR2 regression was **cancelled** and Step 10 is **superseded** by a ground-up 2.0 redesign — see [`v2-design.md`](v2-design.md). NLVR2 will be reimplemented cleanly there (dropping the dual-image trick + type-embed monkey-patch), and Step 10's architecture wishlist becomes routine registry additions under the new design. Prototyping follows the build order in that doc.
 
 ---
 
@@ -35,9 +31,9 @@ Steps 1–8 are complete; `v1.2.0` is tagged and `renaissance-1.2` is the stable
         ↓
 [9] Perf & efficiency    ✓ thin slice (2026-07-03); torch.compile + LoRA deferred
         ↓
-[*] NLVR2 regression     ← next (validates dual-image quirk pre-Step 10)
+[*] NLVR2 regression     ✗ cancelled (2026-07-22 — task will be reimplemented in 2.0)
         ↓
-[10] Extended Architecture Support
+[10] Extended Architecture Support  → superseded by the 2.0 redesign (docs/v2-design.md)
 ```
 
 Each step keeps the smoke tests green as a regression guard.
