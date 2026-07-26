@@ -171,7 +171,8 @@ class Nlvr2Task(Task):
   MLflow as drop-ins. Trackers receive structured events (step losses, epoch
   metrics, throughput), not ad-hoc `log()` calls scattered through tasks.
 - **Run manifest** (`manifest.json`, written at launch and finalized at exit):
-  fully-resolved config, git SHA + dirty-diff, package versions, hardware,
+  fully-resolved config, package version (git SHA + dirty-diff when running from
+  a checkout — see Packaging), dependency versions, hardware,
   dataset fingerprints (Hub revision hashes), wall-clock, final metrics, checkpoint
   paths. *Re-running an experiment is `rena train --from-manifest <path>`.*
 - **Eval is a first-class command** producing a versioned eval report stored next to
@@ -200,6 +201,7 @@ rena train ... --dry-run    # build model + 1 batch + 1 fwd/bwd,
 ## Package layout
 
 ```
+pyproject.toml         # PEP 621 metadata, [project.scripts] rena entry point, extras
 renaissance/
   registry.py          # one registry mechanism for everything
   components/
@@ -214,19 +216,55 @@ renaissance/
   model.py             # composed model + PyTorchModelHubMixin
   config.py            # schema composition from registries; recipes
   cli.py               # rena train|eval|predict|push
-recipes/               # named preset configs
+  recipes/             # named preset configs — package data, loaded via
+                       #   importlib.resources (never repo-relative paths)
 ```
+
+## Packaging (decided 2026-07-25)
+
+2.0 is built as a **distributable PyPI-style package from Phase 1**, but
+**publication to PyPI is deferred to Phase 7–8** (cutover), when the API has
+stabilized. Structure now, publish later — retrofitting packaging is expensive;
+carrying it from a greenfield Phase 1 is nearly free.
+
+Two v2 decisions already require an installable package: the entry-point
+extension mechanism (§1) and "loadable by anyone" Hub checkpoints (§6 —
+`from_pretrained` needs the class importable via `pip install renaissance`).
+
+Skeleton requirements (Phase 1–2):
+
+- **`pyproject.toml`** (PEP 621) replaces `setup.py`; single-sourced version.
+- **`rena` CLI as a console entry point** (`[project.scripts]`) — no root-level
+  `run.py`-style scripts.
+- **Recipes ship as package data**, loaded via `importlib.resources`.
+- **Optional extras**: `[wandb]`, `[dev]`; the legacy backend stays out of the
+  wheel (or becomes a `[legacy]` extra if it survives that long). Torch stays a
+  loose dependency (users bring their own CUDA build); lower bounds on
+  `transformers` / `accelerate` / `datasets`.
+- **No repo-relative path assumptions** — output dirs and data paths are CWD-
+  or config-driven.
+- `scripts/`, `tests/`, and regression tooling stay repo-only, excluded from
+  the wheel.
+
+Consequence for §8: the manifest's provenance is **package version first**,
+git SHA + dirty-diff recorded only when running from a checkout — pip-installed
+users have no git repo.
+
+Publication (Phase 7–8): build/publish CI (wheel + sdist, trusted publishing on
+tag), semver + deprecation policy from the first public release. `2.0.0aN`
+pre-releases earlier only if external testers are wanted.
 
 ## Build order (prototype phases)
 
 Phase-at-a-time, additive where possible; each phase lands with tests.
 
-1. **Core skeleton** — `registry.py`, component protocols (`Encoder`, `FusionModule`,
-   `Head`, `Task`), composed `model.py` with `PyTorchModelHubMixin`. Golden test:
-   compose a two-tower (dino-vits16 + electra-small + cross-attention) and match
-   1.3's forward output shapes.
-2. **Config & CLI** — schema composition, recipes, `rena train --dry-run` against a
-   toy config.
+1. **Core skeleton** — `pyproject.toml` packaging skeleton (see Packaging),
+   `registry.py`, component protocols (`Encoder`, `FusionModule`, `Head`, `Task`),
+   composed `model.py` with `PyTorchModelHubMixin`. Golden test: compose a two-tower
+   (dino-vits16 + electra-small + cross-attention) and match 1.3's forward output
+   shapes.
+2. **Config & CLI** — schema composition, recipes as package data, `rena` console
+   entry point, `rena train --dry-run` against a toy config.
 3. **Data layer** — generic loader honoring `batch_spec`, checkpoint-derived
    processors, streaming path.
 4. **Two proving tasks** — `mlm` + `itm` ported as vertical slices; short pretrain
@@ -238,7 +276,8 @@ Phase-at-a-time, additive where possible; each phase lands with tests.
 7. **Eval & reports** — `rena eval`, versioned reports, SNLI-VE quality check vs.
    1.3 numbers (quality sanity, not byte parity — new preprocessing means new
    numbers are expected).
-8. **Cutover** — 2.0 becomes the mainline; 1.3 line frozen for reference.
+8. **Cutover** — 2.0 becomes the mainline; 1.3 line frozen for reference. First
+   PyPI publication (build/publish CI, semver commitment) lands here.
 
 ## Open questions
 
@@ -253,3 +292,5 @@ Phase-at-a-time, additive where possible; each phase lands with tests.
   fallback for offline users.
 - Whether 2.0 lives on a new branch off `renaissance-1.3-dev` (`renaissance-2.0-dev`)
   or a fresh top-level package developed in-tree alongside 1.3. Decide at Phase 1.
+  (The packaging decision weighs toward clean separation — one `pyproject.toml`
+  owning one importable package, no in-tree entanglement with 1.3.)
