@@ -14,7 +14,7 @@ install_requires = [
 setup(
     name="renaissance",
     packages=find_packages(
-        exclude=[".dfc", ".vscode", "dataset", "notebooks", "result", "scripts", "tests"]
+        exclude=[".dfc", ".vscode", "dataset", "notebooks", "result", "scripts", "tests", "v2", "v2.*"]
     ),
     package_data={"renaissance.data": ["*.json"]},
     version="1.3.0.dev0",
