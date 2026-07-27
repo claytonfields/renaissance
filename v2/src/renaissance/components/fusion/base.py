@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from typing import Any, ClassVar
+from typing import ClassVar
 
 from torch import nn
 
@@ -20,9 +20,6 @@ class FusionModule(nn.Module, ABC):
     """
 
     Config: ClassVar[type]
-
-    @abstractmethod
-    def __init__(self, cfg: Any, *, text_dim: int, image_dim: int) -> None: ...
 
     @abstractmethod
     def forward(self, text: TokenStream, images: Sequence[TokenStream]) -> FusionOutput:
