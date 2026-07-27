@@ -290,7 +290,10 @@ Phase-at-a-time, additive where possible; each phase lands with tests.
   cover hyperparameter search).
 - W&B as default tracker requires an account — keep TensorBoard as the zero-setup
   fallback for offline users.
-- Whether 2.0 lives on a new branch off `renaissance-1.3-dev` (`renaissance-2.0-dev`)
-  or a fresh top-level package developed in-tree alongside 1.3. Decide at Phase 1.
-  (The packaging decision weighs toward clean separation — one `pyproject.toml`
-  owning one importable package, no in-tree entanglement with 1.3.)
+- ~~Whether 2.0 lives on a new branch off `renaissance-1.3-dev` (`renaissance-2.0-dev`)
+  or a fresh top-level package developed in-tree alongside 1.3.~~ **Decided at
+  Phase 1 (2026-07-26): in-tree at `v2/`** — src layout with its own
+  `pyproject.toml`, so one `pyproject.toml` owns one importable package and the
+  wheel stays clean. Import/distribution name stays `renaissance`, so v2 and 1.3
+  are never installed into the same environment (separate venvs; separate CI
+  jobs). Extraction to repo root happens at cutover (Phase 8).

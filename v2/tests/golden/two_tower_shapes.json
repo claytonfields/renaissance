@@ -1,0 +1,59 @@
+{
+  "generated_by": "scripts/gen_v2_golden_fixture.py @ e4e3dfc, transformers 4.37.2, torch 2.8.0+cu128",
+  "model": {
+    "encoders": {
+      "text": {
+        "name": "hf-text",
+        "args": {
+          "hub_id": "google/electra-small-discriminator",
+          "random_init": true
+        }
+      },
+      "image": {
+        "name": "hf-image",
+        "args": {
+          "hub_id": "facebook/dino-vits16",
+          "random_init": true
+        }
+      }
+    },
+    "fusion": {
+      "name": "cross-attention",
+      "args": {
+        "hidden_size": 384,
+        "num_layers": 2,
+        "num_heads": 6,
+        "mlp_ratio": 4,
+        "drop_rate": 0.0
+      }
+    },
+    "tasks": []
+  },
+  "batch": {
+    "batch_size": 2,
+    "text_len": 16,
+    "image_size": 224,
+    "n_images": 1,
+    "vocab_size": 30522
+  },
+  "expected_shapes": {
+    "pooled": [
+      2,
+      768
+    ],
+    "text_tokens": [
+      2,
+      16,
+      384
+    ],
+    "image_tokens": [
+      2,
+      197,
+      384
+    ]
+  },
+  "expected_dims": {
+    "pooled_dim": 768,
+    "token_dim": 384
+  }
+}

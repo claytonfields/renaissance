@@ -62,3 +62,6 @@ data/*
 
 # Dev Files
 dev/*
+
+# Python packaging artifacts
+*.egg-info/

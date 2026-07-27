@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "renaissance"
+# Single source of truth for the version; runtime reads it via importlib.metadata.
+version = "2.0.0.dev0"
+description = "Renaissance 2.0: composable multimodal transformer platform"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["vision and language pretraining", "multimodal", "transformers"]
+dependencies = [
+    "torch>=2.1",
+    "transformers>=4.41",
+    "huggingface_hub>=0.23",
+    "safetensors>=0.4",
+    "accelerate>=0.30",
+    "datasets>=2.19",
+]
+
+[project.optional-dependencies]
+wandb = ["wandb"]
+dev = ["pytest>=8", "ruff"]
+
+# NOTE: the `rena` console entry point ([project.scripts]) lands in Phase 2.
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
